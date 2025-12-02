@@ -1,5 +1,5 @@
 import { Pool } from 'pg';
-import { Person, Family, Stats } from './types';
+import { Person, Family, Stats, Residence, Occupation, Event, Fact } from './types';
 
 const pool = new Pool({
   host: process.env.DB_HOST || 'shared-data_postgres',
@@ -12,8 +12,10 @@ const pool = new Pool({
 export async function getPeople(): Promise<Person[]> {
   const result = await pool.query(`
     SELECT id, familysearch_id, name_given, name_surname, name_full,
-           sex, birth_date, birth_year, birth_place, death_date, death_year, 
-           death_place, burial_place, living
+           sex, birth_date, birth_year, birth_place, death_date, death_year,
+           death_place, burial_date, burial_place, christening_date, christening_place,
+           immigration_date, immigration_place, naturalization_date, naturalization_place,
+           religion, description, living, source_count
     FROM people
     ORDER BY birth_year DESC NULLS LAST
   `);
@@ -28,11 +30,45 @@ export async function getPerson(id: string): Promise<Person | null> {
   return result.rows[0] || null;
 }
 
+export async function getPersonResidences(personId: string): Promise<Residence[]> {
+  const result = await pool.query(
+    `SELECT * FROM residences WHERE person_id = $1 ORDER BY residence_year NULLS LAST`,
+    [personId]
+  );
+  return result.rows;
+}
+
+export async function getPersonOccupations(personId: string): Promise<Occupation[]> {
+  const result = await pool.query(
+    `SELECT * FROM occupations WHERE person_id = $1 ORDER BY occupation_date NULLS LAST`,
+    [personId]
+  );
+  return result.rows;
+}
+
+export async function getPersonEvents(personId: string): Promise<Event[]> {
+  const result = await pool.query(
+    `SELECT * FROM events WHERE person_id = $1 ORDER BY event_date NULLS LAST`,
+    [personId]
+  );
+  return result.rows;
+}
+
+export async function getPersonFacts(personId: string): Promise<Fact[]> {
+  const result = await pool.query(
+    `SELECT * FROM facts WHERE person_id = $1 ORDER BY fact_type`,
+    [personId]
+  );
+  return result.rows;
+}
+
 export async function searchPeople(query: string): Promise<Person[]> {
   const result = await pool.query(`
     SELECT id, familysearch_id, name_given, name_surname, name_full,
-           sex, birth_date, birth_year, birth_place, death_date, death_year, 
-           death_place, burial_place, living
+           sex, birth_date, birth_year, birth_place, death_date, death_year,
+           death_place, burial_date, burial_place, christening_date, christening_place,
+           immigration_date, immigration_place, naturalization_date, naturalization_place,
+           religion, description, living, source_count
     FROM people
     WHERE name_full ILIKE $1 OR birth_place ILIKE $1 OR death_place ILIKE $1
     ORDER BY name_full
@@ -90,8 +126,10 @@ export async function getStats(): Promise<Stats> {
 export async function getRecentPeople(limit: number = 10): Promise<Person[]> {
   const result = await pool.query(`
     SELECT id, familysearch_id, name_given, name_surname, name_full,
-           sex, birth_date, birth_year, birth_place, death_date, death_year, 
-           death_place, burial_place, living
+           sex, birth_date, birth_year, birth_place, death_date, death_year,
+           death_place, burial_date, burial_place, christening_date, christening_place,
+           immigration_date, immigration_place, naturalization_date, naturalization_place,
+           religion, description, living, source_count
     FROM people
     WHERE birth_year IS NOT NULL
     ORDER BY birth_year DESC

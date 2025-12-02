@@ -11,8 +11,49 @@ export interface Person {
   death_date: string | null;
   death_year: number | null;
   death_place: string | null;
+  burial_date: string | null;
   burial_place: string | null;
+  christening_date: string | null;
+  christening_place: string | null;
+  immigration_date: string | null;
+  immigration_place: string | null;
+  naturalization_date: string | null;
+  naturalization_place: string | null;
+  religion: string | null;
+  description: string | null;
   living: boolean;
+  source_count: number;
+}
+
+export interface Residence {
+  id: number;
+  person_id: string;
+  residence_date: string | null;
+  residence_year: number | null;
+  residence_place: string | null;
+}
+
+export interface Occupation {
+  id: number;
+  person_id: string;
+  title: string | null;
+  occupation_date: string | null;
+  occupation_place: string | null;
+}
+
+export interface Event {
+  id: number;
+  person_id: string;
+  event_type: string | null;
+  event_date: string | null;
+  event_place: string | null;
+}
+
+export interface Fact {
+  id: number;
+  person_id: string;
+  fact_type: string | null;
+  fact_value: string | null;
 }
 
 export interface Family {

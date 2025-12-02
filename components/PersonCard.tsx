@@ -32,16 +32,6 @@ export default function PersonCard({ person, showDetails = false }: PersonCardPr
             {isLiving && <span className="badge badge-living">Living</span>}
           </div>
         </div>
-        {person.familysearch_id && (
-          <a
-            href={`https://www.familysearch.org/tree/person/details/${person.familysearch_id}`}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="text-xs text-gray-400 hover:text-green-600"
-          >
-            FamilySearch ↗
-          </a>
-        )}
       </div>
 
       {showDetails && (

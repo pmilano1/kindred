@@ -2,7 +2,7 @@ import Link from 'next/link';
 import Sidebar from '@/components/Sidebar';
 import Hero from '@/components/Hero';
 import Footer from '@/components/Footer';
-import { getPerson, getPersonFamilies, getChildren, getPeople } from '@/lib/db';
+import { getPerson, getPersonFamilies, getChildren, getPeople, getPersonResidences, getPersonOccupations, getPersonEvents, getPersonFacts } from '@/lib/db';
 import { notFound } from 'next/navigation';
 
 export const dynamic = 'force-dynamic';
@@ -13,8 +13,14 @@ interface PageProps {
 
 export default async function PersonPage({ params }: PageProps) {
   const { id } = await params;
-  const person = await getPerson(id);
-  
+  const [person, residences, occupations, events, facts] = await Promise.all([
+    getPerson(id),
+    getPersonResidences(id),
+    getPersonOccupations(id),
+    getPersonEvents(id),
+    getPersonFacts(id)
+  ]);
+
   if (!person) {
     notFound();
   }
@@ -22,14 +28,14 @@ export default async function PersonPage({ params }: PageProps) {
   const { asSpouse, asChild } = await getPersonFamilies(id);
   const allPeople = await getPeople();
   const peopleMap = new Map(allPeople.map(p => [p.id, p]));
-  
+
   // Get children for each family where person is a spouse
   const familiesWithChildren = await Promise.all(
     asSpouse.map(async (family) => ({
       family,
       children: await getChildren(family.id),
-      spouse: family.husband_id === id 
-        ? peopleMap.get(family.wife_id || '') 
+      spouse: family.husband_id === id
+        ? peopleMap.get(family.wife_id || '')
         : peopleMap.get(family.husband_id || '')
     }))
   );
@@ -54,28 +60,80 @@ export default async function PersonPage({ params }: PageProps) {
 
               <div className="grid md:grid-cols-2 gap-6">
                 <div>
-                  <h3 className="font-semibold text-gray-700 mb-2">Birth</h3>
+                  <h3 className="font-semibold text-gray-700 mb-2">🎂 Birth</h3>
                   <p className="text-gray-600">
                     {person.birth_date || person.birth_year || 'Unknown'}
                     {person.birth_place && <><br /><span className="text-sm">{person.birth_place}</span></>}
                   </p>
                 </div>
+                {person.christening_date && (
+                  <div>
+                    <h3 className="font-semibold text-gray-700 mb-2">⛪ Christening</h3>
+                    <p className="text-gray-600">
+                      {person.christening_date}
+                      {person.christening_place && <><br /><span className="text-sm">{person.christening_place}</span></>}
+                    </p>
+                  </div>
+                )}
                 {!person.living && (
                   <div>
-                    <h3 className="font-semibold text-gray-700 mb-2">Death</h3>
+                    <h3 className="font-semibold text-gray-700 mb-2">✝️ Death</h3>
                     <p className="text-gray-600">
                       {person.death_date || person.death_year || 'Unknown'}
                       {person.death_place && <><br /><span className="text-sm">{person.death_place}</span></>}
                     </p>
                   </div>
                 )}
-                {person.burial_place && (
+                {(person.burial_date || person.burial_place) && (
                   <div>
-                    <h3 className="font-semibold text-gray-700 mb-2">Burial</h3>
-                    <p className="text-gray-600">{person.burial_place}</p>
+                    <h3 className="font-semibold text-gray-700 mb-2">🪦 Burial</h3>
+                    <p className="text-gray-600">
+                      {person.burial_date}
+                      {person.burial_place && <><br /><span className="text-sm">{person.burial_place}</span></>}
+                    </p>
+                  </div>
+                )}
+                {person.immigration_date && (
+                  <div>
+                    <h3 className="font-semibold text-gray-700 mb-2">🚢 Immigration</h3>
+                    <p className="text-gray-600">
+                      {person.immigration_date}
+                      {person.immigration_place && <><br /><span className="text-sm">{person.immigration_place}</span></>}
+                    </p>
+                  </div>
+                )}
+                {person.naturalization_date && (
+                  <div>
+                    <h3 className="font-semibold text-gray-700 mb-2">🏛️ Naturalization</h3>
+                    <p className="text-gray-600">
+                      {person.naturalization_date}
+                      {person.naturalization_place && <><br /><span className="text-sm">{person.naturalization_place}</span></>}
+                    </p>
+                  </div>
+                )}
+                {person.religion && (
+                  <div>
+                    <h3 className="font-semibold text-gray-700 mb-2">✡️ Religion</h3>
+                    <p className="text-gray-600">{person.religion}</p>
                   </div>
                 )}
               </div>
+              {person.description && (
+                <div className="mt-4 pt-4 border-t">
+                  <h3 className="font-semibold text-gray-700 mb-2">📝 Notes</h3>
+                  <p className="text-gray-600 text-sm">{person.description}</p>
+                </div>
+              )}
+              {person.familysearch_id && (
+                <div className="mt-4 pt-4 border-t">
+                  <a href={`https://www.familysearch.org/tree/person/details/${person.familysearch_id}`}
+                     target="_blank"
+                     rel="noopener noreferrer"
+                     className="text-green-600 hover:text-green-800 text-sm flex items-center gap-1">
+                    🌳 View on FamilySearch
+                  </a>
+                </div>
+              )}
             </div>
 
             {/* Parents */}
@@ -133,6 +191,72 @@ export default async function PersonPage({ params }: PageProps) {
                 )}
               </div>
             ))}
+
+            {/* Occupations */}
+            {occupations.length > 0 && (
+              <div className="card p-6 mb-6">
+                <h3 className="section-title">💼 Occupations</h3>
+                <div className="space-y-2">
+                  {occupations.map((occ) => (
+                    <div key={occ.id} className="flex items-start gap-2 text-sm">
+                      <span className="text-gray-800 font-medium">{occ.title || 'Unknown'}</span>
+                      {(occ.occupation_date || occ.occupation_place) && (
+                        <span className="text-gray-500">
+                          {occ.occupation_date && `(${occ.occupation_date})`}
+                          {occ.occupation_place && ` - ${occ.occupation_place}`}
+                        </span>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Residences */}
+            {residences.length > 0 && (
+              <div className="card p-6 mb-6">
+                <h3 className="section-title">🏠 Residences</h3>
+                <div className="space-y-2">
+                  {residences.map((res) => (
+                    <div key={res.id} className="flex items-start gap-2 text-sm">
+                      <span className="text-gray-500">{res.residence_date || res.residence_year || ''}</span>
+                      <span className="text-gray-800">{res.residence_place || 'Unknown location'}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Life Events */}
+            {events.length > 0 && (
+              <div className="card p-6 mb-6">
+                <h3 className="section-title">📅 Life Events</h3>
+                <div className="space-y-2">
+                  {events.map((evt) => (
+                    <div key={evt.id} className="flex items-start gap-2 text-sm">
+                      <span className="bg-gray-100 px-2 py-0.5 rounded text-gray-600">{evt.event_type || 'Event'}</span>
+                      {evt.event_date && <span className="text-gray-500">{evt.event_date}</span>}
+                      {evt.event_place && <span className="text-gray-800">{evt.event_place}</span>}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Facts */}
+            {facts.length > 0 && (
+              <div className="card p-6 mb-6">
+                <h3 className="section-title">📋 Additional Information</h3>
+                <div className="space-y-2">
+                  {facts.map((fact) => (
+                    <div key={fact.id} className="text-sm">
+                      <span className="text-gray-600 font-medium">{fact.fact_type || 'Fact'}:</span>{' '}
+                      <span className="text-gray-800">{fact.fact_value}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
 
             <Link href="/people" className="inline-block tree-btn">
               ← Back to People

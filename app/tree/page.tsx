@@ -76,16 +76,6 @@ export default function TreePage() {
                 <p className="text-sm text-gray-400">
                   For now, use the People page to browse all family members
                 </p>
-                {selected.familysearch_id && (
-                  <a
-                    href={`https://www.familysearch.org/tree/person/details/${selected.familysearch_id}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="inline-block mt-4 tree-btn"
-                  >
-                    View on FamilySearch ↗
-                  </a>
-                )}
               </div>
             </div>
           ) : (

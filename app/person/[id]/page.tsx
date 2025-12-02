@@ -50,16 +50,6 @@ export default async function PersonPage({ params }: PageProps) {
                   {isFemale ? 'Female' : 'Male'}
                 </span>
                 {person.living && <span className="badge badge-living">Living</span>}
-                {person.familysearch_id && (
-                  <a
-                    href={`https://www.familysearch.org/tree/person/details/${person.familysearch_id}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="badge bg-green-100 text-green-800 hover:bg-green-200"
-                  >
-                    FamilySearch ↗
-                  </a>
-                )}
               </div>
 
               <div className="grid md:grid-cols-2 gap-6">

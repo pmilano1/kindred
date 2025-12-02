@@ -23,7 +23,7 @@ export default async function Home() {
             <StatsCard label="Total People" value={stats.total_people} icon="👥" />
             <StatsCard label="Families" value={stats.total_families} icon="👨‍👩‍👧‍👦" />
             <StatsCard label="Living" value={stats.living_count} icon="💚" />
-            <StatsCard label="Linked to FamilySearch" value={stats.with_familysearch_id} icon="🔗" />
+            <StatsCard label="Generations" value={stats.earliest_birth ? Math.ceil((new Date().getFullYear() - stats.earliest_birth) / 25) : 0} icon="🌳" />
           </div>
 
           <h2 className="section-title">Recently Born</h2>

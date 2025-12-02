@@ -156,7 +156,7 @@ export default function FamilyTree({ rootPersonId, showAncestors, onPersonClick 
     return node;
   }, [data]);
 
-  // Draw tree
+  // Draw tree - vertical orientation (top-left branching down-right)
   useEffect(() => {
     if (!data || !svgRef.current || !rootPersonId) return;
     const svg = d3.select(svgRef.current);
@@ -166,44 +166,97 @@ export default function FamilyTree({ rootPersonId, showAncestors, onPersonClick 
     if (!treeData) return;
 
     const { width, height } = dimensions;
-    const margin = { top: 40, right: 150, bottom: 40, left: 150 };
+    const margin = { top: 30, right: 20, bottom: 30, left: 30 };
     const root = d3.hierarchy(treeData);
 
-    // Calculate tree size based on number of nodes to prevent overlap
-    const nodeCount = root.descendants().length;
-    const nodeHeight = 70; // Minimum vertical spacing between nodes
-    const treeHeight = Math.max(height - margin.top - margin.bottom, nodeCount * nodeHeight);
-    const treeWidth = width - margin.left - margin.right;
+    // Node dimensions (smaller, tighter)
+    const nodeWidth = 120;
+    const nodeHeight = 40;
+    const nodeSpacingX = 30; // Horizontal gap between nodes at same level
+    const nodeSpacingY = 50; // Vertical gap between levels
 
-    d3.tree<TreeNode>().size([treeHeight, treeWidth]).separation((a, b) => a.parent === b.parent ? 1.5 : 2)(root as any);
+    // Calculate tree size based on depth and breadth
+    const maxDepth = root.height;
+    const leaves = root.leaves().length;
+    const treeWidth = Math.max(leaves * (nodeWidth + nodeSpacingX), width - margin.left - margin.right);
+    const treeHeight = Math.max((maxDepth + 1) * (nodeHeight + nodeSpacingY), height - margin.top - margin.bottom);
+
+    // Create vertical tree layout (top to bottom)
+    const treeLayout = d3.tree<TreeNode>()
+      .size([treeWidth, treeHeight])
+      .separation((a, b) => a.parent === b.parent ? 1 : 1.2);
+
+    treeLayout(root as any);
 
     const g = svg.append('g').attr('transform', `translate(${margin.left},${margin.top})`);
 
+    // Draw curved links (vertical orientation)
     g.selectAll('.link').data(root.links()).enter().append('path')
-      .attr('d', d3.linkHorizontal<any, any>().x(d => d.y).y(d => d.x) as any)
-      .attr('fill', 'none').attr('stroke', '#94a3b8').attr('stroke-width', 2);
+      .attr('d', d3.linkVertical<any, any>().x(d => d.x).y(d => d.y) as any)
+      .attr('fill', 'none')
+      .attr('stroke', '#94a3b8')
+      .attr('stroke-width', 1.5)
+      .attr('stroke-opacity', 0.6);
 
+    // Create node groups
     const nodes = g.selectAll('.node').data(root.descendants()).enter().append('g')
-      .attr('transform', d => `translate(${(d as any).y},${(d as any).x})`)
-      .style('cursor', 'pointer').on('click', (e, d) => onPersonClick((d as any).data.id));
+      .attr('transform', d => `translate(${(d as any).x},${(d as any).y})`)
+      .style('cursor', 'pointer')
+      .on('click', (e, d) => onPersonClick((d as any).data.id));
 
-    nodes.append('rect').attr('x', -70).attr('y', -25).attr('width', 140).attr('height', 50).attr('rx', 8)
+    // Node rectangles (smaller, tighter)
+    nodes.append('rect')
+      .attr('x', -nodeWidth / 2)
+      .attr('y', -nodeHeight / 2)
+      .attr('width', nodeWidth)
+      .attr('height', nodeHeight)
+      .attr('rx', 6)
       .attr('fill', d => (d as any).data.sex === 'F' ? '#fce7f3' : '#dbeafe')
-      .attr('stroke', d => (d as any).data.sex === 'F' ? '#ec4899' : '#3b82f6').attr('stroke-width', 2);
+      .attr('stroke', d => (d as any).data.sex === 'F' ? '#ec4899' : '#3b82f6')
+      .attr('stroke-width', 1.5);
 
+    // Living indicator (smaller)
     nodes.filter(d => (d as any).data.living).append('circle')
-      .attr('cx', 55).attr('cy', -15).attr('r', 6).attr('fill', '#22c55e').attr('stroke', '#fff');
+      .attr('cx', nodeWidth / 2 - 8)
+      .attr('cy', -nodeHeight / 2 + 8)
+      .attr('r', 4)
+      .attr('fill', '#22c55e')
+      .attr('stroke', '#fff')
+      .attr('stroke-width', 1);
 
-    nodes.append('text').attr('dy', -5).attr('text-anchor', 'middle')
-      .attr('font-size', '11px').attr('font-weight', '600').attr('fill', '#1f2937')
-      .text(d => { const n = (d as any).data.name; return n.length > 18 ? n.substring(0, 16) + '...' : n; });
+    // Name text (smaller font)
+    nodes.append('text')
+      .attr('dy', -2)
+      .attr('text-anchor', 'middle')
+      .attr('font-size', '9px')
+      .attr('font-weight', '600')
+      .attr('fill', '#1f2937')
+      .text(d => {
+        const n = (d as any).data.name;
+        return n.length > 16 ? n.substring(0, 14) + '...' : n;
+      });
 
-    nodes.append('text').attr('dy', 12).attr('text-anchor', 'middle').attr('font-size', '10px').attr('fill', '#6b7280')
-      .text(d => `${(d as any).data.birth_year || '?'} – ${(d as any).data.living ? 'Living' : ((d as any).data.death_year || '?')}`);
+    // Years text (smaller)
+    nodes.append('text')
+      .attr('dy', 10)
+      .attr('text-anchor', 'middle')
+      .attr('font-size', '8px')
+      .attr('fill', '#6b7280')
+      .text(d => {
+        const data = (d as any).data;
+        const birth = data.birth_year || '?';
+        const death = data.living ? 'Living' : (data.death_year || '?');
+        return `${birth} – ${death}`;
+      });
 
-    const zoom = d3.zoom<SVGSVGElement, unknown>().scaleExtent([0.3, 3]).on('zoom', e => g.attr('transform', e.transform));
+    // Setup zoom/pan
+    const zoom = d3.zoom<SVGSVGElement, unknown>()
+      .scaleExtent([0.2, 4])
+      .on('zoom', e => g.attr('transform', e.transform));
     svg.call(zoom);
-    svg.call(zoom.transform, d3.zoomIdentity.translate(width / 4, height / 2).scale(0.9));
+
+    // Initial transform: start from top-left area
+    svg.call(zoom.transform, d3.zoomIdentity.translate(margin.left, margin.top).scale(0.8));
   }, [data, rootPersonId, showAncestors, dimensions, buildAncestorTree, buildDescendantTree, onPersonClick]);
 
   return (

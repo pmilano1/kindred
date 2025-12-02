@@ -2,7 +2,7 @@ import Link from 'next/link';
 import Sidebar from '@/components/Sidebar';
 import Hero from '@/components/Hero';
 import Footer from '@/components/Footer';
-import { getPerson, getPersonFamilies, getChildren, getPeople, getPersonResidences, getPersonOccupations, getPersonEvents, getPersonFacts } from '@/lib/db';
+import { getPerson, getPersonFamilies, getChildren, getPeople, getPersonResidences, getPersonOccupations, getPersonEvents, getPersonFacts, getPersonSources } from '@/lib/db';
 import { notFound } from 'next/navigation';
 
 export const dynamic = 'force-dynamic';
@@ -13,12 +13,13 @@ interface PageProps {
 
 export default async function PersonPage({ params }: PageProps) {
   const { id } = await params;
-  const [person, residences, occupations, events, facts] = await Promise.all([
+  const [person, residences, occupations, events, facts, sources] = await Promise.all([
     getPerson(id),
     getPersonResidences(id),
     getPersonOccupations(id),
     getPersonEvents(id),
-    getPersonFacts(id)
+    getPersonFacts(id),
+    getPersonSources(id)
   ]);
 
   if (!person) {
@@ -252,6 +253,42 @@ export default async function PersonPage({ params }: PageProps) {
                     <div key={fact.id} className="text-sm">
                       <span className="text-gray-600 font-medium">{fact.fact_type || 'Fact'}:</span>{' '}
                       <span className="text-gray-800">{fact.fact_value}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Sources */}
+            {sources.length > 0 && (
+              <div className="card p-6 mb-6">
+                <h3 className="section-title">📚 Sources ({sources.length})</h3>
+                <div className="space-y-3">
+                  {sources.map((source) => (
+                    <div key={source.id} className="p-3 bg-gray-50 rounded-lg border border-gray-200">
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="flex-1">
+                          {source.source_type && (
+                            <span className="inline-block bg-blue-100 text-blue-800 text-xs px-2 py-0.5 rounded mb-1">{source.source_type}</span>
+                          )}
+                          <p className="text-sm font-medium text-gray-800">{source.source_name || 'Unknown Source'}</p>
+                          {source.notes && <p className="text-xs text-gray-600 mt-1">{source.notes}</p>}
+                        </div>
+                        <div className="flex gap-2">
+                          {source.source_url && (
+                            <a href={source.source_url} target="_blank" rel="noopener noreferrer"
+                               className="text-xs text-blue-600 hover:text-blue-800 whitespace-nowrap">🔗 View</a>
+                          )}
+                          {source.document_data && source.document_type && (
+                            <a href={`data:${source.document_type};base64,${source.document_data}`}
+                               download={source.document_filename || 'document'}
+                               className="text-xs text-green-600 hover:text-green-800 whitespace-nowrap">📄 Download</a>
+                          )}
+                        </div>
+                      </div>
+                      {source.validated && (
+                        <span className="inline-block text-xs text-green-600 mt-1">✓ Validated {source.validated_date ? `on ${source.validated_date}` : ''}</span>
+                      )}
                     </div>
                   ))}
                 </div>

@@ -95,3 +95,18 @@ export interface TreeNode {
   };
 }
 
+export interface Source {
+  id: number;
+  person_id: string;
+  source_type: string | null;
+  source_name: string | null;
+  source_url: string | null;
+  data_retrieved: string | null;
+  validated: boolean;
+  validated_date: string | null;
+  notes: string | null;
+  document_data: string | null;  // Base64 encoded document or image
+  document_type: string | null;  // MIME type (e.g., image/jpeg, application/pdf)
+  document_filename: string | null;
+  created_at: string;
+}

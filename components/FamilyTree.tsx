@@ -166,9 +166,16 @@ export default function FamilyTree({ rootPersonId, showAncestors, onPersonClick 
     if (!treeData) return;
 
     const { width, height } = dimensions;
-    const margin = { top: 40, right: 120, bottom: 40, left: 120 };
+    const margin = { top: 40, right: 150, bottom: 40, left: 150 };
     const root = d3.hierarchy(treeData);
-    d3.tree<TreeNode>().size([height - margin.top - margin.bottom, width - margin.left - margin.right])(root as any);
+
+    // Calculate tree size based on number of nodes to prevent overlap
+    const nodeCount = root.descendants().length;
+    const nodeHeight = 70; // Minimum vertical spacing between nodes
+    const treeHeight = Math.max(height - margin.top - margin.bottom, nodeCount * nodeHeight);
+    const treeWidth = width - margin.left - margin.right;
+
+    d3.tree<TreeNode>().size([treeHeight, treeWidth]).separation((a, b) => a.parent === b.parent ? 1.5 : 2)(root as any);
 
     const g = svg.append('g').attr('transform', `translate(${margin.left},${margin.top})`);
 

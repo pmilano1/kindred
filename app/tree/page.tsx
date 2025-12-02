@@ -1,16 +1,21 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
+import dynamic from 'next/dynamic';
 import Sidebar from '@/components/Sidebar';
 import Hero from '@/components/Hero';
 import Footer from '@/components/Footer';
 import { Person } from '@/lib/types';
 
+const FamilyTree = dynamic(() => import('@/components/FamilyTree'), { ssr: false });
+
 export default function TreePage() {
+  const router = useRouter();
   const [people, setPeople] = useState<Person[]>([]);
   const [selectedPerson, setSelectedPerson] = useState<string>('');
+  const [showAncestors, setShowAncestors] = useState(true);
   const [loading, setLoading] = useState(true);
-  const containerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     fetch('/api/people')
@@ -18,9 +23,12 @@ export default function TreePage() {
       .then(data => {
         setPeople(data);
         setLoading(false);
-        // Default to first person with a recent birth year
-        const recent = data.find((p: Person) => p.birth_year && p.birth_year > 1970);
-        if (recent) setSelectedPerson(recent.id);
+        const peter = data.find((p: Person) => p.name_full?.toLowerCase().includes('peter milanese'));
+        if (peter) setSelectedPerson(peter.id);
+        else {
+          const recent = data.find((p: Person) => p.birth_year && p.birth_year > 1970);
+          if (recent) setSelectedPerson(recent.id);
+        }
       });
   }, []);
 
@@ -33,55 +41,40 @@ export default function TreePage() {
         <Hero title="Family Tree" subtitle="Interactive visualization of family connections" />
         <div className="content-wrapper">
           <div className="tree-controls">
-            <select
-              className="tree-select"
-              value={selectedPerson}
-              onChange={(e) => setSelectedPerson(e.target.value)}
-            >
+            <select className="tree-select" value={selectedPerson} onChange={(e) => setSelectedPerson(e.target.value)}>
               <option value="">Select a person...</option>
               <optgroup label="Living Family Members">
                 {people.filter(p => p.living).sort((a, b) => (b.birth_year || 0) - (a.birth_year || 0)).map(p => (
-                  <option key={p.id} value={p.id}>
-                    {p.name_full} {p.birth_year ? `(b. ${p.birth_year})` : ''}
-                  </option>
+                  <option key={p.id} value={p.id}>{p.name_full} {p.birth_year ? `(b. ${p.birth_year})` : ''}</option>
                 ))}
               </optgroup>
               <optgroup label="Ancestors">
                 {people.filter(p => !p.living).sort((a, b) => (b.birth_year || 0) - (a.birth_year || 0)).map(p => (
-                  <option key={p.id} value={p.id}>
-                    {p.name_full} {p.birth_year ? `(${p.birth_year}–${p.death_year || '?'})` : ''}
-                  </option>
+                  <option key={p.id} value={p.id}>{p.name_full} {p.birth_year ? `(${p.birth_year}–${p.death_year || '?'})` : ''}</option>
                 ))}
               </optgroup>
             </select>
+            <button className={`tree-btn ${showAncestors ? 'active' : ''}`} onClick={() => setShowAncestors(true)}>⬆️ Ancestors</button>
+            <button className={`tree-btn ${!showAncestors ? 'active' : ''}`} onClick={() => setShowAncestors(false)}>⬇️ Descendants</button>
           </div>
 
           {loading ? (
-            <div className="tree-container flex items-center justify-center">
-              <p className="text-gray-500">Loading family data...</p>
-            </div>
+            <div className="tree-container flex items-center justify-center"><p className="text-gray-500">Loading...</p></div>
           ) : selected ? (
-            <div className="card p-6">
-              <div className="text-center mb-6">
-                <h2 className="text-2xl font-bold">{selected.name_full}</h2>
-                <p className="text-gray-500">
-                  {selected.birth_year && `Born ${selected.birth_year}`}
-                  {selected.birth_place && ` in ${selected.birth_place}`}
+            <div className="card">
+              <div className="text-center p-4 border-b">
+                <h2 className="text-xl font-bold">{selected.name_full}</h2>
+                <p className="text-gray-500 text-sm">
+                  {selected.birth_year && `${selected.birth_year}`}{selected.death_year && ` – ${selected.death_year}`}
+                  {selected.birth_place && ` • ${selected.birth_place}`}
                 </p>
               </div>
-              <div className="bg-gray-50 rounded-lg p-8 text-center" ref={containerRef}>
-                <p className="text-gray-500 mb-4">
-                  🌳 Interactive D3.js tree visualization coming soon
-                </p>
-                <p className="text-sm text-gray-400">
-                  For now, use the People page to browse all family members
-                </p>
+              <div style={{ height: '500px' }}>
+                <FamilyTree rootPersonId={selectedPerson} showAncestors={showAncestors} onPersonClick={(id) => router.push(`/person/${id}`)} />
               </div>
             </div>
           ) : (
-            <div className="tree-container flex items-center justify-center">
-              <p className="text-gray-500">Select a person to view their family tree</p>
-            </div>
+            <div className="tree-container flex items-center justify-center"><p className="text-gray-500">Select a person to view their family tree</p></div>
           )}
         </div>
         <Footer />

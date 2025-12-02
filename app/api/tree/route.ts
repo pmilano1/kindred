@@ -40,9 +40,10 @@ export async function GET() {
     `);
     
     // Get all families with children
+    // Note: marriage_date is varchar, not date type, and currently all NULL
     const familiesResult = await pool.query(`
       SELECT f.id, f.husband_id, f.wife_id,
-             EXTRACT(YEAR FROM f.marriage_date)::int as marriage_year,
+             NULL::int as marriage_year,
              f.marriage_place,
              COALESCE(
                array_agg(c.person_id) FILTER (WHERE c.person_id IS NOT NULL),
@@ -50,7 +51,7 @@ export async function GET() {
              ) as children
       FROM families f
       LEFT JOIN children c ON f.id = c.family_id
-      GROUP BY f.id, f.husband_id, f.wife_id, f.marriage_date, f.marriage_place
+      GROUP BY f.id, f.husband_id, f.wife_id, f.marriage_place
     `);
 
     const people: Record<string, TreePerson> = {};

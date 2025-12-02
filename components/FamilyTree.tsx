@@ -47,9 +47,10 @@ interface FamilyTreeProps {
   rootPersonId: string;
   showAncestors: boolean;
   onPersonClick: (id: string) => void;
+  onTileClick: (id: string) => void;
 }
 
-export default function FamilyTree({ rootPersonId, showAncestors, onPersonClick }: FamilyTreeProps) {
+export default function FamilyTree({ rootPersonId, showAncestors, onPersonClick, onTileClick }: FamilyTreeProps) {
   const svgRef = useRef<SVGSVGElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const [data, setData] = useState<TreeData | null>(null);
@@ -200,11 +201,9 @@ export default function FamilyTree({ rootPersonId, showAncestors, onPersonClick 
 
     // Create node groups
     const nodes = g.selectAll('.node').data(root.descendants()).enter().append('g')
-      .attr('transform', d => `translate(${(d as any).x},${(d as any).y})`)
-      .style('cursor', 'pointer')
-      .on('click', (e, d) => onPersonClick((d as any).data.id));
+      .attr('transform', d => `translate(${(d as any).x},${(d as any).y})`);
 
-    // Node rectangles (smaller, tighter)
+    // Node rectangles - clicking tile navigates to that person's tree
     nodes.append('rect')
       .attr('x', -nodeWidth / 2)
       .attr('y', -nodeHeight / 2)
@@ -213,7 +212,12 @@ export default function FamilyTree({ rootPersonId, showAncestors, onPersonClick 
       .attr('rx', 6)
       .attr('fill', d => (d as any).data.sex === 'F' ? '#fce7f3' : '#dbeafe')
       .attr('stroke', d => (d as any).data.sex === 'F' ? '#ec4899' : '#3b82f6')
-      .attr('stroke-width', 1.5);
+      .attr('stroke-width', 1.5)
+      .style('cursor', 'pointer')
+      .on('click', (e, d) => {
+        e.stopPropagation();
+        onTileClick((d as any).data.id);
+      });
 
     // Living indicator (smaller)
     nodes.filter(d => (d as any).data.living).append('circle')
@@ -222,26 +226,36 @@ export default function FamilyTree({ rootPersonId, showAncestors, onPersonClick 
       .attr('r', 4)
       .attr('fill', '#22c55e')
       .attr('stroke', '#fff')
-      .attr('stroke-width', 1);
+      .attr('stroke-width', 1)
+      .style('pointer-events', 'none');
 
-    // Name text (smaller font)
+    // Name text - clicking name goes to person page
     nodes.append('text')
       .attr('dy', -2)
       .attr('text-anchor', 'middle')
       .attr('font-size', '9px')
       .attr('font-weight', '600')
       .attr('fill', '#1f2937')
+      .style('cursor', 'pointer')
+      .style('text-decoration', 'none')
+      .on('mouseover', function() { d3.select(this).style('text-decoration', 'underline'); })
+      .on('mouseout', function() { d3.select(this).style('text-decoration', 'none'); })
+      .on('click', (e, d) => {
+        e.stopPropagation();
+        onPersonClick((d as any).data.id);
+      })
       .text(d => {
         const n = (d as any).data.name;
         return n.length > 16 ? n.substring(0, 14) + '...' : n;
       });
 
-    // Years text (smaller)
+    // Years text (smaller) - not clickable
     nodes.append('text')
       .attr('dy', 10)
       .attr('text-anchor', 'middle')
       .attr('font-size', '8px')
       .attr('fill', '#6b7280')
+      .style('pointer-events', 'none')
       .text(d => {
         const data = (d as any).data;
         const birth = data.birth_year || '?';
@@ -257,7 +271,7 @@ export default function FamilyTree({ rootPersonId, showAncestors, onPersonClick 
 
     // Initial transform: start from top-left area
     svg.call(zoom.transform, d3.zoomIdentity.translate(margin.left, margin.top).scale(0.8));
-  }, [data, rootPersonId, showAncestors, dimensions, buildAncestorTree, buildDescendantTree, onPersonClick]);
+  }, [data, rootPersonId, showAncestors, dimensions, buildAncestorTree, buildDescendantTree, onPersonClick, onTileClick]);
 
   return (
     <div className="relative w-full h-full" ref={containerRef}>

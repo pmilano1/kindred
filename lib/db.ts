@@ -119,7 +119,17 @@ export async function getPersonFamilies(personId: string): Promise<{
 }
 
 export async function getStats(): Promise<Stats> {
-  const result = await pool.query(`SELECT * FROM get_statistics()`);
+  const result = await pool.query(`
+    SELECT
+      (SELECT COUNT(*) FROM people) as total_people,
+      (SELECT COUNT(*) FROM families) as total_families,
+      (SELECT COUNT(*) FROM people WHERE sex = 'M') as male_count,
+      (SELECT COUNT(*) FROM people WHERE sex = 'F') as female_count,
+      (SELECT COUNT(*) FROM people WHERE living = true) as living_count,
+      (SELECT MIN(birth_year) FROM people WHERE birth_year IS NOT NULL) as earliest_birth,
+      (SELECT MAX(birth_year) FROM people WHERE birth_year IS NOT NULL) as latest_birth,
+      (SELECT COUNT(*) FROM people WHERE familysearch_id IS NOT NULL) as with_familysearch_id
+  `);
   return result.rows[0];
 }
 

@@ -80,9 +80,9 @@ export default function FamilyTree({ rootPersonId, showAncestors, onPersonClick,
     return () => window.removeEventListener('resize', updateDimensions);
   }, []);
 
-  // Build ancestor tree from person going up
+  // Build ancestor tree from person going up - each couple shown as single node
   const buildAncestorTree = useCallback((personId: string, depth = 0): TreeNode | null => {
-    if (!data || depth > 8) return null;
+    if (!data || depth > 10) return null;
     const person = data.people[personId];
     if (!person) return null;
 
@@ -96,20 +96,72 @@ export default function FamilyTree({ rootPersonId, showAncestors, onPersonClick,
       familysearch_id: person.familysearch_id,
     };
 
-    // Find family where this person is a child
+    // Find family where this person is a child to get parents
     const parentFamily = data.families.find(f => f.children.includes(personId));
     if (parentFamily) {
-      const parents: TreeNode[] = [];
-      if (parentFamily.husband_id) {
-        const father = buildAncestorTree(parentFamily.husband_id, depth + 1);
-        if (father) parents.push(father);
-      }
-      if (parentFamily.wife_id) {
-        const mother = buildAncestorTree(parentFamily.wife_id, depth + 1);
-        if (mother) parents.push(mother);
-      }
-      if (parents.length > 0) {
-        node.children = parents;
+      const fatherId = parentFamily.husband_id;
+      const motherId = parentFamily.wife_id;
+      const father = fatherId ? data.people[fatherId] : null;
+      const mother = motherId ? data.people[motherId] : null;
+
+      if (father || mother) {
+        // Create parent couple node (father as primary with mother as spouse)
+        const primary = father || mother!;
+        const spouse = father ? mother : null;
+
+        const parentNode: TreeNode = {
+          id: primary.id,
+          name: primary.name,
+          sex: primary.sex,
+          birth_year: primary.birth_year,
+          death_year: primary.death_year,
+          living: primary.living,
+          familysearch_id: primary.familysearch_id,
+          spouse: spouse || undefined,
+        };
+
+        // Recursively build ancestors for BOTH parents
+        const grandparentNodes: TreeNode[] = [];
+
+        // Father's parents
+        if (fatherId) {
+          const fatherParents = data.families.find(f => f.children.includes(fatherId));
+          if (fatherParents) {
+            const patGF = fatherParents.husband_id ? data.people[fatherParents.husband_id] : null;
+            const patGM = fatherParents.wife_id ? data.people[fatherParents.wife_id] : null;
+            if (patGF || patGM) {
+              const gpPrimary = patGF || patGM!;
+              const gpNode = buildAncestorTree(gpPrimary.id, depth + 1);
+              if (gpNode) {
+                gpNode.spouse = patGF && patGM ? patGM : undefined;
+                grandparentNodes.push(gpNode);
+              }
+            }
+          }
+        }
+
+        // Mother's parents
+        if (motherId) {
+          const motherParents = data.families.find(f => f.children.includes(motherId));
+          if (motherParents) {
+            const matGF = motherParents.husband_id ? data.people[motherParents.husband_id] : null;
+            const matGM = motherParents.wife_id ? data.people[motherParents.wife_id] : null;
+            if (matGF || matGM) {
+              const gpPrimary = matGF || matGM!;
+              const gpNode = buildAncestorTree(gpPrimary.id, depth + 1);
+              if (gpNode) {
+                gpNode.spouse = matGF && matGM ? matGM : undefined;
+                grandparentNodes.push(gpNode);
+              }
+            }
+          }
+        }
+
+        if (grandparentNodes.length > 0) {
+          parentNode.children = grandparentNodes;
+        }
+
+        node.children = [parentNode];
       }
     }
 
@@ -170,22 +222,23 @@ export default function FamilyTree({ rootPersonId, showAncestors, onPersonClick,
     const margin = { top: 30, right: 20, bottom: 30, left: 30 };
     const root = d3.hierarchy(treeData);
 
-    // Node dimensions (smaller, tighter)
+    // Node dimensions
     const nodeWidth = 120;
+    const coupleNodeWidth = 240; // Wider for couples
     const nodeHeight = 40;
-    const nodeSpacingX = 30; // Horizontal gap between nodes at same level
-    const nodeSpacingY = 50; // Vertical gap between levels
+    const nodeSpacingX = 50; // Horizontal gap (increased for couples)
+    const nodeSpacingY = 60; // Vertical gap between levels
 
     // Calculate tree size based on depth and breadth
     const maxDepth = root.height;
     const leaves = root.leaves().length;
-    const treeWidth = Math.max(leaves * (nodeWidth + nodeSpacingX), width - margin.left - margin.right);
+    const treeWidth = Math.max(leaves * (coupleNodeWidth + nodeSpacingX), width - margin.left - margin.right);
     const treeHeight = Math.max((maxDepth + 1) * (nodeHeight + nodeSpacingY), height - margin.top - margin.bottom);
 
     // Create vertical tree layout (top to bottom)
     const treeLayout = d3.tree<TreeNode>()
       .size([treeWidth, treeHeight])
-      .separation((a, b) => a.parent === b.parent ? 1 : 1.2);
+      .separation((a, b) => a.parent === b.parent ? 1.5 : 2); // More separation for couples
 
     treeLayout(root as any);
 
@@ -203,65 +256,123 @@ export default function FamilyTree({ rootPersonId, showAncestors, onPersonClick,
     const nodes = g.selectAll('.node').data(root.descendants()).enter().append('g')
       .attr('transform', d => `translate(${(d as any).x},${(d as any).y})`);
 
-    // Node rectangles - clicking tile navigates to that person's tree
-    nodes.append('rect')
-      .attr('x', -nodeWidth / 2)
-      .attr('y', -nodeHeight / 2)
-      .attr('width', nodeWidth)
-      .attr('height', nodeHeight)
-      .attr('rx', 6)
-      .attr('fill', d => (d as any).data.sex === 'F' ? '#fce7f3' : '#dbeafe')
-      .attr('stroke', d => (d as any).data.sex === 'F' ? '#ec4899' : '#3b82f6')
-      .attr('stroke-width', 1.5)
-      .style('cursor', 'pointer')
-      .on('click', (e, d) => {
-        e.stopPropagation();
-        onTileClick((d as any).data.id);
-      });
+    // Width for couple vs single boxes
+    const coupleWidth = 240;
+    const singleWidth = nodeWidth;
 
-    // Living indicator (smaller)
-    nodes.filter(d => (d as any).data.living).append('circle')
-      .attr('cx', nodeWidth / 2 - 8)
-      .attr('cy', -nodeHeight / 2 + 8)
-      .attr('r', 4)
-      .attr('fill', '#22c55e')
-      .attr('stroke', '#fff')
-      .attr('stroke-width', 1)
-      .style('pointer-events', 'none');
+    // Render split boxes for couples, single boxes for individuals
+    nodes.each(function(d: any) {
+      const node = d3.select(this);
+      const spouse = d.data.spouse;
+      const boxWidth = spouse ? coupleWidth : singleWidth;
 
-    // Name text - clicking name goes to person page
-    nodes.append('text')
-      .attr('dy', -2)
-      .attr('text-anchor', 'middle')
-      .attr('font-size', '9px')
-      .attr('font-weight', '600')
-      .attr('fill', '#1f2937')
-      .style('cursor', 'pointer')
-      .style('text-decoration', 'none')
-      .on('mouseover', function() { d3.select(this).style('text-decoration', 'underline'); })
-      .on('mouseout', function() { d3.select(this).style('text-decoration', 'none'); })
-      .on('click', (e, d) => {
-        e.stopPropagation();
-        onPersonClick((d as any).data.id);
-      })
-      .text(d => {
-        const n = (d as any).data.name;
-        return n.length > 16 ? n.substring(0, 14) + '...' : n;
-      });
+      if (spouse) {
+        // Split box for couple - outer container
+        node.append('rect')
+          .attr('x', -boxWidth / 2)
+          .attr('y', -nodeHeight / 2)
+          .attr('width', boxWidth)
+          .attr('height', nodeHeight)
+          .attr('rx', 6)
+          .attr('fill', '#f8fafc')
+          .attr('stroke', '#64748b')
+          .attr('stroke-width', 2);
 
-    // Years text (smaller) - not clickable
-    nodes.append('text')
-      .attr('dy', 10)
-      .attr('text-anchor', 'middle')
-      .attr('font-size', '8px')
-      .attr('fill', '#6b7280')
-      .style('pointer-events', 'none')
-      .text(d => {
-        const data = (d as any).data;
-        const birth = data.birth_year || '?';
-        const death = data.living ? 'Living' : (data.death_year || '?');
-        return `${birth} – ${death}`;
-      });
+        // Left half (primary person - husband)
+        node.append('rect')
+          .attr('x', -boxWidth / 2 + 2)
+          .attr('y', -nodeHeight / 2 + 2)
+          .attr('width', boxWidth / 2 - 4)
+          .attr('height', nodeHeight - 4)
+          .attr('rx', 4)
+          .attr('fill', d.data.sex === 'F' ? '#fce7f3' : '#dbeafe')
+          .style('cursor', 'pointer')
+          .on('click', (e: any) => { e.stopPropagation(); onTileClick(d.data.id); });
+
+        // Right half (spouse - wife)
+        node.append('rect')
+          .attr('x', 2)
+          .attr('y', -nodeHeight / 2 + 2)
+          .attr('width', boxWidth / 2 - 4)
+          .attr('height', nodeHeight - 4)
+          .attr('rx', 4)
+          .attr('fill', spouse.sex === 'F' ? '#fce7f3' : '#dbeafe')
+          .style('cursor', 'pointer')
+          .on('click', (e: any) => { e.stopPropagation(); onTileClick(spouse.id); });
+
+        // Divider line
+        node.append('line')
+          .attr('x1', 0).attr('y1', -nodeHeight / 2 + 4)
+          .attr('x2', 0).attr('y2', nodeHeight / 2 - 4)
+          .attr('stroke', '#94a3b8').attr('stroke-width', 1);
+
+        // Primary name (left)
+        const pName = d.data.name.length > 14 ? d.data.name.substring(0, 12) + '..' : d.data.name;
+        node.append('text')
+          .attr('x', -boxWidth / 4).attr('dy', -2)
+          .attr('text-anchor', 'middle').attr('font-size', '8px').attr('font-weight', '600').attr('fill', '#1f2937')
+          .style('cursor', 'pointer')
+          .on('click', (e: any) => { e.stopPropagation(); onPersonClick(d.data.id); })
+          .text(pName);
+
+        // Primary years (left)
+        node.append('text')
+          .attr('x', -boxWidth / 4).attr('dy', 10)
+          .attr('text-anchor', 'middle').attr('font-size', '7px').attr('fill', '#6b7280')
+          .text(`${d.data.birth_year || '?'}–${d.data.living ? 'L' : (d.data.death_year || '?')}`);
+
+        // Spouse name (right)
+        const sName = spouse.name.length > 14 ? spouse.name.substring(0, 12) + '..' : spouse.name;
+        node.append('text')
+          .attr('x', boxWidth / 4).attr('dy', -2)
+          .attr('text-anchor', 'middle').attr('font-size', '8px').attr('font-weight', '600').attr('fill', '#1f2937')
+          .style('cursor', 'pointer')
+          .on('click', (e: any) => { e.stopPropagation(); onPersonClick(spouse.id); })
+          .text(sName);
+
+        // Spouse years (right)
+        node.append('text')
+          .attr('x', boxWidth / 4).attr('dy', 10)
+          .attr('text-anchor', 'middle').attr('font-size', '7px').attr('fill', '#6b7280')
+          .text(`${spouse.birth_year || '?'}–${spouse.living ? 'L' : (spouse.death_year || '?')}`);
+
+      } else {
+        // Single person box
+        node.append('rect')
+          .attr('x', -singleWidth / 2)
+          .attr('y', -nodeHeight / 2)
+          .attr('width', singleWidth)
+          .attr('height', nodeHeight)
+          .attr('rx', 6)
+          .attr('fill', d.data.sex === 'F' ? '#fce7f3' : '#dbeafe')
+          .attr('stroke', d.data.sex === 'F' ? '#ec4899' : '#3b82f6')
+          .attr('stroke-width', 1.5)
+          .style('cursor', 'pointer')
+          .on('click', (e: any) => { e.stopPropagation(); onTileClick(d.data.id); });
+
+        // Living indicator
+        if (d.data.living) {
+          node.append('circle')
+            .attr('cx', singleWidth / 2 - 8).attr('cy', -nodeHeight / 2 + 8)
+            .attr('r', 4).attr('fill', '#22c55e').attr('stroke', '#fff').attr('stroke-width', 1);
+        }
+
+        // Name
+        const n = d.data.name.length > 16 ? d.data.name.substring(0, 14) + '..' : d.data.name;
+        node.append('text')
+          .attr('dy', -2).attr('text-anchor', 'middle')
+          .attr('font-size', '9px').attr('font-weight', '600').attr('fill', '#1f2937')
+          .style('cursor', 'pointer')
+          .on('click', (e: any) => { e.stopPropagation(); onPersonClick(d.data.id); })
+          .text(n);
+
+        // Years
+        node.append('text')
+          .attr('dy', 10).attr('text-anchor', 'middle')
+          .attr('font-size', '8px').attr('fill', '#6b7280')
+          .text(`${d.data.birth_year || '?'} – ${d.data.living ? 'Living' : (d.data.death_year || '?')}`);
+      }
+    });
 
     // Setup zoom/pan
     const zoom = d3.zoom<SVGSVGElement, unknown>()

@@ -38,7 +38,16 @@ jobs:
             DB_PASSWORD=${{ secrets.DB_PASSWORD }}
 
       - name: Deploy to Swarm
+        env:
+          SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
+          MANAGER_HOST: ${{ secrets.SWARM_MANAGER_HOST }}
         run: |
-          # SSH to manager and update the service
-          echo "Deployment triggered - service will pull new image on next restart"
+          # Setup SSH
+          mkdir -p ~/.ssh
+          echo "$SSH_PRIVATE_KEY" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          ssh-keyscan -H $MANAGER_HOST >> ~/.ssh/known_hosts 2>/dev/null
+
+          # Pull new image and update service
+          ssh -o StrictHostKeyChecking=no peterm@$MANAGER_HOST "docker pull git.milanese.life/admin/genealogy-frontend:latest && docker service update --image git.milanese.life/admin/genealogy-frontend:latest --force genealogy_genealogy"
 

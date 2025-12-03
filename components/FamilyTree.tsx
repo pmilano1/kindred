@@ -80,7 +80,7 @@ export default function FamilyTree({ rootPersonId, showAncestors, onPersonClick,
     return () => window.removeEventListener('resize', updateDimensions);
   }, []);
 
-  // Build ancestor tree from person going up - each couple shown as single node
+  // Build ancestor tree from person going up - shows BOTH paternal and maternal lines
   const buildAncestorTree = useCallback((personId: string, depth = 0): TreeNode | null => {
     if (!data || depth > 10) return null;
     const person = data.people[personId];
@@ -104,64 +104,106 @@ export default function FamilyTree({ rootPersonId, showAncestors, onPersonClick,
       const father = fatherId ? data.people[fatherId] : null;
       const mother = motherId ? data.people[motherId] : null;
 
-      if (father || mother) {
-        // Create parent couple node (father as primary with mother as spouse)
-        const primary = father || mother!;
-        const spouse = father ? mother : null;
+      // Build TWO separate branches - one for father's line, one for mother's line
+      const parentNodes: TreeNode[] = [];
 
-        const parentNode: TreeNode = {
-          id: primary.id,
-          name: primary.name,
-          sex: primary.sex,
-          birth_year: primary.birth_year,
-          death_year: primary.death_year,
-          living: primary.living,
-          familysearch_id: primary.familysearch_id,
-          spouse: spouse || undefined,
+      // PATERNAL branch (father + his parents)
+      if (father) {
+        const fatherNode: TreeNode = {
+          id: father.id,
+          name: father.name,
+          sex: father.sex,
+          birth_year: father.birth_year,
+          death_year: father.death_year,
+          living: father.living,
+          familysearch_id: father.familysearch_id,
         };
 
-        // Recursively build ancestors for BOTH parents
-        const grandparentNodes: TreeNode[] = [];
-
-        // Father's parents
-        if (fatherId) {
-          const fatherParents = data.families.find(f => f.children.includes(fatherId));
-          if (fatherParents) {
-            const patGF = fatherParents.husband_id ? data.people[fatherParents.husband_id] : null;
-            const patGM = fatherParents.wife_id ? data.people[fatherParents.wife_id] : null;
-            if (patGF || patGM) {
-              const gpPrimary = patGF || patGM!;
-              const gpNode = buildAncestorTree(gpPrimary.id, depth + 1);
-              if (gpNode) {
-                gpNode.spouse = patGF && patGM ? patGM : undefined;
-                grandparentNodes.push(gpNode);
-              }
-            }
+        // Find father's spouse (for display) - look for the family where he's husband
+        const fatherFamily = data.families.find(f => f.husband_id === fatherId && f.children.includes(personId));
+        if (fatherFamily && fatherFamily.wife_id) {
+          const fatherSpouse = data.people[fatherFamily.wife_id];
+          if (fatherSpouse) {
+            fatherNode.spouse = fatherSpouse;
           }
         }
 
-        // Mother's parents
-        if (motherId) {
-          const motherParents = data.families.find(f => f.children.includes(motherId));
-          if (motherParents) {
-            const matGF = motherParents.husband_id ? data.people[motherParents.husband_id] : null;
-            const matGM = motherParents.wife_id ? data.people[motherParents.wife_id] : null;
-            if (matGF || matGM) {
-              const gpPrimary = matGF || matGM!;
-              const gpNode = buildAncestorTree(gpPrimary.id, depth + 1);
-              if (gpNode) {
-                gpNode.spouse = matGF && matGM ? matGM : undefined;
-                grandparentNodes.push(gpNode);
+        // Recursively get father's parents (paternal grandparents)
+        const fatherParentFamily = data.families.find(f => f.children.includes(fatherId));
+        if (fatherParentFamily) {
+          const patGrandparents: TreeNode[] = [];
+
+          // Paternal grandfather
+          if (fatherParentFamily.husband_id) {
+            const patGFNode = buildAncestorTree(fatherParentFamily.husband_id, depth + 1);
+            if (patGFNode) {
+              // Add spouse info
+              if (fatherParentFamily.wife_id) {
+                patGFNode.spouse = data.people[fatherParentFamily.wife_id];
               }
+              patGrandparents.push(patGFNode);
             }
+          }
+
+          // Paternal grandmother (as separate branch)
+          if (fatherParentFamily.wife_id) {
+            const patGMNode = buildAncestorTree(fatherParentFamily.wife_id, depth + 1);
+            if (patGMNode) patGrandparents.push(patGMNode);
+          }
+
+          if (patGrandparents.length > 0) {
+            fatherNode.children = patGrandparents;
           }
         }
 
-        if (grandparentNodes.length > 0) {
-          parentNode.children = grandparentNodes;
+        parentNodes.push(fatherNode);
+      }
+
+      // MATERNAL branch (mother + her parents)
+      if (mother) {
+        const motherNode: TreeNode = {
+          id: mother.id,
+          name: mother.name,
+          sex: mother.sex,
+          birth_year: mother.birth_year,
+          death_year: mother.death_year,
+          living: mother.living,
+          familysearch_id: mother.familysearch_id,
+        };
+
+        // Recursively get mother's parents (maternal grandparents)
+        const motherParentFamily = data.families.find(f => f.children.includes(motherId!));
+        if (motherParentFamily) {
+          const matGrandparents: TreeNode[] = [];
+
+          // Maternal grandfather
+          if (motherParentFamily.husband_id) {
+            const matGFNode = buildAncestorTree(motherParentFamily.husband_id, depth + 1);
+            if (matGFNode) {
+              // Add spouse info
+              if (motherParentFamily.wife_id) {
+                matGFNode.spouse = data.people[motherParentFamily.wife_id];
+              }
+              matGrandparents.push(matGFNode);
+            }
+          }
+
+          // Maternal grandmother (as separate branch)
+          if (motherParentFamily.wife_id) {
+            const matGMNode = buildAncestorTree(motherParentFamily.wife_id, depth + 1);
+            if (matGMNode) matGrandparents.push(matGMNode);
+          }
+
+          if (matGrandparents.length > 0) {
+            motherNode.children = matGrandparents;
+          }
         }
 
-        node.children = [parentNode];
+        parentNodes.push(motherNode);
+      }
+
+      if (parentNodes.length > 0) {
+        node.children = parentNodes;
       }
     }
 

@@ -57,12 +57,11 @@ interface FamilyTreeProps {
   showNotableConnections?: boolean;
 }
 
-export default function FamilyTree({ rootPersonId, showAncestors, onPersonClick, onTileClick, showNotableConnections = true }: FamilyTreeProps) {
+export default function FamilyTree({ rootPersonId, showAncestors, onPersonClick, onTileClick }: FamilyTreeProps) {
   const svgRef = useRef<SVGSVGElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const [data, setData] = useState<TreeData | null>(null);
   const [dimensions, setDimensions] = useState({ width: 800, height: 600 });
-  const [showNotable, setShowNotable] = useState(showNotableConnections);
 
   // Fetch data
   useEffect(() => {
@@ -86,6 +85,34 @@ export default function FamilyTree({ rootPersonId, showAncestors, onPersonClick,
     window.addEventListener('resize', updateDimensions);
     return () => window.removeEventListener('resize', updateDimensions);
   }, []);
+
+  // Build descendant chain for collateral branches (e.g., Renée -> ... -> Joséphine)
+  const buildDescendantChain = useCallback((personId: string, targetId: string, visited: Set<string> = new Set()): PedigreeNode[] | null => {
+    if (!data) return null;
+    if (visited.has(personId)) return null;
+    visited.add(personId);
+
+    const person = data.people[personId];
+    if (!person) return null;
+
+    // Found the target
+    if (personId === targetId) {
+      return [{ id: personId, person, isNotableBranch: person.isNotable }];
+    }
+
+    // Find families where this person is a parent
+    const familiesAsParent = data.families.filter(f => f.husband_id === personId || f.wife_id === personId);
+
+    for (const family of familiesAsParent) {
+      for (const childId of family.children) {
+        const childChain = buildDescendantChain(childId, targetId, visited);
+        if (childChain) {
+          return [{ id: personId, person, isNotableBranch: true }, ...childChain];
+        }
+      }
+    }
+    return null;
+  }, [data]);
 
   // Build pedigree tree - each person links to their own father and mother
   const buildPedigree = useCallback((personId: string, depth = 0, maxDepth = 10): PedigreeNode | null => {
@@ -279,8 +306,8 @@ export default function FamilyTree({ rootPersonId, showAncestors, onPersonClick,
         .text(years);
     });
 
-    // Draw notable connections branch if enabled and applicable
-    if (showNotable && data.notableConnections) {
+    // Always draw notable connections branch (Josephine line) if ancestor is visible
+    if (data.notableConnections) {
       const connection = data.notableConnections.find(nc =>
         allNodes.some(n => n.id === nc.branchingAncestorId)
       );
@@ -292,13 +319,12 @@ export default function FamilyTree({ rootPersonId, showAncestors, onPersonClick,
           const branchStartX = branchingNode.x + nodeWidth / 2 + 30;
           const branchStartY = branchingNode.y;
 
-          // Draw connection line from ancestor to branch
+          // Draw connection line from ancestor to branch (solid line - confirmed relationship)
           g.append('path')
             .attr('d', `M${branchingNode.x + nodeWidth/2},${branchingNode.y} L${branchStartX - 15},${branchStartY}`)
             .attr('fill', 'none')
             .attr('stroke', '#f59e0b')
-            .attr('stroke-width', 2)
-            .attr('stroke-dasharray', '5,3');
+            .attr('stroke-width', 2);
 
           // Draw notable path nodes
           connection.path.forEach((personId, idx) => {
@@ -361,7 +387,7 @@ export default function FamilyTree({ rootPersonId, showAncestors, onPersonClick,
             .attr('font-size', '10px')
             .attr('font-weight', '600')
             .attr('fill', '#b45309')
-            .text('👑 Josephine Bonaparte Connection');
+            .text('👑 Collateral Line to Joséphine Bonaparte');
         }
       }
     }
@@ -381,23 +407,10 @@ export default function FamilyTree({ rootPersonId, showAncestors, onPersonClick,
       const ty = (height - bounds.height * scale) / 2 - bounds.y * scale;
       svg.call(zoom.transform, d3.zoomIdentity.translate(tx, ty).scale(scale));
     }
-  }, [data, rootPersonId, showAncestors, showNotable, dimensions, buildPedigree, onPersonClick, onTileClick]);
+  }, [data, rootPersonId, showAncestors, dimensions, buildPedigree, buildDescendantChain, onPersonClick, onTileClick]);
 
   return (
     <div className="relative w-full h-full" ref={containerRef}>
-      {data?.notableConnections && data.notableConnections.length > 0 && (
-        <div className="absolute top-2 right-2 z-10">
-          <label className="flex items-center gap-2 bg-white/90 px-3 py-1.5 rounded-lg shadow text-sm cursor-pointer">
-            <input
-              type="checkbox"
-              checked={showNotable}
-              onChange={(e) => setShowNotable(e.target.checked)}
-              className="w-4 h-4 accent-amber-500"
-            />
-            <span>👑 Show Notable Connections</span>
-          </label>
-        </div>
-      )}
       <svg ref={svgRef} width={dimensions.width} height={dimensions.height} className="bg-gradient-to-br from-slate-50 to-slate-100 rounded-lg" />
       {!data && <div className="absolute inset-0 flex items-center justify-center text-gray-500">Loading...</div>}
     </div>

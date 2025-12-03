@@ -13,6 +13,7 @@ interface TreePerson {
   death_place: string | null;
   living: boolean;
   familysearch_id: string | null;
+  isNotable?: boolean;
 }
 
 interface TreeFamily {
@@ -24,9 +25,17 @@ interface TreeFamily {
   children: string[];
 }
 
+interface NotableConnection {
+  branchingAncestorId: string;
+  siblingId: string;
+  notablePersonId: string;
+  path: string[];
+}
+
 interface TreeData {
   people: Record<string, TreePerson>;
   families: TreeFamily[];
+  notableConnections?: NotableConnection[];
 }
 
 // Pedigree node - each person has their own node with father/mother links
@@ -37,6 +46,7 @@ interface PedigreeNode {
   mother?: PedigreeNode;
   x?: number;
   y?: number;
+  isNotableBranch?: boolean;
 }
 
 interface FamilyTreeProps {
@@ -44,13 +54,15 @@ interface FamilyTreeProps {
   showAncestors: boolean;
   onPersonClick: (id: string) => void;
   onTileClick: (id: string) => void;
+  showNotableConnections?: boolean;
 }
 
-export default function FamilyTree({ rootPersonId, showAncestors, onPersonClick, onTileClick }: FamilyTreeProps) {
+export default function FamilyTree({ rootPersonId, showAncestors, onPersonClick, onTileClick, showNotableConnections = true }: FamilyTreeProps) {
   const svgRef = useRef<SVGSVGElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const [data, setData] = useState<TreeData | null>(null);
   const [dimensions, setDimensions] = useState({ width: 800, height: 600 });
+  const [showNotable, setShowNotable] = useState(showNotableConnections);
 
   // Fetch data
   useEffect(() => {
@@ -205,20 +217,30 @@ export default function FamilyTree({ rootPersonId, showAncestors, onPersonClick,
     allNodes.forEach(node => {
       if (node.x === undefined || node.y === undefined) return;
       const person = node.person;
+      const isNotable = person.isNotable || node.isNotableBranch;
 
       const nodeG = g.append('g')
         .attr('transform', `translate(${node.x - nodeWidth / 2},${node.y - nodeHeight / 2})`);
 
-      // Box
+      // Box - gold for notable people
       nodeG.append('rect')
         .attr('width', nodeWidth)
         .attr('height', nodeHeight)
         .attr('rx', 6)
-        .attr('fill', person.sex === 'F' ? '#fce7f3' : '#dbeafe')
-        .attr('stroke', person.sex === 'F' ? '#ec4899' : '#3b82f6')
-        .attr('stroke-width', 2)
+        .attr('fill', isNotable ? '#fef3c7' : (person.sex === 'F' ? '#fce7f3' : '#dbeafe'))
+        .attr('stroke', isNotable ? '#f59e0b' : (person.sex === 'F' ? '#ec4899' : '#3b82f6'))
+        .attr('stroke-width', isNotable ? 3 : 2)
         .style('cursor', 'pointer')
         .on('click', () => onTileClick(person.id));
+
+      // Crown for notable
+      if (isNotable) {
+        nodeG.append('text')
+          .attr('x', 8)
+          .attr('y', 14)
+          .attr('font-size', '12px')
+          .text('👑');
+      }
 
       // Living indicator
       if (person.living) {
@@ -257,6 +279,93 @@ export default function FamilyTree({ rootPersonId, showAncestors, onPersonClick,
         .text(years);
     });
 
+    // Draw notable connections branch if enabled and applicable
+    if (showNotable && data.notableConnections) {
+      const connection = data.notableConnections.find(nc =>
+        allNodes.some(n => n.id === nc.branchingAncestorId)
+      );
+
+      if (connection) {
+        const branchingNode = allNodes.find(n => n.id === connection.branchingAncestorId);
+        if (branchingNode && branchingNode.x !== undefined && branchingNode.y !== undefined) {
+          // Draw the notable branch to the right of the branching ancestor
+          const branchStartX = branchingNode.x + nodeWidth / 2 + 30;
+          const branchStartY = branchingNode.y;
+
+          // Draw connection line from ancestor to branch
+          g.append('path')
+            .attr('d', `M${branchingNode.x + nodeWidth/2},${branchingNode.y} L${branchStartX - 15},${branchStartY}`)
+            .attr('fill', 'none')
+            .attr('stroke', '#f59e0b')
+            .attr('stroke-width', 2)
+            .attr('stroke-dasharray', '5,3');
+
+          // Draw notable path nodes
+          connection.path.forEach((personId, idx) => {
+            const person = data.people[personId];
+            if (!person) return;
+
+            const nodeX = branchStartX + idx * (nodeWidth + 15);
+            const nodeY = branchStartY + idx * 25;
+
+            const nodeG = g.append('g')
+              .attr('transform', `translate(${nodeX - nodeWidth/2},${nodeY - nodeHeight/2})`);
+
+            // Gold box for notable branch
+            nodeG.append('rect')
+              .attr('width', nodeWidth)
+              .attr('height', nodeHeight)
+              .attr('rx', 6)
+              .attr('fill', person.isNotable ? '#fef3c7' : '#fffbeb')
+              .attr('stroke', '#f59e0b')
+              .attr('stroke-width', person.isNotable ? 3 : 2)
+              .style('cursor', 'pointer')
+              .on('click', () => onTileClick(personId));
+
+            // Crown for Josephine
+            if (person.isNotable) {
+              nodeG.append('text').attr('x', 8).attr('y', 14).attr('font-size', '12px').text('👑');
+            }
+
+            const displayName = person.name.length > 20 ? person.name.substring(0, 18) + '..' : person.name;
+            nodeG.append('text')
+              .attr('x', nodeWidth / 2).attr('y', 20)
+              .attr('text-anchor', 'middle').attr('font-size', '11px').attr('font-weight', '600')
+              .attr('fill', '#1f2937').style('cursor', 'pointer')
+              .on('click', (e) => { e.stopPropagation(); onPersonClick(personId); })
+              .text(displayName);
+
+            const years = `${person.birth_year || '?'} – ${person.death_year || '?'}`;
+            nodeG.append('text')
+              .attr('x', nodeWidth / 2).attr('y', 36)
+              .attr('text-anchor', 'middle').attr('font-size', '10px').attr('fill', '#6b7280')
+              .text(years);
+
+            // Draw connecting line to previous node in path
+            if (idx > 0) {
+              const prevX = branchStartX + (idx-1) * (nodeWidth + 15);
+              const prevY = branchStartY + (idx-1) * 25;
+              g.append('path')
+                .attr('d', `M${prevX + nodeWidth/2},${prevY + nodeHeight/2} L${nodeX - nodeWidth/2},${nodeY - nodeHeight/2}`)
+                .attr('fill', 'none')
+                .attr('stroke', '#f59e0b')
+                .attr('stroke-width', 2)
+                .attr('stroke-opacity', 0.7);
+            }
+          });
+
+          // Label for the branch
+          g.append('text')
+            .attr('x', branchStartX)
+            .attr('y', branchStartY - nodeHeight/2 - 8)
+            .attr('font-size', '10px')
+            .attr('font-weight', '600')
+            .attr('fill', '#b45309')
+            .text('👑 Josephine Bonaparte Connection');
+        }
+      }
+    }
+
     // Zoom/pan
     const zoom = d3.zoom<SVGSVGElement, unknown>()
       .scaleExtent([0.3, 3])
@@ -272,10 +381,23 @@ export default function FamilyTree({ rootPersonId, showAncestors, onPersonClick,
       const ty = (height - bounds.height * scale) / 2 - bounds.y * scale;
       svg.call(zoom.transform, d3.zoomIdentity.translate(tx, ty).scale(scale));
     }
-  }, [data, rootPersonId, showAncestors, dimensions, buildPedigree, onPersonClick, onTileClick]);
+  }, [data, rootPersonId, showAncestors, showNotable, dimensions, buildPedigree, onPersonClick, onTileClick]);
 
   return (
     <div className="relative w-full h-full" ref={containerRef}>
+      {data?.notableConnections && data.notableConnections.length > 0 && (
+        <div className="absolute top-2 right-2 z-10">
+          <label className="flex items-center gap-2 bg-white/90 px-3 py-1.5 rounded-lg shadow text-sm cursor-pointer">
+            <input
+              type="checkbox"
+              checked={showNotable}
+              onChange={(e) => setShowNotable(e.target.checked)}
+              className="w-4 h-4 accent-amber-500"
+            />
+            <span>👑 Show Notable Connections</span>
+          </label>
+        </div>
+      )}
       <svg ref={svgRef} width={dimensions.width} height={dimensions.height} className="bg-gradient-to-br from-slate-50 to-slate-100 rounded-lg" />
       {!data && <div className="absolute inset-0 flex items-center justify-center text-gray-500">Loading...</div>}
     </div>

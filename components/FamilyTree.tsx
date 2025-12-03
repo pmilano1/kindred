@@ -81,6 +81,7 @@ export default function FamilyTree({ rootPersonId, showAncestors, onPersonClick,
   }, []);
 
   // Build ancestor tree from person going up - shows BOTH paternal and maternal lines
+  // Each couple shows as: Father with spouse attached, then links to Father's parents and Mother's parents
   const buildAncestorTree = useCallback((personId: string, depth = 0): TreeNode | null => {
     if (!data || depth > 10) return null;
     const person = data.people[personId];
@@ -104,10 +105,8 @@ export default function FamilyTree({ rootPersonId, showAncestors, onPersonClick,
       const father = fatherId ? data.people[fatherId] : null;
       const mother = motherId ? data.people[motherId] : null;
 
-      // Build TWO separate branches - one for father's line, one for mother's line
-      const parentNodes: TreeNode[] = [];
-
-      // PATERNAL branch (father + his parents)
+      // For ancestor view: Father is the main node with mother as spouse
+      // Children of this node are the grandparents (father's parents + mother's parents)
       if (father) {
         const fatherNode: TreeNode = {
           id: father.id,
@@ -119,48 +118,69 @@ export default function FamilyTree({ rootPersonId, showAncestors, onPersonClick,
           familysearch_id: father.familysearch_id,
         };
 
-        // Find father's spouse (for display) - look for the family where he's husband
-        const fatherFamily = data.families.find(f => f.husband_id === fatherId && f.children.includes(personId));
-        if (fatherFamily && fatherFamily.wife_id) {
-          const fatherSpouse = data.people[fatherFamily.wife_id];
-          if (fatherSpouse) {
-            fatherNode.spouse = fatherSpouse;
-          }
+        // Mother is shown as spouse of father
+        if (mother) {
+          fatherNode.spouse = mother;
         }
 
-        // Recursively get father's parents (paternal grandparents)
+        // Now get grandparents - both father's parents AND mother's parents
+        const grandparentNodes: TreeNode[] = [];
+
+        // PATERNAL grandparents (father's parents)
         const fatherParentFamily = fatherId ? data.families.find(f => f.children.includes(fatherId)) : null;
         if (fatherParentFamily) {
-          const patGrandparents: TreeNode[] = [];
+          const patGrandfatherId = fatherParentFamily.husband_id;
+          const patGrandmotherId = fatherParentFamily.wife_id;
+          const patGrandfather = patGrandfatherId ? data.people[patGrandfatherId] : null;
 
-          // Paternal grandfather
-          if (fatherParentFamily.husband_id) {
-            const patGFNode = buildAncestorTree(fatherParentFamily.husband_id, depth + 1);
+          if (patGrandfather) {
+            const patGFNode = buildAncestorTree(patGrandfatherId!, depth + 1);
             if (patGFNode) {
-              // Add spouse info
-              if (fatherParentFamily.wife_id) {
-                patGFNode.spouse = data.people[fatherParentFamily.wife_id];
+              // Add grandmother as spouse
+              if (patGrandmotherId) {
+                patGFNode.spouse = data.people[patGrandmotherId];
               }
-              patGrandparents.push(patGFNode);
+              grandparentNodes.push(patGFNode);
             }
-          }
-
-          // Paternal grandmother (as separate branch)
-          if (fatherParentFamily.wife_id) {
-            const patGMNode = buildAncestorTree(fatherParentFamily.wife_id, depth + 1);
-            if (patGMNode) patGrandparents.push(patGMNode);
-          }
-
-          if (patGrandparents.length > 0) {
-            fatherNode.children = patGrandparents;
+          } else if (patGrandmotherId) {
+            // No grandfather known, but grandmother exists - show her as main node
+            const patGMNode = buildAncestorTree(patGrandmotherId, depth + 1);
+            if (patGMNode) grandparentNodes.push(patGMNode);
           }
         }
 
-        parentNodes.push(fatherNode);
-      }
+        // MATERNAL grandparents (mother's parents)
+        if (motherId) {
+          const motherParentFamily = data.families.find(f => f.children.includes(motherId));
+          if (motherParentFamily) {
+            const matGrandfatherId = motherParentFamily.husband_id;
+            const matGrandmotherId = motherParentFamily.wife_id;
+            const matGrandfather = matGrandfatherId ? data.people[matGrandfatherId] : null;
 
-      // MATERNAL branch (mother + her parents)
-      if (mother) {
+            if (matGrandfather) {
+              const matGFNode = buildAncestorTree(matGrandfatherId!, depth + 1);
+              if (matGFNode) {
+                // Add grandmother as spouse
+                if (matGrandmotherId) {
+                  matGFNode.spouse = data.people[matGrandmotherId];
+                }
+                grandparentNodes.push(matGFNode);
+              }
+            } else if (matGrandmotherId) {
+              // No grandfather known, but grandmother exists - show her as main node
+              const matGMNode = buildAncestorTree(matGrandmotherId, depth + 1);
+              if (matGMNode) grandparentNodes.push(matGMNode);
+            }
+          }
+        }
+
+        if (grandparentNodes.length > 0) {
+          fatherNode.children = grandparentNodes;
+        }
+
+        node.children = [fatherNode];
+      } else if (mother) {
+        // No father known, but mother exists - use mother as main branch
         const motherNode: TreeNode = {
           id: mother.id,
           name: mother.name,
@@ -171,39 +191,32 @@ export default function FamilyTree({ rootPersonId, showAncestors, onPersonClick,
           familysearch_id: mother.familysearch_id,
         };
 
-        // Recursively get mother's parents (maternal grandparents)
+        // Get mother's parents
         const motherParentFamily = data.families.find(f => f.children.includes(motherId!));
         if (motherParentFamily) {
-          const matGrandparents: TreeNode[] = [];
+          const matGrandfatherId = motherParentFamily.husband_id;
+          const matGrandmotherId = motherParentFamily.wife_id;
+          const grandparentNodes: TreeNode[] = [];
 
-          // Maternal grandfather
-          if (motherParentFamily.husband_id) {
-            const matGFNode = buildAncestorTree(motherParentFamily.husband_id, depth + 1);
+          if (matGrandfatherId) {
+            const matGFNode = buildAncestorTree(matGrandfatherId, depth + 1);
             if (matGFNode) {
-              // Add spouse info
-              if (motherParentFamily.wife_id) {
-                matGFNode.spouse = data.people[motherParentFamily.wife_id];
+              if (matGrandmotherId) {
+                matGFNode.spouse = data.people[matGrandmotherId];
               }
-              matGrandparents.push(matGFNode);
+              grandparentNodes.push(matGFNode);
             }
+          } else if (matGrandmotherId) {
+            const matGMNode = buildAncestorTree(matGrandmotherId, depth + 1);
+            if (matGMNode) grandparentNodes.push(matGMNode);
           }
 
-          // Maternal grandmother (as separate branch)
-          if (motherParentFamily.wife_id) {
-            const matGMNode = buildAncestorTree(motherParentFamily.wife_id, depth + 1);
-            if (matGMNode) matGrandparents.push(matGMNode);
-          }
-
-          if (matGrandparents.length > 0) {
-            motherNode.children = matGrandparents;
+          if (grandparentNodes.length > 0) {
+            motherNode.children = grandparentNodes;
           }
         }
 
-        parentNodes.push(motherNode);
-      }
-
-      if (parentNodes.length > 0) {
-        node.children = parentNodes;
+        node.children = [motherNode];
       }
     }
 

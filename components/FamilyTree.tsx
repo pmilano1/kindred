@@ -117,32 +117,18 @@ export default function FamilyTree({ rootPersonId, showAncestors, onPersonClick,
     const pedigree = buildPedigree(rootPersonId);
     if (!pedigree) return;
 
-    const nodeWidth = 150;
-    const nodeHeight = 55;
-    const levelGap = 90; // Vertical gap between generations
-    const nodeGap = 10; // Minimum horizontal gap between nodes
-
-    // Count max depth to calculate spacing
-    const getMaxDepth = (node: PedigreeNode, d = 0): number => {
-      let max = d;
-      if (node.father) max = Math.max(max, getMaxDepth(node.father, d + 1));
-      if (node.mother) max = Math.max(max, getMaxDepth(node.mother, d + 1));
-      return max;
-    };
-    const maxDepth = getMaxDepth(pedigree);
+    const nodeWidth = 130;
+    const nodeHeight = 50;
+    const levelGap = 70; // Vertical gap between generations
+    const nodeGap = 5; // Minimum horizontal gap between nodes
 
     // Position nodes: each generation level has 2^gen nodes max
-    // We position by slot index within the generation
-    let slotCounter = 0;
+    // Root at TOP, ancestors expand DOWNWARD
     const positionNodes = (node: PedigreeNode, gen: number, slot: number) => {
-      // Calculate total slots at this generation level
-      const slotsAtLevel = Math.pow(2, gen);
-      // Width needed for this level
-      const levelWidth = slotsAtLevel * (nodeWidth + nodeGap);
       // X position based on slot
       node.x = slot * (nodeWidth + nodeGap) + nodeWidth / 2;
-      // Y position: root at bottom, ancestors go up
-      node.y = (maxDepth - gen) * levelGap + 50;
+      // Y position: root at top (gen 0), ancestors go down
+      node.y = gen * levelGap + 40;
 
       // Father goes to slot*2, mother to slot*2+1 in next generation
       if (node.father) {
@@ -166,13 +152,13 @@ export default function FamilyTree({ rootPersonId, showAncestors, onPersonClick,
 
     const g = svg.append('g');
 
-    // Draw links - from top of child to bottom of parent
+    // Draw links - from bottom of person to top of parent (tree flows down)
     const drawLinks = (node: PedigreeNode) => {
       if (node.father && node.x !== undefined && node.y !== undefined && node.father.x !== undefined && node.father.y !== undefined) {
         const startX = node.x;
-        const startY = node.y - nodeHeight / 2; // top of child
+        const startY = node.y + nodeHeight / 2; // bottom of person
         const endX = node.father.x;
-        const endY = node.father.y + nodeHeight / 2; // bottom of father
+        const endY = node.father.y - nodeHeight / 2; // top of father
         g.append('path')
           .attr('d', `M${startX},${startY} C${startX},${(startY + endY) / 2} ${endX},${(startY + endY) / 2} ${endX},${endY}`)
           .attr('fill', 'none')
@@ -183,9 +169,9 @@ export default function FamilyTree({ rootPersonId, showAncestors, onPersonClick,
       }
       if (node.mother && node.x !== undefined && node.y !== undefined && node.mother.x !== undefined && node.mother.y !== undefined) {
         const startX = node.x;
-        const startY = node.y - nodeHeight / 2; // top of child
+        const startY = node.y + nodeHeight / 2; // bottom of person
         const endX = node.mother.x;
-        const endY = node.mother.y + nodeHeight / 2; // bottom of mother
+        const endY = node.mother.y - nodeHeight / 2; // top of mother
         g.append('path')
           .attr('d', `M${startX},${startY} C${startX},${(startY + endY) / 2} ${endX},${(startY + endY) / 2} ${endX},${endY}`)
           .attr('fill', 'none')

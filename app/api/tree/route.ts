@@ -67,16 +67,17 @@ export async function GET() {
     }
 
     // Mark notable people
-    const notableIds = ['josephine-bonaparte', 'alexandre-de-beauharnais', 'francois-de-beauharnais', 'charles-de-beauharnais'];
+    const notableIds = ['josephine-bonaparte', 'alexandre-de-beauharnais', 'francois-de-beauharnais', 'charles-de-beauharnais', 'frank-sinatra-1915'];
     notableIds.forEach(id => {
       if (people[id]) people[id].isNotable = true;
     });
 
     const families: TreeFamily[] = familiesResult.rows;
 
-    // Define notable connections (hardcoded for now - Josephine connection)
+    // Define notable connections (collateral lines to famous relatives)
     const notableConnections: NotableConnection[] = [
       {
+        // Josephine Bonaparte - through Gaspard's daughter Renée (sister of Louis)
         branchingAncestorId: 'gaspar-le-pays-de-bourjolly',
         siblingId: 'renee-le-pays-de-bourjolly',
         notablePersonId: 'josephine-bonaparte',
@@ -86,6 +87,17 @@ export async function GET() {
           'francois-de-beauharnais',
           'alexandre-de-beauharnais',
           'josephine-bonaparte'
+        ]
+      },
+      {
+        // Frank Sinatra - Dolly Garaventa (Frank's mother) is sister of Genesia Garaventa (Peter's great-grandmother)
+        // Branching from Genesia (in Peter's direct line) to her sister Dolly → Frank
+        branchingAncestorId: 'genesia-garaventa-1886',
+        siblingId: 'dolly-sinatra-1894',
+        notablePersonId: 'frank-sinatra-1915',
+        path: [
+          'dolly-sinatra-1894',
+          'frank-sinatra-1915'
         ]
       }
     ];

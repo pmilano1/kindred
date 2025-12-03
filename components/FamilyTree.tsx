@@ -129,7 +129,7 @@ export default function FamilyTree({ rootPersonId, showAncestors, onPersonClick,
         }
 
         // Recursively get father's parents (paternal grandparents)
-        const fatherParentFamily = data.families.find(f => f.children.includes(fatherId));
+        const fatherParentFamily = fatherId ? data.families.find(f => f.children.includes(fatherId)) : null;
         if (fatherParentFamily) {
           const patGrandparents: TreeNode[] = [];
 

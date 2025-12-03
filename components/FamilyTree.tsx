@@ -122,11 +122,27 @@ export default function FamilyTree({ rootPersonId, showAncestors, onPersonClick,
     const levelGap = 70; // Vertical gap between generations
     const nodeGap = 5; // Minimum horizontal gap between nodes
 
-    // Position nodes: each generation level has 2^gen nodes max
-    // Root at TOP, ancestors expand DOWNWARD
+    // Count max depth first
+    const getMaxDepth = (node: PedigreeNode, d = 0): number => {
+      let max = d;
+      if (node.father) max = Math.max(max, getMaxDepth(node.father, d + 1));
+      if (node.mother) max = Math.max(max, getMaxDepth(node.mother, d + 1));
+      return max;
+    };
+    const maxDepth = getMaxDepth(pedigree);
+
+    // Calculate total width needed at deepest level
+    const maxSlots = Math.pow(2, maxDepth);
+    const totalWidth = maxSlots * (nodeWidth + nodeGap);
+
+    // Position nodes: root at TOP CENTER, ancestors expand DOWNWARD
     const positionNodes = (node: PedigreeNode, gen: number, slot: number) => {
-      // X position based on slot
-      node.x = slot * (nodeWidth + nodeGap) + nodeWidth / 2;
+      // Calculate slots at this generation level
+      const slotsAtGen = Math.pow(2, gen);
+      // Width of each slot at this generation
+      const slotWidth = totalWidth / slotsAtGen;
+      // X position: center of the slot
+      node.x = slot * slotWidth + slotWidth / 2;
       // Y position: root at top (gen 0), ancestors go down
       node.y = gen * levelGap + 40;
 

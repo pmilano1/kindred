@@ -299,23 +299,52 @@ export default function FamilyTree({ rootPersonId, showAncestors, onPersonClick,
 
     const g = svg.append('g').attr('transform', `translate(${margin.left},${margin.top})`);
 
-    // Draw curved links (vertical orientation)
-    g.selectAll('.link').data(root.links()).enter().append('path')
-      .attr('d', d3.linkVertical<any, any>().x(d => d.x).y(d => d.y) as any)
-      .attr('fill', 'none')
-      .attr('stroke', '#94a3b8')
-      .attr('stroke-width', 1.5)
-      .attr('stroke-opacity', 0.6);
-
-    // Create node groups
+    // We'll draw custom links after placing nodes, so we know exact positions
+    // First, create node groups and calculate positions
     const nodes = g.selectAll('.node').data(root.descendants()).enter().append('g')
       .attr('transform', d => `translate(${(d as any).x},${(d as any).y})`);
+
+    const spouseOffset = nodeWidth + 20; // Gap between person and spouse
+
+    // Draw custom links - connecting from spouse boxes to their respective children
+    root.links().forEach((link: any) => {
+      const parent = link.source;
+      const child = link.target;
+      const parentHasSpouse = parent.data.spouse;
+      const childHasSpouse = child.data.spouse;
+
+      // Calculate parent's main box position (left box if has spouse)
+      const parentMainOffset = parentHasSpouse ? -spouseOffset / 2 : 0;
+      // Calculate child's couple center (where link should connect to top)
+      const childMainOffset = childHasSpouse ? -spouseOffset / 2 : 0;
+
+      // Determine which parent box this child belongs to
+      // Children array: [0] = paternal grandparents, [1] = maternal grandparents
+      const childIndex = parent.children ? parent.children.indexOf(child) : 0;
+      const isFromSpouse = childIndex === 1 && parentHasSpouse; // Second child comes from spouse (mother's side)
+
+      // Source position: from bottom of correct parent box
+      const sourceX = parent.x + (isFromSpouse ? parentMainOffset + spouseOffset : parentMainOffset);
+      const sourceY = parent.y + nodeHeight / 2;
+
+      // Target position: to top center of child's couple (between the two boxes if couple)
+      const targetX = child.x;
+      const targetY = child.y - nodeHeight / 2;
+
+      // Draw curved link
+      const midY = (sourceY + targetY) / 2;
+      g.append('path')
+        .attr('d', `M${sourceX},${sourceY} C${sourceX},${midY} ${targetX},${midY} ${targetX},${targetY}`)
+        .attr('fill', 'none')
+        .attr('stroke', '#94a3b8')
+        .attr('stroke-width', 1.5)
+        .attr('stroke-opacity', 0.6);
+    });
 
     // Render person boxes (and spouse boxes if present)
     nodes.each(function(d: any) {
       const node = d3.select(this);
       const spouse = d.data.spouse;
-      const spouseOffset = nodeWidth + 20; // Gap between person and spouse
 
       // If has spouse, shift main person left to center the couple
       const mainOffset = spouse ? -spouseOffset / 2 : 0;

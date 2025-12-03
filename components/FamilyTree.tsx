@@ -117,45 +117,47 @@ export default function FamilyTree({ rootPersonId, showAncestors, onPersonClick,
     const pedigree = buildPedigree(rootPersonId);
     if (!pedigree) return;
 
-    const nodeWidth = 130;
-    const nodeHeight = 50;
-    const levelGap = 70; // Vertical gap between generations
-    const nodeGap = 5; // Minimum horizontal gap between nodes
+    const nodeWidth = 115;
+    const nodeHeight = 42;
+    const levelGap = 52; // Vertical gap between generations
+    const nodeGap = 4; // Horizontal gap between sibling nodes
 
-    // Count max depth first
-    const getMaxDepth = (node: PedigreeNode, d = 0): number => {
-      let max = d;
-      if (node.father) max = Math.max(max, getMaxDepth(node.father, d + 1));
-      if (node.mother) max = Math.max(max, getMaxDepth(node.mother, d + 1));
-      return max;
-    };
-    const maxDepth = getMaxDepth(pedigree);
+    // Position nodes bottom-up: leaves first, parents centered above children
+    let leafX = 0;
+    const positionNodes = (node: PedigreeNode, gen: number): number => {
+      node.y = gen * levelGap + 30;
 
-    // Calculate total width needed at deepest level
-    const maxSlots = Math.pow(2, maxDepth);
-    const totalWidth = maxSlots * (nodeWidth + nodeGap);
+      if (!node.father && !node.mother) {
+        // Leaf node - assign next available X
+        node.x = leafX + nodeWidth / 2;
+        leafX += nodeWidth + nodeGap;
+        return node.x;
+      }
 
-    // Position nodes: root at TOP CENTER, ancestors expand DOWNWARD
-    const positionNodes = (node: PedigreeNode, gen: number, slot: number) => {
-      // Calculate slots at this generation level
-      const slotsAtGen = Math.pow(2, gen);
-      // Width of each slot at this generation
-      const slotWidth = totalWidth / slotsAtGen;
-      // X position: center of the slot
-      node.x = slot * slotWidth + slotWidth / 2;
-      // Y position: root at top (gen 0), ancestors go down
-      node.y = gen * levelGap + 40;
+      // Position children first
+      let fatherX = node.x || 0;
+      let motherX = node.x || 0;
 
-      // Father goes to slot*2, mother to slot*2+1 in next generation
       if (node.father) {
-        positionNodes(node.father, gen + 1, slot * 2);
+        fatherX = positionNodes(node.father, gen + 1);
       }
       if (node.mother) {
-        positionNodes(node.mother, gen + 1, slot * 2 + 1);
+        motherX = positionNodes(node.mother, gen + 1);
       }
+
+      // Parent centered between children
+      if (node.father && node.mother) {
+        node.x = (fatherX + motherX) / 2;
+      } else if (node.father) {
+        node.x = fatherX;
+      } else if (node.mother) {
+        node.x = motherX;
+      }
+
+      return node.x!;
     };
 
-    positionNodes(pedigree, 0, 0);
+    positionNodes(pedigree, 0);
 
     // Collect all nodes
     const allNodes: PedigreeNode[] = [];

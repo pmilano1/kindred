@@ -88,7 +88,7 @@ export default function FamilyTree({ rootPersonId, showAncestors, onPersonClick,
   }, []);
 
   // Build pedigree tree - each person links to their own father and mother
-  const buildPedigree = useCallback((personId: string, depth = 0, maxDepth = 6): PedigreeNode | null => {
+  const buildPedigree = useCallback((personId: string, depth = 0, maxDepth = 10): PedigreeNode | null => {
     if (!data || depth > maxDepth) return null;
     const person = data.people[personId];
     if (!person) return null;

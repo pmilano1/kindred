@@ -2,7 +2,7 @@ import Link from 'next/link';
 import Sidebar from '@/components/Sidebar';
 import Hero from '@/components/Hero';
 import Footer from '@/components/Footer';
-import { getPerson, getPersonFamilies, getChildren, getPeople, getPersonResidences, getPersonOccupations, getPersonEvents, getPersonFacts, getPersonSources } from '@/lib/db';
+import { getPerson, getPersonFamilies, getChildren, getPeople, getPersonResidences, getPersonOccupations, getPersonEvents, getPersonFacts, getPersonSources, getNotableRelatives } from '@/lib/db';
 import { notFound } from 'next/navigation';
 
 export const dynamic = 'force-dynamic';
@@ -13,13 +13,14 @@ interface PageProps {
 
 export default async function PersonPage({ params }: PageProps) {
   const { id } = await params;
-  const [person, residences, occupations, events, facts, sources] = await Promise.all([
+  const [person, residences, occupations, events, facts, sources, notableRelatives] = await Promise.all([
     getPerson(id),
     getPersonResidences(id),
     getPersonOccupations(id),
     getPersonEvents(id),
     getPersonFacts(id),
-    getPersonSources(id)
+    getPersonSources(id),
+    getNotableRelatives(id)
   ]);
 
   if (!person) {
@@ -290,6 +291,36 @@ export default async function PersonPage({ params }: PageProps) {
                         <span className="inline-block text-xs text-green-600 mt-1">✓ Validated {source.validated_date ? `on ${source.validated_date}` : ''}</span>
                       )}
                     </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Notable Relatives */}
+            {notableRelatives.length > 0 && (
+              <div className="card p-6 mb-6 border-2 border-yellow-400 bg-gradient-to-r from-yellow-50 to-amber-50">
+                <h3 className="section-title">👑 Notable Relatives</h3>
+                <p className="text-sm text-gray-600 mb-4">Famous or historically significant people connected to this person through family lines.</p>
+                <div className="space-y-4">
+                  {notableRelatives.map((nr) => (
+                    <Link key={nr.person.id} href={`/person/${nr.person.id}`}>
+                      <div className="p-4 rounded-lg bg-white border-l-4 border-l-yellow-500 hover:shadow-md transition">
+                        <div className="flex items-start gap-3">
+                          <span className="text-2xl">👑</span>
+                          <div>
+                            <p className="font-semibold text-gray-800">{nr.person.name_full}</p>
+                            <p className="text-sm text-gray-500">
+                              {nr.person.birth_year || '?'} – {nr.person.death_year || (nr.person.living ? 'Living' : '?')}
+                              {nr.person.birth_place && ` • ${nr.person.birth_place}`}
+                            </p>
+                            <p className="text-xs text-amber-700 mt-1">{nr.relationship}</p>
+                            {nr.person.description && (
+                              <p className="text-xs text-gray-600 mt-2 italic">{nr.person.description}</p>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    </Link>
                   ))}
                 </div>
               </div>

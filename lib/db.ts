@@ -183,3 +183,91 @@ export async function getPersonSources(personId: string): Promise<Source[]> {
   );
   return result.rows;
 }
+
+// Notable relatives - finds famous/notable people connected through ancestors
+export interface NotableRelative {
+  person: Person;
+  relationship: string;
+  connectionPath: string[];
+}
+
+export async function getNotableRelatives(personId: string): Promise<NotableRelative[]> {
+  // List of notable person IDs to look for
+  const notableIds = [
+    'josephine-bonaparte',
+    'alexandre-de-beauharnais',
+    'francois-de-beauharnais',
+    'charles-de-beauharnais'
+  ];
+
+  // First, trace ancestry to find common ancestors with notable people
+  const result = await pool.query(`
+    WITH RECURSIVE ancestry AS (
+      -- Start with the target person
+      SELECT p.id, p.name_full, 0 as generation, ARRAY[p.id] as path
+      FROM people p WHERE p.id = $1
+
+      UNION ALL
+
+      -- Get parents
+      SELECT parent.id, parent.name_full, a.generation + 1, a.path || parent.id
+      FROM ancestry a
+      JOIN children c ON c.person_id = a.id
+      JOIN families f ON c.family_id = f.id
+      JOIN people parent ON (parent.id = f.husband_id OR parent.id = f.wife_id)
+      WHERE a.generation < 15 AND NOT parent.id = ANY(a.path)
+    ),
+    -- Find siblings of ancestors (collateral relatives)
+    ancestor_siblings AS (
+      SELECT DISTINCT sibling.id, sibling.name_full, a.generation, a.path
+      FROM ancestry a
+      JOIN children c1 ON c1.person_id = a.id
+      JOIN children c2 ON c2.family_id = c1.family_id AND c2.person_id != a.id
+      JOIN people sibling ON sibling.id = c2.person_id
+    ),
+    -- Find descendants of those siblings
+    sibling_descendants AS (
+      SELECT s.id, s.name_full, s.generation, s.path, 0 as desc_gen
+      FROM ancestor_siblings s
+
+      UNION ALL
+
+      SELECT child.id, child.name_full, sd.generation, sd.path, sd.desc_gen + 1
+      FROM sibling_descendants sd
+      JOIN families f ON (f.husband_id = sd.id OR f.wife_id = sd.id)
+      JOIN children c ON c.family_id = f.id
+      JOIN people child ON child.id = c.person_id
+      WHERE sd.desc_gen < 10 AND NOT child.id = ANY(sd.path)
+    ),
+    -- Also check spouses of descendants
+    with_spouses AS (
+      SELECT sd.id, sd.name_full, sd.generation, sd.path
+      FROM sibling_descendants sd
+      UNION
+      SELECT spouse.id, spouse.name_full, sd.generation, sd.path
+      FROM sibling_descendants sd
+      JOIN families f ON (f.husband_id = sd.id OR f.wife_id = sd.id)
+      JOIN people spouse ON (spouse.id = f.husband_id OR spouse.id = f.wife_id) AND spouse.id != sd.id
+    )
+    SELECT DISTINCT ws.id, ws.name_full, ws.generation, ws.path
+    FROM with_spouses ws
+    WHERE ws.id = ANY($2::text[])
+  `, [personId, notableIds]);
+
+  if (result.rows.length === 0) return [];
+
+  // Get full person details for notable relatives
+  const notableRelatives: NotableRelative[] = [];
+  for (const row of result.rows) {
+    const personResult = await pool.query(`SELECT * FROM people WHERE id = $1`, [row.id]);
+    if (personResult.rows[0]) {
+      notableRelatives.push({
+        person: personResult.rows[0],
+        relationship: `Connected through ${row.generation} generations`,
+        connectionPath: row.path || []
+      });
+    }
+  }
+
+  return notableRelatives;
+}

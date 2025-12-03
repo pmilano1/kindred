@@ -267,6 +267,16 @@ export default function FamilyTree({ rootPersonId, showAncestors, onPersonClick,
       const boxWidth = spouse ? coupleWidth : singleWidth;
 
       if (spouse) {
+        // Determine who goes on left (male) vs right (female)
+        // Always put male on left, female on right
+        const primaryIsMale = d.data.sex === 'M';
+        const spouseIsMale = spouse.sex === 'M';
+
+        // Left person should be male, right should be female
+        // If primary is female and spouse is male, swap positions
+        const leftPerson = (primaryIsMale || (!primaryIsMale && !spouseIsMale)) ? d.data : spouse;
+        const rightPerson = (primaryIsMale || (!primaryIsMale && !spouseIsMale)) ? spouse : d.data;
+
         // Split box for couple - outer container
         node.append('rect')
           .attr('x', -boxWidth / 2)
@@ -278,27 +288,27 @@ export default function FamilyTree({ rootPersonId, showAncestors, onPersonClick,
           .attr('stroke', '#64748b')
           .attr('stroke-width', 2);
 
-        // Left half (primary person - husband)
+        // Left half (male)
         node.append('rect')
           .attr('x', -boxWidth / 2 + 2)
           .attr('y', -nodeHeight / 2 + 2)
           .attr('width', boxWidth / 2 - 4)
           .attr('height', nodeHeight - 4)
           .attr('rx', 4)
-          .attr('fill', d.data.sex === 'F' ? '#fce7f3' : '#dbeafe')
+          .attr('fill', leftPerson.sex === 'F' ? '#fce7f3' : '#dbeafe')
           .style('cursor', 'pointer')
-          .on('click', (e: any) => { e.stopPropagation(); onTileClick(d.data.id); });
+          .on('click', (e: any) => { e.stopPropagation(); onTileClick(leftPerson.id); });
 
-        // Right half (spouse - wife)
+        // Right half (female)
         node.append('rect')
           .attr('x', 2)
           .attr('y', -nodeHeight / 2 + 2)
           .attr('width', boxWidth / 2 - 4)
           .attr('height', nodeHeight - 4)
           .attr('rx', 4)
-          .attr('fill', spouse.sex === 'F' ? '#fce7f3' : '#dbeafe')
+          .attr('fill', rightPerson.sex === 'F' ? '#fce7f3' : '#dbeafe')
           .style('cursor', 'pointer')
-          .on('click', (e: any) => { e.stopPropagation(); onTileClick(spouse.id); });
+          .on('click', (e: any) => { e.stopPropagation(); onTileClick(rightPerson.id); });
 
         // Divider line
         node.append('line')
@@ -306,35 +316,35 @@ export default function FamilyTree({ rootPersonId, showAncestors, onPersonClick,
           .attr('x2', 0).attr('y2', nodeHeight / 2 - 4)
           .attr('stroke', '#94a3b8').attr('stroke-width', 1);
 
-        // Primary name (left)
-        const pName = d.data.name.length > 14 ? d.data.name.substring(0, 12) + '..' : d.data.name;
+        // Left person name
+        const leftName = leftPerson.name.length > 14 ? leftPerson.name.substring(0, 12) + '..' : leftPerson.name;
         node.append('text')
           .attr('x', -boxWidth / 4).attr('dy', -2)
           .attr('text-anchor', 'middle').attr('font-size', '8px').attr('font-weight', '600').attr('fill', '#1f2937')
           .style('cursor', 'pointer')
-          .on('click', (e: any) => { e.stopPropagation(); onPersonClick(d.data.id); })
-          .text(pName);
+          .on('click', (e: any) => { e.stopPropagation(); onPersonClick(leftPerson.id); })
+          .text(leftName);
 
-        // Primary years (left)
+        // Left person years
         node.append('text')
           .attr('x', -boxWidth / 4).attr('dy', 10)
           .attr('text-anchor', 'middle').attr('font-size', '7px').attr('fill', '#6b7280')
-          .text(`${d.data.birth_year || '?'}–${d.data.living ? 'L' : (d.data.death_year || '?')}`);
+          .text(`${leftPerson.birth_year || '?'}–${leftPerson.living ? 'L' : (leftPerson.death_year || '?')}`);
 
-        // Spouse name (right)
-        const sName = spouse.name.length > 14 ? spouse.name.substring(0, 12) + '..' : spouse.name;
+        // Right person name
+        const rightName = rightPerson.name.length > 14 ? rightPerson.name.substring(0, 12) + '..' : rightPerson.name;
         node.append('text')
           .attr('x', boxWidth / 4).attr('dy', -2)
           .attr('text-anchor', 'middle').attr('font-size', '8px').attr('font-weight', '600').attr('fill', '#1f2937')
           .style('cursor', 'pointer')
-          .on('click', (e: any) => { e.stopPropagation(); onPersonClick(spouse.id); })
-          .text(sName);
+          .on('click', (e: any) => { e.stopPropagation(); onPersonClick(rightPerson.id); })
+          .text(rightName);
 
-        // Spouse years (right)
+        // Right person years
         node.append('text')
           .attr('x', boxWidth / 4).attr('dy', 10)
           .attr('text-anchor', 'middle').attr('font-size', '7px').attr('fill', '#6b7280')
-          .text(`${spouse.birth_year || '?'}–${spouse.living ? 'L' : (spouse.death_year || '?')}`);
+          .text(`${rightPerson.birth_year || '?'}–${rightPerson.living ? 'L' : (rightPerson.death_year || '?')}`);
 
       } else {
         // Single person box

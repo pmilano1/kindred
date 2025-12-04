@@ -173,18 +173,8 @@ export async function getTimeline(): Promise<Array<{year: number; events: Array<
     .sort((a, b) => b.year - a.year);
 }
 
-export async function getPersonSources(personId: string): Promise<Source[]> {
-  const result = await pool.query(
-    `SELECT id, person_id, source_type, source_name, source_url, data_retrieved,
-            validated, validated_date, notes, document_data, document_type,
-            document_filename, created_at
-     FROM sources
-     WHERE person_id = $1
-     ORDER BY source_type, created_at DESC`,
-    [personId]
-  );
-  return result.rows;
-}
+// NOTE: getPersonSources removed - sources migrated to research_log table
+// Use getResearchLog() instead which includes all sources as 'found' entries
 
 // Notable relatives - finds famous/notable people connected through ancestors
 export interface NotableRelative {

@@ -95,21 +95,8 @@ export interface TreeNode {
   };
 }
 
-export interface Source {
-  id: number;
-  person_id: string;
-  source_type: string | null;
-  source_name: string | null;
-  source_url: string | null;
-  data_retrieved: string | null;
-  validated: boolean;
-  validated_date: string | null;
-  notes: string | null;
-  document_data: string | null;  // Base64 encoded document or image
-  document_type: string | null;  // MIME type (e.g., image/jpeg, application/pdf)
-  document_filename: string | null;
-  created_at: string;
-}
+// NOTE: Source interface removed - sources migrated to research_log table
+// Sources now appear as ResearchLog entries with action_type='found'
 
 export type ResearchActionType = 'searched' | 'found' | 'verified' | 'corrected' | 'todo' | 'note' | 'question' | 'brick_wall';
 export type ResearchSource = 'FamilySearch' | 'Geni' | 'Ancestry' | 'MyHeritage' | 'FindAGrave' | 'ANOM' | 'Geneanet' | 'WikiTree' | 'Newspapers' | 'Census' | 'VitalRecords' | 'ChurchRecords' | 'Immigration' | 'Military' | 'DNA' | 'FamilyBible' | 'Interview' | 'Other';
@@ -122,6 +109,7 @@ export interface ResearchLog {
   created_at: string;
   action_type: ResearchActionType;
   source_checked: ResearchSource | null;
+  source_name: string | null;  // Name of the source (for migrated sources)
   content: string;
   confidence: ResearchConfidence | null;
   source_id: number | null;

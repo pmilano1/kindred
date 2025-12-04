@@ -49,13 +49,13 @@ const CONFIDENCE: { value: ResearchConfidence; label: string; color: string }[] 
   { value: 'speculative', label: 'Speculative', color: 'bg-gray-100 text-gray-800' },
 ];
 
-const STATUS_OPTIONS: { value: ResearchStatus; label: string; color: string }[] = [
-  { value: 'not_started', label: 'Not Started', color: 'bg-gray-200' },
-  { value: 'in_progress', label: 'In Progress', color: 'bg-blue-200' },
-  { value: 'partial', label: 'Partial', color: 'bg-yellow-200' },
-  { value: 'verified', label: 'Verified', color: 'bg-green-200' },
-  { value: 'needs_review', label: 'Needs Review', color: 'bg-orange-200' },
-  { value: 'brick_wall', label: 'Brick Wall', color: 'bg-red-200' },
+const STATUS_OPTIONS: { value: ResearchStatus; label: string; color: string; desc: string }[] = [
+  { value: 'not_started', label: 'Not Started', color: 'bg-gray-200', desc: 'No research done yet' },
+  { value: 'in_progress', label: 'In Progress', color: 'bg-blue-200', desc: 'Currently being researched' },
+  { value: 'partial', label: 'Partial', color: 'bg-yellow-200', desc: 'Some info found, more needed' },
+  { value: 'verified', label: 'Verified', color: 'bg-green-200', desc: 'Research complete, sources confirmed' },
+  { value: 'needs_review', label: 'Needs Review', color: 'bg-orange-200', desc: 'Conflicting info, needs verification' },
+  { value: 'brick_wall', label: 'Brick Wall', color: 'bg-red-200', desc: 'Cannot find more info' },
 ];
 
 export default function ResearchPanel({ personId, personName }: ResearchPanelProps) {
@@ -161,29 +161,46 @@ export default function ResearchPanel({ personId, personName }: ResearchPanelPro
 
       {/* Status and Priority Controls */}
       <div className="flex flex-wrap gap-4 mb-4 p-3 bg-gray-50 rounded-lg">
-        <div className="flex items-center gap-2">
-          <span className="text-sm font-medium">Status:</span>
+        <div className="flex-1 min-w-[200px]">
+          <div className="flex items-center gap-2">
+            <span className="text-sm font-medium">Status:</span>
+            <span className="text-gray-400 cursor-help text-xs" title="Tracks research progress for this person">ⓘ</span>
+          </div>
           <select
             value={status}
             onChange={(e) => handleStatusChange(e.target.value as ResearchStatus)}
-            className="text-sm rounded border-gray-300 p-1"
+            className="text-sm rounded border-gray-300 p-1 mt-1 w-full"
           >
             {STATUS_OPTIONS.map(s => (
               <option key={s.value} value={s.value}>{s.label}</option>
             ))}
           </select>
+          <div className="text-[10px] text-gray-400 mt-0.5">
+            {STATUS_OPTIONS.find(s => s.value === status)?.desc}
+          </div>
         </div>
-        <div className="flex items-center gap-2">
-          <span className="text-sm font-medium">Priority:</span>
-          <input
-            type="range"
-            min="0"
-            max="10"
-            value={priority}
-            onChange={(e) => handlePriorityChange(parseInt(e.target.value))}
-            className="w-24"
-          />
-          <span className="text-sm font-bold w-6">{priority}</span>
+        <div className="flex-1 min-w-[200px]">
+          <div className="flex items-center gap-2">
+            <span className="text-sm font-medium">Priority:</span>
+            <span className="text-gray-400 cursor-help text-xs" title="0 = No urgency, 10 = Research immediately. Higher priority people appear first in research queue.">ⓘ</span>
+          </div>
+          <div className="flex items-center gap-2 mt-1">
+            <input
+              type="range"
+              min="0"
+              max="10"
+              value={priority}
+              onChange={(e) => handlePriorityChange(parseInt(e.target.value))}
+              className="flex-1"
+            />
+            <span className="text-sm font-bold w-6">{priority}</span>
+          </div>
+          <div className="text-[10px] text-gray-400 mt-0.5">
+            {priority === 0 ? 'Not prioritized' :
+             priority <= 3 ? 'Low priority' :
+             priority <= 6 ? 'Medium priority' :
+             priority <= 9 ? 'High priority' : 'Urgent - research immediately'}
+          </div>
         </div>
       </div>
 
@@ -267,12 +284,13 @@ export default function ResearchPanel({ personId, personName }: ResearchPanelPro
       {log.length === 0 ? (
         <p className="text-gray-500 text-sm italic">No research notes yet.</p>
       ) : (
-        <div className="space-y-3 max-h-96 overflow-y-auto">
+        <div className="space-y-3 max-h-[500px] overflow-y-auto">
           {log.map((entry) => {
             const actionInfo = ACTION_TYPES.find(t => t.value === entry.action_type);
             const confInfo = CONFIDENCE.find(c => c.value === entry.confidence);
+            const isMigratedSource = entry.action_type === 'found' && entry.source_name;
             return (
-              <div key={entry.id} className="p-3 bg-white rounded border border-gray-200">
+              <div key={entry.id} className={`p-3 rounded border ${isMigratedSource ? 'bg-blue-50 border-blue-200' : 'bg-white border-gray-200'}`}>
                 <div className="flex justify-between items-start mb-1">
                   <span className="font-medium text-sm">
                     {actionInfo?.emoji} {actionInfo?.label}
@@ -280,9 +298,13 @@ export default function ResearchPanel({ personId, personName }: ResearchPanelPro
                   </span>
                   <span className="text-xs text-gray-400">{formatDate(entry.created_at)}</span>
                 </div>
-                <p className="text-sm text-gray-700">{entry.content}</p>
+                {/* Show source name prominently for migrated sources */}
+                {entry.source_name && (
+                  <div className="text-sm font-medium text-blue-800 mb-1">{entry.source_name}</div>
+                )}
+                <p className="text-sm text-gray-700 whitespace-pre-wrap">{entry.content}</p>
                 {(entry.confidence || entry.external_url) && (
-                  <div className="flex gap-2 mt-2">
+                  <div className="flex flex-wrap gap-2 mt-2">
                     {confInfo && (
                       <span className={`text-xs px-2 py-0.5 rounded ${confInfo.color}`}>
                         {confInfo.label}
@@ -291,7 +313,7 @@ export default function ResearchPanel({ personId, personName }: ResearchPanelPro
                     {entry.external_url && (
                       <a href={entry.external_url} target="_blank" rel="noopener noreferrer"
                          className="text-xs text-blue-600 hover:underline">
-                        🔗 Source
+                        🔗 View Source
                       </a>
                     )}
                   </div>

@@ -515,12 +515,12 @@ export default function FamilyTree({ rootPersonId, showAncestors, onPersonClick,
   }, [data, rootPersonId, showAncestors, dimensions, buildPedigree, buildDescendantChain, onPersonClick, onTileClick]);
 
   const STATUS_OPTIONS = [
-    { value: 'not_started', label: '⚪ Not Started' },
-    { value: 'in_progress', label: '🔵 In Progress' },
-    { value: 'partial', label: '🟡 Partial' },
-    { value: 'verified', label: '🟢 Verified' },
-    { value: 'needs_review', label: '🟠 Needs Review' },
-    { value: 'brick_wall', label: '🔴 Brick Wall' },
+    { value: 'not_started', label: '⚪ Not Started', desc: 'No research done yet' },
+    { value: 'in_progress', label: '🔵 In Progress', desc: 'Currently being researched' },
+    { value: 'partial', label: '🟡 Partial', desc: 'Some info found, more needed' },
+    { value: 'verified', label: '🟢 Verified', desc: 'Research complete, sources confirmed' },
+    { value: 'needs_review', label: '🟠 Needs Review', desc: 'Conflicting info, needs verification' },
+    { value: 'brick_wall', label: '🔴 Brick Wall', desc: 'Cannot find more info' },
   ];
 
   return (
@@ -538,7 +538,10 @@ export default function FamilyTree({ rootPersonId, showAncestors, onPersonClick,
           <div className="font-semibold text-sm mb-2 truncate max-w-48">{priorityPopup.personName}</div>
 
           <div className="mb-3">
-            <label className="text-xs font-medium text-gray-600">Priority</label>
+            <label className="text-xs font-medium text-gray-600 flex items-center gap-1">
+              Priority
+              <span className="text-gray-400 cursor-help" title="0 = No urgency, 10 = Research immediately. Higher priority people appear first in research queue.">ⓘ</span>
+            </label>
             <div className="flex items-center gap-2 mt-1">
               <input
                 type="range"
@@ -554,10 +557,19 @@ export default function FamilyTree({ rootPersonId, showAncestors, onPersonClick,
               />
               <span className="text-sm font-bold w-6">{priorityPopup.priority}</span>
             </div>
+            <div className="text-[10px] text-gray-400 mt-0.5">
+              {priorityPopup.priority === 0 ? 'Not prioritized' :
+               priorityPopup.priority <= 3 ? 'Low priority' :
+               priorityPopup.priority <= 6 ? 'Medium priority' :
+               priorityPopup.priority <= 9 ? 'High priority' : 'Urgent'}
+            </div>
           </div>
 
           <div>
-            <label className="text-xs font-medium text-gray-600">Status</label>
+            <label className="text-xs font-medium text-gray-600 flex items-center gap-1">
+              Status
+              <span className="text-gray-400 cursor-help" title="Tracks research progress: Not Started → In Progress → Partial/Verified. Use Brick Wall when stuck.">ⓘ</span>
+            </label>
             <select
               value={priorityPopup.status}
               onChange={(e) => {
@@ -567,9 +579,12 @@ export default function FamilyTree({ rootPersonId, showAncestors, onPersonClick,
               className="w-full mt-1 text-sm rounded border-gray-300 p-1"
             >
               {STATUS_OPTIONS.map(s => (
-                <option key={s.value} value={s.value}>{s.label}</option>
+                <option key={s.value} value={s.value} title={s.desc}>{s.label}</option>
               ))}
             </select>
+            <div className="text-[10px] text-gray-400 mt-0.5">
+              {STATUS_OPTIONS.find(s => s.value === priorityPopup.status)?.desc}
+            </div>
           </div>
 
           <div className="mt-2 text-right">

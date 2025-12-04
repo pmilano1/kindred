@@ -13,14 +13,11 @@ COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 
 # Build-time environment variables
-# Note: DATABASE_URL should NOT be set at build time - Next.js will inline it
-# and the runtime value won't be used. Only set NEXTAUTH_URL for client-side.
+# Note: DATABASE_URL must NOT be set at build time - Next.js will inline it
 ARG NEXTAUTH_URL
 ENV NEXTAUTH_URL=${NEXTAUTH_URL}
 
-# Set a dummy DATABASE_URL for build (required for schema validation)
-# The real value comes from App Runner runtime environment variables
-ENV DATABASE_URL="postgresql://dummy:dummy@localhost:5432/dummy"
+# Do NOT set DATABASE_URL here - it must only exist at runtime
 
 RUN npm run build
 

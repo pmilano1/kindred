@@ -24,7 +24,7 @@ export async function getPeople(): Promise<Person[]> {
 
 export async function getPerson(id: string): Promise<Person | null> {
   const result = await pool.query(
-    `SELECT * FROM people WHERE id = $1`,
+    `SELECT *, COALESCE(notes, description) as description FROM people WHERE id = $1`,
     [id]
   );
   return result.rows[0] || null;

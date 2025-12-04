@@ -1,14 +1,13 @@
 import { auth } from '@/lib/auth';
 import { NextResponse } from 'next/server';
 
-export default auth((req) => {
+export const proxy = auth((req) => {
   const isLoggedIn = !!req.auth;
   const isLoginPage = req.nextUrl.pathname === '/login';
   const isAuthApi = req.nextUrl.pathname.startsWith('/api/auth');
-  const isHealthCheck = req.nextUrl.pathname === '/api/health';
 
-  // Allow auth API routes and health check
-  if (isAuthApi || isHealthCheck) {
+  // Allow auth API routes (health check is excluded via matcher)
+  if (isAuthApi) {
     return NextResponse.next();
   }
 
@@ -27,8 +26,9 @@ export default auth((req) => {
 
 export const config = {
   matcher: [
-    // Match all paths except static files and images
-    '/((?!_next/static|_next/image|favicon.ico|.*\\.png$|.*\\.svg$).*)',
+    // Match all paths except static files, images, and health check
+    // Health check is excluded so it bypasses auth entirely
+    '/((?!_next/static|_next/image|favicon.ico|api/health|.*\\.png$|.*\\.svg$).*)',
   ],
 };
 

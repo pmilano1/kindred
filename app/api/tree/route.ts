@@ -38,11 +38,17 @@ export interface NotableConnection {
   path: string[];               // IDs from sibling to notable person
 }
 
+// Helper to look up person ID by legacy_id
+async function getIdByLegacy(legacyId: string): Promise<string | null> {
+  const result = await pool.query('SELECT id FROM people WHERE legacy_id = $1', [legacyId]);
+  return result.rows[0]?.id || null;
+}
+
 export async function GET() {
   try {
-    // Get all people with relevant fields for tree
+    // Get all people with relevant fields for tree (include legacy_id for lookups)
     const peopleResult = await pool.query(`
-      SELECT id, name_full as name, sex, birth_year, death_year,
+      SELECT id, legacy_id, name_full as name, sex, birth_year, death_year,
              birth_place, death_place, living, familysearch_id
       FROM people
     `);
@@ -62,45 +68,46 @@ export async function GET() {
     `);
 
     const people: Record<string, TreePerson> = {};
+    const legacyToId: Record<string, string> = {};
     for (const row of peopleResult.rows) {
       people[row.id] = row;
+      if (row.legacy_id) {
+        legacyToId[row.legacy_id] = row.id;
+      }
     }
 
-    // Mark notable people
-    const notableIds = ['josephine-bonaparte', 'alexandre-de-beauharnais', 'francois-de-beauharnais', 'charles-de-beauharnais', 'frank-sinatra-1915'];
-    notableIds.forEach(id => {
-      if (people[id]) people[id].isNotable = true;
+    // Mark notable people (by legacy_id)
+    const notableLegacyIds = ['josephine-bonaparte', 'alexandre-de-beauharnais', 'francois-de-beauharnais', 'charles-de-beauharnais', 'frank-sinatra-1915'];
+    notableLegacyIds.forEach(legacyId => {
+      const id = legacyToId[legacyId];
+      if (id && people[id]) people[id].isNotable = true;
     });
 
     const families: TreeFamily[] = familiesResult.rows;
 
-    // Define notable connections (collateral lines to famous relatives)
-    const notableConnections: NotableConnection[] = [
+    // Define notable connections using legacy IDs, then resolve to real IDs
+    const notableConnectionsLegacy = [
       {
-        // Josephine Bonaparte - through Gaspard's daughter Renée (sister of Louis)
         branchingAncestorId: 'gaspar-le-pays-de-bourjolly',
         siblingId: 'renee-le-pays-de-bourjolly',
         notablePersonId: 'josephine-bonaparte',
-        path: [
-          'renee-le-pays-de-bourjolly',
-          'renee-hardouineau-landaniere',
-          'francois-de-beauharnais',
-          'alexandre-de-beauharnais',
-          'josephine-bonaparte'
-        ]
+        path: ['renee-le-pays-de-bourjolly', 'renee-hardouineau-landaniere', 'francois-de-beauharnais', 'alexandre-de-beauharnais', 'josephine-bonaparte']
       },
       {
-        // Frank Sinatra - Dolly Garaventa (Frank's mother) is sister of Genesia Garaventa (Peter's great-grandmother)
-        // Branching from Genesia (in Peter's direct line) to her sister Dolly → Frank
         branchingAncestorId: 'genesia-garaventa-1886',
         siblingId: 'dolly-sinatra-1894',
         notablePersonId: 'frank-sinatra-1915',
-        path: [
-          'dolly-sinatra-1894',
-          'frank-sinatra-1915'
-        ]
+        path: ['dolly-sinatra-1894', 'frank-sinatra-1915']
       }
     ];
+
+    // Convert legacy IDs to real IDs
+    const notableConnections: NotableConnection[] = notableConnectionsLegacy.map(nc => ({
+      branchingAncestorId: legacyToId[nc.branchingAncestorId] || nc.branchingAncestorId,
+      siblingId: legacyToId[nc.siblingId] || nc.siblingId,
+      notablePersonId: legacyToId[nc.notablePersonId] || nc.notablePersonId,
+      path: nc.path.map(legacyId => legacyToId[legacyId] || legacyId)
+    }));
 
     return NextResponse.json({ people, families, notableConnections });
   } catch (error) {

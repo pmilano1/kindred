@@ -37,8 +37,9 @@ jobs:
           ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
           IMAGE_TAG: ${{ github.sha }}
         run: |
+          # Note: DATABASE_URL is NOT passed at build time - it would be inlined by Next.js
+          # and the runtime SSL check wouldn't work. Only NEXTAUTH_URL is needed for client.
           docker build \
-            --build-arg DATABASE_URL="${{ secrets.DATABASE_URL }}" \
             --build-arg NEXTAUTH_URL="${{ secrets.NEXTAUTH_URL }}" \
             -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG \
             -t $ECR_REGISTRY/$ECR_REPOSITORY:latest \

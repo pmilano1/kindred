@@ -91,6 +91,24 @@ jobs:
               }' \
               --tags Key=Project,Value=genealogy Key=Environment,Value=production
           else
+            echo "Waiting for any in-progress deployments to complete..."
+            for i in {1..60}; do
+              STATUS=$(aws apprunner list-services --query "ServiceSummaryList[?ServiceName=='genealogy-frontend'].Status" --output text)
+              if [ "$STATUS" = "RUNNING" ]; then
+                echo "Service is ready, starting deployment..."
+                break
+              fi
+              echo "Service status: $STATUS - waiting 10s (attempt $i/60)..."
+              sleep 10
+            done
+
+            # Final check
+            STATUS=$(aws apprunner list-services --query "ServiceSummaryList[?ServiceName=='genealogy-frontend'].Status" --output text)
+            if [ "$STATUS" != "RUNNING" ]; then
+              echo "Error: Service still not ready after 10 minutes. Status: $STATUS"
+              exit 1
+            fi
+
             echo "Updating existing App Runner service..."
             aws apprunner start-deployment --service-arn "$SERVICE_ARN"
           fi

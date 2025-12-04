@@ -15,7 +15,7 @@ export async function getPeople(): Promise<Person[]> {
            sex, birth_date, birth_year, birth_place, death_date, death_year,
            death_place, burial_date, burial_place, christening_date, christening_place,
            immigration_date, immigration_place, naturalization_date, naturalization_place,
-           religion, description, living, source_count
+           religion, COALESCE(notes, description) as description, living, source_count
     FROM people
     ORDER BY birth_year DESC NULLS LAST
   `);
@@ -68,7 +68,7 @@ export async function searchPeople(query: string): Promise<Person[]> {
            sex, birth_date, birth_year, birth_place, death_date, death_year,
            death_place, burial_date, burial_place, christening_date, christening_place,
            immigration_date, immigration_place, naturalization_date, naturalization_place,
-           religion, description, living, source_count
+           religion, COALESCE(notes, description) as description, living, source_count
     FROM people
     WHERE name_full ILIKE $1 OR birth_place ILIKE $1 OR death_place ILIKE $1
     ORDER BY name_full

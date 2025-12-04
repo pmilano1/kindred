@@ -12,18 +12,13 @@ WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 
-# Build environment variables
+# Build-time environment variables (non-sensitive only)
+# Secrets are passed at runtime via App Runner environment variables
 ARG DATABASE_URL
 ARG NEXTAUTH_URL
-ARG NEXTAUTH_SECRET
-ARG GOOGLE_CLIENT_ID
-ARG GOOGLE_CLIENT_SECRET
 
 ENV DATABASE_URL=${DATABASE_URL}
 ENV NEXTAUTH_URL=${NEXTAUTH_URL}
-ENV NEXTAUTH_SECRET=${NEXTAUTH_SECRET}
-ENV GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID}
-ENV GOOGLE_CLIENT_SECRET=${GOOGLE_CLIENT_SECRET}
 
 RUN npm run build
 

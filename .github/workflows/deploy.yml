@@ -40,9 +40,6 @@ jobs:
           docker build \
             --build-arg DATABASE_URL="${{ secrets.DATABASE_URL }}" \
             --build-arg NEXTAUTH_URL="${{ secrets.NEXTAUTH_URL }}" \
-            --build-arg NEXTAUTH_SECRET="${{ secrets.NEXTAUTH_SECRET }}" \
-            --build-arg GOOGLE_CLIENT_ID="${{ secrets.GOOGLE_CLIENT_ID }}" \
-            --build-arg GOOGLE_CLIENT_SECRET="${{ secrets.GOOGLE_CLIENT_SECRET }}" \
             -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG \
             -t $ECR_REGISTRY/$ECR_REPOSITORY:latest \
             .

@@ -476,14 +476,14 @@ export default function FamilyTree({ rootPersonId, showAncestors, onPersonClick,
             .style('cursor', 'pointer')
             .on('click', () => onTileClick(personId));
 
-          // Crown for notable person
+          // Crown for notable person - positioned in top-right corner
           if (person.isNotable) {
-            nodeG.append('text').attr('x', 8).attr('y', 14).attr('font-size', '12px').text('👑');
+            nodeG.append('text').attr('x', nodeWidth - 16).attr('y', 14).attr('font-size', '12px').text('👑');
           }
 
           const displayName = person.name.length > 20 ? person.name.substring(0, 18) + '..' : person.name;
           nodeG.append('text')
-            .attr('x', nodeWidth / 2).attr('y', 20)
+            .attr('x', nodeWidth / 2).attr('y', 22)
             .attr('text-anchor', 'middle').attr('font-size', '11px').attr('font-weight', '600')
             .attr('fill', '#1f2937').style('cursor', 'pointer')
             .on('click', (e: MouseEvent) => { e.stopPropagation(); onPersonClick(personId); })

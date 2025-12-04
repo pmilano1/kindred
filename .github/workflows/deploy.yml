@@ -70,7 +70,8 @@ jobs:
                       "NEXTAUTH_URL": "${{ secrets.NEXTAUTH_URL }}",
                       "NEXTAUTH_SECRET": "${{ secrets.NEXTAUTH_SECRET }}",
                       "GOOGLE_CLIENT_ID": "${{ secrets.GOOGLE_CLIENT_ID }}",
-                      "GOOGLE_CLIENT_SECRET": "${{ secrets.GOOGLE_CLIENT_SECRET }}"
+                      "GOOGLE_CLIENT_SECRET": "${{ secrets.GOOGLE_CLIENT_SECRET }}",
+                      "AUTH_TRUST_HOST": "true"
                     }
                   }
                 }

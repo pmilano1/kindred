@@ -7,6 +7,7 @@ const navItems = [
   { href: '/', label: 'Dashboard', icon: '🏠' },
   { href: '/tree', label: 'Family Tree', icon: '🌳' },
   { href: '/people', label: 'People', icon: '👥' },
+  { href: '/research', label: 'Research Queue', icon: '📋' },
   { href: '/timeline', label: 'Timeline', icon: '📅' },
   { href: '/search', label: 'Search', icon: '🔍' },
 ];

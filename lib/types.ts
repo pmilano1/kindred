@@ -110,3 +110,33 @@ export interface Source {
   document_filename: string | null;
   created_at: string;
 }
+
+export type ResearchActionType = 'searched' | 'found' | 'verified' | 'corrected' | 'todo' | 'note' | 'question' | 'brick_wall';
+export type ResearchSource = 'FamilySearch' | 'Geni' | 'Ancestry' | 'MyHeritage' | 'FindAGrave' | 'ANOM' | 'Geneanet' | 'WikiTree' | 'Newspapers' | 'Census' | 'VitalRecords' | 'ChurchRecords' | 'Immigration' | 'Military' | 'DNA' | 'FamilyBible' | 'Interview' | 'Other';
+export type ResearchConfidence = 'confirmed' | 'probable' | 'possible' | 'uncertain' | 'conflicting' | 'speculative';
+export type ResearchStatus = 'not_started' | 'in_progress' | 'partial' | 'verified' | 'needs_review' | 'brick_wall';
+
+export interface ResearchLog {
+  id: string;
+  person_id: string;
+  created_at: string;
+  action_type: ResearchActionType;
+  source_checked: ResearchSource | null;
+  content: string;
+  confidence: ResearchConfidence | null;
+  source_id: number | null;
+  external_url: string | null;
+}
+
+export interface ResearchQueueItem {
+  id: string;
+  legacy_id: string;
+  name_full: string;
+  birth_year: number | null;
+  death_year: number | null;
+  research_status: ResearchStatus;
+  research_priority: number;
+  last_researched: string | null;
+  research_notes_count: number;
+  latest_note: string | null;
+}

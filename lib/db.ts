@@ -1,5 +1,7 @@
 import { Pool } from 'pg';
-import { Person, Family, Stats, Residence, Occupation, Event, Fact, Source } from './types';
+import { Person, Family, Stats, Residence, Occupation, Event, Fact, Source, ResearchLog, ResearchQueueItem } from './types';
+
+export { pool };
 
 const pool = new Pool({
   host: process.env.DB_HOST || 'shared-data_postgres',
@@ -292,4 +294,80 @@ export async function getNotableRelatives(personId: string): Promise<NotableRela
     console.error('Error fetching notable relatives:', error);
     return [];
   }
+}
+
+// ============================================
+// RESEARCH TRACKING FUNCTIONS
+// ============================================
+
+export async function getResearchLog(personId: string): Promise<ResearchLog[]> {
+  const result = await pool.query(
+    `SELECT * FROM research_log WHERE person_id = $1 ORDER BY created_at DESC`,
+    [personId]
+  );
+  return result.rows;
+}
+
+export async function addResearchLog(
+  personId: string,
+  actionType: string,
+  content: string,
+  sourceChecked?: string,
+  confidence?: string,
+  externalUrl?: string
+): Promise<ResearchLog> {
+  const result = await pool.query(
+    `INSERT INTO research_log (person_id, action_type, content, source_checked, confidence, external_url)
+     VALUES ($1, $2, $3, $4, $5, $6)
+     RETURNING *`,
+    [personId, actionType, content, sourceChecked || null, confidence || null, externalUrl || null]
+  );
+
+  // Update last_researched on person
+  await pool.query(
+    `UPDATE people SET last_researched = NOW() WHERE id = $1`,
+    [personId]
+  );
+
+  return result.rows[0];
+}
+
+export async function updateResearchStatus(personId: string, status: string): Promise<void> {
+  await pool.query(
+    `UPDATE people SET research_status = $1, last_researched = NOW() WHERE id = $2`,
+    [status, personId]
+  );
+}
+
+export async function updateResearchPriority(personId: string, priority: number): Promise<void> {
+  await pool.query(
+    `UPDATE people SET research_priority = $1 WHERE id = $2`,
+    [priority, personId]
+  );
+}
+
+export async function getResearchQueue(): Promise<ResearchQueueItem[]> {
+  const result = await pool.query(`SELECT * FROM research_queue LIMIT 100`);
+  return result.rows;
+}
+
+export async function getPersonResearchInfo(personId: string): Promise<{
+  status: string;
+  priority: number;
+  lastResearched: Date | null;
+  logCount: number;
+}> {
+  const result = await pool.query(
+    `SELECT p.research_status, p.research_priority, p.last_researched,
+            (SELECT COUNT(*) FROM research_log WHERE person_id = p.id) as log_count
+     FROM people p WHERE p.id = $1`,
+    [personId]
+  );
+  const row = result.rows[0];
+  return {
+    status: row?.research_status || 'not_started',
+    priority: row?.research_priority || 0,
+    lastResearched: row?.last_researched || null,
+    logCount: parseInt(row?.log_count || '0')
+  };
 }

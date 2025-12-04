@@ -20,6 +20,9 @@ export interface TreePerson {
   living: boolean;
   familysearch_id: string | null;
   isNotable?: boolean;
+  research_status?: string;
+  research_priority?: number;
+  last_researched?: string;
 }
 
 export interface TreeFamily {
@@ -46,10 +49,11 @@ async function getIdByLegacy(legacyId: string): Promise<string | null> {
 
 export async function GET() {
   try {
-    // Get all people with relevant fields for tree (include legacy_id for lookups)
+    // Get all people with relevant fields for tree (include legacy_id for lookups and research tracking)
     const peopleResult = await pool.query(`
       SELECT id, legacy_id, name_full as name, sex, birth_year, death_year,
-             birth_place, death_place, living, familysearch_id
+             birth_place, death_place, living, familysearch_id,
+             research_status, research_priority, last_researched
       FROM people
     `);
 

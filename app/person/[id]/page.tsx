@@ -2,6 +2,7 @@ import Link from 'next/link';
 import Sidebar from '@/components/Sidebar';
 import Hero from '@/components/Hero';
 import Footer from '@/components/Footer';
+import ResearchPanel from '@/components/ResearchPanel';
 import { getPerson, getPersonFamilies, getChildren, getPeople, getPersonResidences, getPersonOccupations, getPersonEvents, getPersonFacts, getPersonSources, getNotableRelatives } from '@/lib/db';
 import { notFound } from 'next/navigation';
 
@@ -137,6 +138,9 @@ export default async function PersonPage({ params }: PageProps) {
                 </div>
               )}
             </div>
+
+            {/* Research Panel */}
+            <ResearchPanel personId={id} personName={person.name_full} />
 
             {/* Parents */}
             {asChild.length > 0 && (

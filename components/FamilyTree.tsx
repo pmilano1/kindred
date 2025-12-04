@@ -14,6 +14,9 @@ interface TreePerson {
   living: boolean;
   familysearch_id: string | null;
   isNotable?: boolean;
+  research_status?: string;
+  research_priority?: number;
+  last_researched?: string;
 }
 
 interface TreeFamily {
@@ -57,11 +60,59 @@ interface FamilyTreeProps {
   showNotableConnections?: boolean;
 }
 
+// Priority popup state
+interface PriorityPopup {
+  personId: string;
+  personName: string;
+  x: number;
+  y: number;
+  priority: number;
+  status: string;
+}
+
 export default function FamilyTree({ rootPersonId, showAncestors, onPersonClick, onTileClick }: FamilyTreeProps) {
   const svgRef = useRef<SVGSVGElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const [data, setData] = useState<TreeData | null>(null);
   const [dimensions, setDimensions] = useState({ width: 800, height: 600 });
+  const [priorityPopup, setPriorityPopup] = useState<PriorityPopup | null>(null);
+
+  const handlePriorityChange = async (personId: string, priority: number) => {
+    await fetch(`/api/research/${personId}/priority`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ priority }),
+    });
+    // Update local data
+    if (data && data.people[personId]) {
+      setData({
+        ...data,
+        people: {
+          ...data.people,
+          [personId]: { ...data.people[personId], research_priority: priority }
+        }
+      });
+    }
+    setPriorityPopup(null);
+  };
+
+  const handleStatusChange = async (personId: string, status: string) => {
+    await fetch(`/api/research/${personId}/status`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ status }),
+    });
+    // Update local data
+    if (data && data.people[personId]) {
+      setData({
+        ...data,
+        people: {
+          ...data.people,
+          [personId]: { ...data.people[personId], research_status: status }
+        }
+      });
+    }
+  };
 
   // Fetch data
   useEffect(() => {
@@ -240,11 +291,23 @@ export default function FamilyTree({ rootPersonId, showAncestors, onPersonClick,
     };
     drawLinks(pedigree);
 
+    // Status color map
+    const statusColors: Record<string, string> = {
+      'not_started': '#9ca3af',    // gray
+      'in_progress': '#3b82f6',     // blue
+      'partial': '#eab308',         // yellow
+      'verified': '#22c55e',        // green
+      'needs_review': '#f97316',    // orange
+      'brick_wall': '#ef4444',      // red
+    };
+
     // Draw nodes
     allNodes.forEach(node => {
       if (node.x === undefined || node.y === undefined) return;
       const person = node.person;
       const isNotable = person.isNotable || node.isNotableBranch;
+      const priority = person.research_priority || 0;
+      const status = person.research_status || 'not_started';
 
       const nodeG = g.append('g')
         .attr('transform', `translate(${node.x - nodeWidth / 2},${node.y - nodeHeight / 2})`);
@@ -258,7 +321,21 @@ export default function FamilyTree({ rootPersonId, showAncestors, onPersonClick,
         .attr('stroke', isNotable ? '#f59e0b' : (person.sex === 'F' ? '#ec4899' : '#3b82f6'))
         .attr('stroke-width', isNotable ? 3 : 2)
         .style('cursor', 'pointer')
-        .on('click', () => onTileClick(person.id));
+        .on('click', () => onTileClick(person.id))
+        .on('contextmenu', (e: MouseEvent) => {
+          e.preventDefault();
+          const containerRect = containerRef.current?.getBoundingClientRect();
+          if (containerRect) {
+            setPriorityPopup({
+              personId: person.id,
+              personName: person.name,
+              x: e.clientX - containerRect.left,
+              y: e.clientY - containerRect.top,
+              priority,
+              status
+            });
+          }
+        });
 
       // Crown for notable
       if (isNotable) {
@@ -267,6 +344,34 @@ export default function FamilyTree({ rootPersonId, showAncestors, onPersonClick,
           .attr('y', 14)
           .attr('font-size', '12px')
           .text('👑');
+      }
+
+      // Research status indicator (small colored dot in bottom-left)
+      nodeG.append('circle')
+        .attr('cx', 10)
+        .attr('cy', nodeHeight - 10)
+        .attr('r', 4)
+        .attr('fill', statusColors[status] || '#9ca3af')
+        .attr('stroke', '#fff')
+        .attr('stroke-width', 1);
+
+      // Priority indicator (small number in bottom-right if priority > 0)
+      if (priority > 0) {
+        nodeG.append('rect')
+          .attr('x', nodeWidth - 18)
+          .attr('y', nodeHeight - 16)
+          .attr('width', 14)
+          .attr('height', 12)
+          .attr('rx', 2)
+          .attr('fill', priority >= 7 ? '#ef4444' : priority >= 4 ? '#f97316' : '#3b82f6');
+        nodeG.append('text')
+          .attr('x', nodeWidth - 11)
+          .attr('y', nodeHeight - 6)
+          .attr('text-anchor', 'middle')
+          .attr('font-size', '9px')
+          .attr('font-weight', 'bold')
+          .attr('fill', '#fff')
+          .text(priority.toString());
       }
 
       // Living indicator
@@ -409,10 +514,74 @@ export default function FamilyTree({ rootPersonId, showAncestors, onPersonClick,
     }
   }, [data, rootPersonId, showAncestors, dimensions, buildPedigree, buildDescendantChain, onPersonClick, onTileClick]);
 
+  const STATUS_OPTIONS = [
+    { value: 'not_started', label: '⚪ Not Started' },
+    { value: 'in_progress', label: '🔵 In Progress' },
+    { value: 'partial', label: '🟡 Partial' },
+    { value: 'verified', label: '🟢 Verified' },
+    { value: 'needs_review', label: '🟠 Needs Review' },
+    { value: 'brick_wall', label: '🔴 Brick Wall' },
+  ];
+
   return (
-    <div className="relative w-full h-full" ref={containerRef}>
+    <div className="relative w-full h-full" ref={containerRef} onClick={() => setPriorityPopup(null)}>
       <svg ref={svgRef} width={dimensions.width} height={dimensions.height} className="bg-gradient-to-br from-slate-50 to-slate-100 rounded-lg" />
       {!data && <div className="absolute inset-0 flex items-center justify-center text-gray-500">Loading...</div>}
+
+      {/* Priority/Status Popup */}
+      {priorityPopup && (
+        <div
+          className="absolute bg-white rounded-lg shadow-xl border p-3 z-50"
+          style={{ left: priorityPopup.x, top: priorityPopup.y }}
+          onClick={(e) => e.stopPropagation()}
+        >
+          <div className="font-semibold text-sm mb-2 truncate max-w-48">{priorityPopup.personName}</div>
+
+          <div className="mb-3">
+            <label className="text-xs font-medium text-gray-600">Priority</label>
+            <div className="flex items-center gap-2 mt-1">
+              <input
+                type="range"
+                min="0"
+                max="10"
+                value={priorityPopup.priority}
+                onChange={(e) => {
+                  const newPriority = parseInt(e.target.value);
+                  setPriorityPopup({ ...priorityPopup, priority: newPriority });
+                }}
+                onMouseUp={() => handlePriorityChange(priorityPopup.personId, priorityPopup.priority)}
+                className="w-20"
+              />
+              <span className="text-sm font-bold w-6">{priorityPopup.priority}</span>
+            </div>
+          </div>
+
+          <div>
+            <label className="text-xs font-medium text-gray-600">Status</label>
+            <select
+              value={priorityPopup.status}
+              onChange={(e) => {
+                setPriorityPopup({ ...priorityPopup, status: e.target.value });
+                handleStatusChange(priorityPopup.personId, e.target.value);
+              }}
+              className="w-full mt-1 text-sm rounded border-gray-300 p-1"
+            >
+              {STATUS_OPTIONS.map(s => (
+                <option key={s.value} value={s.value}>{s.label}</option>
+              ))}
+            </select>
+          </div>
+
+          <div className="mt-2 text-right">
+            <button
+              onClick={() => setPriorityPopup(null)}
+              className="text-xs text-gray-500 hover:text-gray-700"
+            >
+              Close
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -411,90 +411,102 @@ export default function FamilyTree({ rootPersonId, showAncestors, onPersonClick,
         .text(years);
     });
 
-    // Always draw notable connections branch (Josephine line) if ancestor is visible
+    // Draw notable connections ONLY if the branching ancestor is in the current pedigree
+    // Position them BELOW the main tree to avoid overlapping
     if (data.notableConnections) {
-      const connection = data.notableConnections.find(nc =>
-        allNodes.some(n => n.id === nc.branchingAncestorId)
-      );
+      // Find max Y (deepest generation) to position notable connections below
+      const maxY = Math.max(...allNodes.filter(n => n.y !== undefined).map(n => n.y!));
 
-      if (connection) {
+      // Draw each connection that has a visible branching ancestor
+      let notableYOffset = maxY + nodeHeight + 80; // Start below the tree
+
+      data.notableConnections.forEach(connection => {
         const branchingNode = allNodes.find(n => n.id === connection.branchingAncestorId);
-        if (branchingNode && branchingNode.x !== undefined && branchingNode.y !== undefined) {
-          // Draw the notable branch to the right of the branching ancestor
-          const branchStartX = branchingNode.x + nodeWidth / 2 + 30;
-          const branchStartY = branchingNode.y;
+        if (!branchingNode || branchingNode.x === undefined || branchingNode.y === undefined) return;
 
-          // Draw connection line from ancestor to branch (solid line - confirmed relationship)
-          g.append('path')
-            .attr('d', `M${branchingNode.x + nodeWidth/2},${branchingNode.y} L${branchStartX - 15},${branchStartY}`)
-            .attr('fill', 'none')
+        // Position notable branch at bottom, centered under branching ancestor
+        const branchStartX = Math.max(branchingNode.x, 100);
+        const branchStartY = notableYOffset;
+
+        // Get notable person info for label
+        const notablePerson = data.people[connection.notablePersonId];
+        const notableName = notablePerson?.name || 'Notable Person';
+
+        // Draw dashed connection line from branching ancestor down to notable branch
+        g.append('path')
+          .attr('d', `M${branchingNode.x},${branchingNode.y + nodeHeight/2}
+                      L${branchingNode.x},${branchStartY - 30}
+                      L${branchStartX - nodeWidth/2 - 10},${branchStartY - 30}
+                      L${branchStartX - nodeWidth/2 - 10},${branchStartY}`)
+          .attr('fill', 'none')
+          .attr('stroke', '#f59e0b')
+          .attr('stroke-width', 2)
+          .attr('stroke-dasharray', '5,3');
+
+        // Label for the branch
+        g.append('text')
+          .attr('x', branchStartX - nodeWidth/2 - 5)
+          .attr('y', branchStartY - 8)
+          .attr('font-size', '10px')
+          .attr('font-weight', '600')
+          .attr('fill', '#b45309')
+          .text(`👑 Collateral Line to ${notableName}`);
+
+        // Draw notable path nodes horizontally
+        connection.path.forEach((personId, idx) => {
+          const person = data.people[personId];
+          if (!person) return;
+
+          const nodeX = branchStartX + idx * (nodeWidth + 10);
+          const nodeY = branchStartY;
+
+          const nodeG = g.append('g')
+            .attr('transform', `translate(${nodeX - nodeWidth/2},${nodeY - nodeHeight/2})`);
+
+          // Gold box for notable branch
+          nodeG.append('rect')
+            .attr('width', nodeWidth)
+            .attr('height', nodeHeight)
+            .attr('rx', 6)
+            .attr('fill', person.isNotable ? '#fef3c7' : '#fffbeb')
             .attr('stroke', '#f59e0b')
-            .attr('stroke-width', 2);
+            .attr('stroke-width', person.isNotable ? 3 : 2)
+            .style('cursor', 'pointer')
+            .on('click', () => onTileClick(personId));
 
-          // Draw notable path nodes
-          connection.path.forEach((personId, idx) => {
-            const person = data.people[personId];
-            if (!person) return;
+          // Crown for notable person
+          if (person.isNotable) {
+            nodeG.append('text').attr('x', 8).attr('y', 14).attr('font-size', '12px').text('👑');
+          }
 
-            const nodeX = branchStartX + idx * (nodeWidth + 15);
-            const nodeY = branchStartY + idx * 25;
+          const displayName = person.name.length > 20 ? person.name.substring(0, 18) + '..' : person.name;
+          nodeG.append('text')
+            .attr('x', nodeWidth / 2).attr('y', 20)
+            .attr('text-anchor', 'middle').attr('font-size', '11px').attr('font-weight', '600')
+            .attr('fill', '#1f2937').style('cursor', 'pointer')
+            .on('click', (e: MouseEvent) => { e.stopPropagation(); onPersonClick(personId); })
+            .text(displayName);
 
-            const nodeG = g.append('g')
-              .attr('transform', `translate(${nodeX - nodeWidth/2},${nodeY - nodeHeight/2})`);
+          const years = `${person.birth_year || '?'} – ${person.death_year || '?'}`;
+          nodeG.append('text')
+            .attr('x', nodeWidth / 2).attr('y', 36)
+            .attr('text-anchor', 'middle').attr('font-size', '10px').attr('fill', '#6b7280')
+            .text(years);
 
-            // Gold box for notable branch
-            nodeG.append('rect')
-              .attr('width', nodeWidth)
-              .attr('height', nodeHeight)
-              .attr('rx', 6)
-              .attr('fill', person.isNotable ? '#fef3c7' : '#fffbeb')
+          // Draw connecting line to previous node in path
+          if (idx > 0) {
+            const prevX = branchStartX + (idx-1) * (nodeWidth + 10);
+            g.append('path')
+              .attr('d', `M${prevX + nodeWidth/2},${nodeY} L${nodeX - nodeWidth/2},${nodeY}`)
+              .attr('fill', 'none')
               .attr('stroke', '#f59e0b')
-              .attr('stroke-width', person.isNotable ? 3 : 2)
-              .style('cursor', 'pointer')
-              .on('click', () => onTileClick(personId));
+              .attr('stroke-width', 2);
+          }
+        });
 
-            // Crown for Josephine
-            if (person.isNotable) {
-              nodeG.append('text').attr('x', 8).attr('y', 14).attr('font-size', '12px').text('👑');
-            }
-
-            const displayName = person.name.length > 20 ? person.name.substring(0, 18) + '..' : person.name;
-            nodeG.append('text')
-              .attr('x', nodeWidth / 2).attr('y', 20)
-              .attr('text-anchor', 'middle').attr('font-size', '11px').attr('font-weight', '600')
-              .attr('fill', '#1f2937').style('cursor', 'pointer')
-              .on('click', (e) => { e.stopPropagation(); onPersonClick(personId); })
-              .text(displayName);
-
-            const years = `${person.birth_year || '?'} – ${person.death_year || '?'}`;
-            nodeG.append('text')
-              .attr('x', nodeWidth / 2).attr('y', 36)
-              .attr('text-anchor', 'middle').attr('font-size', '10px').attr('fill', '#6b7280')
-              .text(years);
-
-            // Draw connecting line to previous node in path
-            if (idx > 0) {
-              const prevX = branchStartX + (idx-1) * (nodeWidth + 15);
-              const prevY = branchStartY + (idx-1) * 25;
-              g.append('path')
-                .attr('d', `M${prevX + nodeWidth/2},${prevY + nodeHeight/2} L${nodeX - nodeWidth/2},${nodeY - nodeHeight/2}`)
-                .attr('fill', 'none')
-                .attr('stroke', '#f59e0b')
-                .attr('stroke-width', 2)
-                .attr('stroke-opacity', 0.7);
-            }
-          });
-
-          // Label for the branch
-          g.append('text')
-            .attr('x', branchStartX)
-            .attr('y', branchStartY - nodeHeight/2 - 8)
-            .attr('font-size', '10px')
-            .attr('font-weight', '600')
-            .attr('fill', '#b45309')
-            .text('👑 Collateral Line to Joséphine Bonaparte');
-        }
-      }
+        // Move offset down for next notable connection
+        notableYOffset += nodeHeight + 60;
+      });
     }
 
     // Zoom/pan

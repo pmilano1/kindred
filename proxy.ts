@@ -1,34 +1,29 @@
-import { auth } from '@/lib/auth';
-import { NextResponse } from 'next/server';
+import NextAuth from 'next-auth';
+import authConfig from './auth.config';
 
-export const proxy = auth((req) => {
+// Create a lightweight auth instance for proxy (no database)
+const { auth } = NextAuth(authConfig);
+
+// Wrap auth for route protection
+export default auth((req) => {
   const isLoggedIn = !!req.auth;
-  const isLoginPage = req.nextUrl.pathname === '/login';
-  const isAuthApi = req.nextUrl.pathname.startsWith('/api/auth');
+  const { pathname } = req.nextUrl;
 
-  // Allow auth API routes (health check is excluded via matcher)
-  if (isAuthApi) {
-    return NextResponse.next();
-  }
-
-  // Redirect to login if not authenticated
-  if (!isLoggedIn && !isLoginPage) {
-    return NextResponse.redirect(new URL('/login', req.url));
+  // Redirect to login if not authenticated (except login page)
+  if (!isLoggedIn && pathname !== '/login') {
+    return Response.redirect(new URL('/login', req.url));
   }
 
   // Redirect to home if already logged in and on login page
-  if (isLoggedIn && isLoginPage) {
-    return NextResponse.redirect(new URL('/', req.url));
+  if (isLoggedIn && pathname === '/login') {
+    return Response.redirect(new URL('/', req.url));
   }
-
-  return NextResponse.next();
 });
 
 export const config = {
   matcher: [
-    // Match all paths except static files, images, and health check
-    // Health check is excluded so it bypasses auth entirely
-    '/((?!_next/static|_next/image|favicon.ico|api/health|.*\\.png$|.*\\.svg$).*)',
+    // Match all paths except static files, images, health check, and auth API
+    '/((?!_next/static|_next/image|favicon.ico|api/health|api/auth).*)',
   ],
 };
 

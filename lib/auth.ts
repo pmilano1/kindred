@@ -1,14 +1,11 @@
 import NextAuth from 'next-auth';
-import GoogleProvider from 'next-auth/providers/google';
 import { pool } from './db';
+import authConfig from '../auth.config';
 
+// Full auth config with database callbacks
+// Only used server-side (not in proxy/middleware)
 export const { handlers, signIn, signOut, auth } = NextAuth({
-  providers: [
-    GoogleProvider({
-      clientId: process.env.GOOGLE_CLIENT_ID!,
-      clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
-    }),
-  ],
+  ...authConfig,
   callbacks: {
     async signIn({ user, account }) {
       if (!user.email) return false;

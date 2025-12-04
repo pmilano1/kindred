@@ -4,26 +4,22 @@ import { Person, Family, Stats, Residence, Occupation, Event, Fact, ResearchLog,
 export { pool };
 
 // Use DATABASE_URL if available (AWS), otherwise fall back to individual env vars (local Docker)
-function createPool() {
-  const dbUrl = process.env.DATABASE_URL;
-  if (dbUrl) {
-    // For RDS, disable SSL certificate verification (self-signed cert)
-    const isRds = dbUrl.includes('rds.amazonaws.com');
-    return new Pool({
-      connectionString: dbUrl,
-      ssl: isRds ? { rejectUnauthorized: false } : false
-    });
-  }
-  return new Pool({
-    host: process.env.DB_HOST || 'shared-data_postgres',
-    port: parseInt(process.env.DB_PORT || '5432'),
-    database: process.env.DB_NAME || 'genealogy',
-    user: process.env.DB_USER || 'genealogy',
-    password: process.env.DB_PASSWORD || 'GenTree2024!',
-  });
-}
-
-const pool = createPool();
+// Note: Pool config is determined at runtime based on environment
+const pool = new Pool(
+  process.env.DATABASE_URL
+    ? {
+        connectionString: process.env.DATABASE_URL,
+        // Always use SSL with rejectUnauthorized:false for DATABASE_URL (AWS RDS uses self-signed certs)
+        ssl: { rejectUnauthorized: false }
+      }
+    : {
+        host: process.env.DB_HOST || 'shared-data_postgres',
+        port: parseInt(process.env.DB_PORT || '5432'),
+        database: process.env.DB_NAME || 'genealogy',
+        user: process.env.DB_USER || 'genealogy',
+        password: process.env.DB_PASSWORD || 'GenTree2024!',
+      }
+);
 
 export async function getPeople(): Promise<Person[]> {
   const result = await pool.query(`

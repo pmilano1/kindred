@@ -112,7 +112,6 @@ export interface ResearchLog {
   source_name: string | null;  // Name of the source (for migrated sources)
   content: string;
   confidence: ResearchConfidence | null;
-  source_id: number | null;
   external_url: string | null;
 }
 

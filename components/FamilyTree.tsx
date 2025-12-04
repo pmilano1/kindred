@@ -301,6 +301,16 @@ export default function FamilyTree({ rootPersonId, showAncestors, onPersonClick,
       'brick_wall': '#ef4444',      // red
     };
 
+    // Status labels for tooltips
+    const statusLabels: Record<string, string> = {
+      'not_started': 'Not Started - No research done yet',
+      'in_progress': 'In Progress - Currently being researched',
+      'partial': 'Partial - Some info found, more needed',
+      'verified': 'Verified - Research complete, sources confirmed',
+      'needs_review': 'Needs Review - Conflicting info, needs verification',
+      'brick_wall': 'Brick Wall - Cannot find more info',
+    };
+
     // Draw nodes
     allNodes.forEach(node => {
       if (node.x === undefined || node.y === undefined) return;
@@ -346,25 +356,30 @@ export default function FamilyTree({ rootPersonId, showAncestors, onPersonClick,
           .text('👑');
       }
 
-      // Research status indicator (small colored dot in bottom-left)
-      nodeG.append('circle')
+      // Research status indicator (small colored dot in bottom-left) with tooltip
+      const statusG = nodeG.append('g').style('cursor', 'help');
+      statusG.append('title').text(statusLabels[status] || 'Unknown status');
+      statusG.append('circle')
         .attr('cx', 10)
         .attr('cy', nodeHeight - 10)
-        .attr('r', 4)
+        .attr('r', 5)
         .attr('fill', statusColors[status] || '#9ca3af')
         .attr('stroke', '#fff')
         .attr('stroke-width', 1);
 
-      // Priority indicator (small number in bottom-right if priority > 0)
+      // Priority indicator (small number in bottom-right if priority > 0) with tooltip
       if (priority > 0) {
-        nodeG.append('rect')
+        const priorityLabel = priority <= 3 ? 'Low' : priority <= 6 ? 'Medium' : priority <= 9 ? 'High' : 'Urgent';
+        const priorityG = nodeG.append('g').style('cursor', 'help');
+        priorityG.append('title').text(`Priority ${priority}/10 (${priorityLabel}) - Higher = research sooner`);
+        priorityG.append('rect')
           .attr('x', nodeWidth - 18)
           .attr('y', nodeHeight - 16)
           .attr('width', 14)
           .attr('height', 12)
           .attr('rx', 2)
           .attr('fill', priority >= 7 ? '#ef4444' : priority >= 4 ? '#f97316' : '#3b82f6');
-        nodeG.append('text')
+        priorityG.append('text')
           .attr('x', nodeWidth - 11)
           .attr('y', nodeHeight - 6)
           .attr('text-anchor', 'middle')

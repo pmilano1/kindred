@@ -5,9 +5,10 @@ export default auth((req) => {
   const isLoggedIn = !!req.auth;
   const isLoginPage = req.nextUrl.pathname === '/login';
   const isAuthApi = req.nextUrl.pathname.startsWith('/api/auth');
+  const isHealthCheck = req.nextUrl.pathname === '/api/health';
 
-  // Allow auth API routes
-  if (isAuthApi) {
+  // Allow auth API routes and health check
+  if (isAuthApi || isHealthCheck) {
     return NextResponse.next();
   }
 

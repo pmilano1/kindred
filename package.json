@@ -9,11 +9,13 @@
     "lint": "eslint"
   },
   "dependencies": {
+    "@auth/core": "^0.41.0",
     "@types/d3": "^7.4.3",
     "@types/pg": "^8.15.6",
     "d3": "^7.9.0",
     "family-chart": "^0.9.0",
     "next": "16.0.6",
+    "next-auth": "^5.0.0-beta.30",
     "pg": "^8.16.3",
     "react": "19.2.0",
     "react-dom": "19.2.0"

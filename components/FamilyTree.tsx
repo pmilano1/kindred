@@ -433,21 +433,23 @@ export default function FamilyTree({ rootPersonId, showAncestors, onPersonClick,
         const notableName = notablePerson?.name || 'Notable Person';
 
         // Draw dashed connection line from branching ancestor down to notable branch
+        // Line goes down from ancestor, then horizontally, then to the top of the first notable tile
+        const labelY = branchStartY - nodeHeight/2 - 25; // Above the label
         g.append('path')
           .attr('d', `M${branchingNode.x},${branchingNode.y + nodeHeight/2}
-                      L${branchingNode.x},${branchStartY - 30}
-                      L${branchStartX - nodeWidth/2 - 10},${branchStartY - 30}
-                      L${branchStartX - nodeWidth/2 - 10},${branchStartY}`)
+                      L${branchingNode.x},${labelY}
+                      L${branchStartX - nodeWidth/2 - 10},${labelY}
+                      L${branchStartX - nodeWidth/2 - 10},${branchStartY - nodeHeight/2}`)
           .attr('fill', 'none')
           .attr('stroke', '#f59e0b')
           .attr('stroke-width', 2)
           .attr('stroke-dasharray', '5,3');
 
-        // Label for the branch
+        // Label for the branch - positioned ABOVE the tiles
         g.append('text')
-          .attr('x', branchStartX - nodeWidth/2 - 5)
-          .attr('y', branchStartY - 8)
-          .attr('font-size', '10px')
+          .attr('x', branchStartX - nodeWidth/2)
+          .attr('y', branchStartY - nodeHeight/2 - 12)
+          .attr('font-size', '11px')
           .attr('font-weight', '600')
           .attr('fill', '#b45309')
           .text(`👑 Collateral Line to ${notableName}`);

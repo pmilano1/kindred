@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import { useSession, signOut } from 'next-auth/react';
 
 const navItems = [
   { href: '/', label: 'Dashboard', icon: '🏠' },
@@ -14,6 +15,8 @@ const navItems = [
 
 export default function Sidebar() {
   const pathname = usePathname();
+  const { data: session } = useSession();
+  const isAdmin = session?.user?.role === 'admin';
 
   return (
     <nav className="sidebar">
@@ -34,8 +37,32 @@ export default function Sidebar() {
             </Link>
           </li>
         ))}
+        {isAdmin && (
+          <li>
+            <Link
+              href="/admin"
+              className={`nav-link ${pathname === '/admin' ? 'active' : ''}`}
+            >
+              <span className="mr-3">⚙️</span>
+              Admin
+            </Link>
+          </li>
+        )}
       </ul>
       <div className="p-6 border-t border-white/10">
+        {session?.user && (
+          <div className="mb-4">
+            <p className="text-sm text-gray-300 truncate">{session.user.name}</p>
+            <p className="text-xs text-gray-500 truncate">{session.user.email}</p>
+            <p className="text-xs text-gray-600 capitalize mt-1">{session.user.role}</p>
+            <button
+              onClick={() => signOut({ callbackUrl: '/login' })}
+              className="mt-2 text-xs text-red-400 hover:text-red-300"
+            >
+              Sign Out
+            </button>
+          </div>
+        )}
         <p className="text-xs text-gray-500 text-center">
           Data from FamilySearch
         </p>

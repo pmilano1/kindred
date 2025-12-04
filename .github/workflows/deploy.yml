@@ -1,0 +1,97 @@
+name: Build and Deploy to AWS
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+env:
+  AWS_REGION: us-east-1
+  ECR_REPOSITORY: genealogy-frontend
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Build, tag, and push image to Amazon ECR
+        id: build-image
+        env:
+          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+          IMAGE_TAG: ${{ github.sha }}
+        run: |
+          docker build \
+            --build-arg DATABASE_URL="${{ secrets.DATABASE_URL }}" \
+            --build-arg NEXTAUTH_URL="${{ secrets.NEXTAUTH_URL }}" \
+            --build-arg NEXTAUTH_SECRET="${{ secrets.NEXTAUTH_SECRET }}" \
+            --build-arg GOOGLE_CLIENT_ID="${{ secrets.GOOGLE_CLIENT_ID }}" \
+            --build-arg GOOGLE_CLIENT_SECRET="${{ secrets.GOOGLE_CLIENT_SECRET }}" \
+            -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG \
+            -t $ECR_REGISTRY/$ECR_REPOSITORY:latest \
+            .
+          docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
+          docker push $ECR_REGISTRY/$ECR_REPOSITORY:latest
+          echo "image=$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG" >> $GITHUB_OUTPUT
+
+      - name: Deploy to App Runner
+        run: |
+          # Check if service exists
+          SERVICE_ARN=$(aws apprunner list-services --query "ServiceSummaryList[?ServiceName=='genealogy-frontend'].ServiceArn" --output text)
+          
+          if [ -z "$SERVICE_ARN" ]; then
+            echo "Creating new App Runner service..."
+            aws apprunner create-service \
+              --service-name genealogy-frontend \
+              --source-configuration '{
+                "AuthenticationConfiguration": {
+                  "AccessRoleArn": "${{ secrets.APPRUNNER_ECR_ROLE_ARN }}"
+                },
+                "ImageRepository": {
+                  "ImageIdentifier": "${{ steps.login-ecr.outputs.registry }}/genealogy-frontend:latest",
+                  "ImageRepositoryType": "ECR",
+                  "ImageConfiguration": {
+                    "Port": "3000",
+                    "RuntimeEnvironmentVariables": {
+                      "DATABASE_URL": "${{ secrets.DATABASE_URL }}",
+                      "NEXTAUTH_URL": "${{ secrets.NEXTAUTH_URL }}",
+                      "NEXTAUTH_SECRET": "${{ secrets.NEXTAUTH_SECRET }}",
+                      "GOOGLE_CLIENT_ID": "${{ secrets.GOOGLE_CLIENT_ID }}",
+                      "GOOGLE_CLIENT_SECRET": "${{ secrets.GOOGLE_CLIENT_SECRET }}"
+                    }
+                  }
+                }
+              }' \
+              --instance-configuration '{
+                "Cpu": "1024",
+                "Memory": "2048",
+                "InstanceRoleArn": "${{ secrets.APPRUNNER_INSTANCE_ROLE_ARN }}"
+              }' \
+              --network-configuration '{
+                "EgressConfiguration": {
+                  "EgressType": "VPC",
+                  "VpcConnectorArn": "${{ secrets.VPC_CONNECTOR_ARN }}"
+                }
+              }' \
+              --tags Key=Project,Value=genealogy Key=Environment,Value=production
+          else
+            echo "Updating existing App Runner service..."
+            aws apprunner start-deployment --service-arn "$SERVICE_ARN"
+          fi
+

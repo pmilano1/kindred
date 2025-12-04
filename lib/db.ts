@@ -5,7 +5,10 @@ export { pool };
 
 // Use DATABASE_URL if available (AWS), otherwise fall back to individual env vars (local Docker)
 const pool = process.env.DATABASE_URL
-  ? new Pool({ connectionString: process.env.DATABASE_URL })
+  ? new Pool({
+      connectionString: process.env.DATABASE_URL,
+      ssl: process.env.DATABASE_URL.includes('rds.amazonaws.com') ? { rejectUnauthorized: false } : false
+    })
   : new Pool({
       host: process.env.DB_HOST || 'shared-data_postgres',
       port: parseInt(process.env.DB_PORT || '5432'),

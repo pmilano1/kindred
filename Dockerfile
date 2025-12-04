@@ -43,7 +43,7 @@ USER nextjs
 EXPOSE 3000
 
 ENV PORT=3000
-ENV HOSTNAME="0.0.0.0"
 
-CMD ["node", "server.js"]
+# Force binding to all interfaces - HOSTNAME env var doesn't work reliably
+CMD ["node", "-e", "process.env.HOSTNAME='0.0.0.0'; require('./server.js')"]
 

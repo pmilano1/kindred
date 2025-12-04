@@ -51,9 +51,9 @@ jobs:
         run: |
           # Check if service exists
           SERVICE_ARN=$(aws apprunner list-services --query "ServiceSummaryList[?ServiceName=='genealogy-frontend'].ServiceArn" --output text)
-          
+
           if [ -z "$SERVICE_ARN" ]; then
-            echo "Creating new App Runner service..."
+            echo "Creating new App Runner service WITHOUT VPC connector first..."
             aws apprunner create-service \
               --service-name genealogy-frontend \
               --source-configuration '{
@@ -79,12 +79,6 @@ jobs:
                 "Cpu": "1024",
                 "Memory": "2048",
                 "InstanceRoleArn": "${{ secrets.APPRUNNER_INSTANCE_ROLE_ARN }}"
-              }' \
-              --network-configuration '{
-                "EgressConfiguration": {
-                  "EgressType": "VPC",
-                  "VpcConnectorArn": "${{ secrets.VPC_CONNECTOR_ARN }}"
-                }
               }' \
               --health-check-configuration '{
                 "Protocol": "HTTP",

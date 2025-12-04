@@ -3,13 +3,16 @@ import { Person, Family, Stats, Residence, Occupation, Event, Fact, ResearchLog,
 
 export { pool };
 
-const pool = new Pool({
-  host: process.env.DB_HOST || 'shared-data_postgres',
-  port: parseInt(process.env.DB_PORT || '5432'),
-  database: process.env.DB_NAME || 'genealogy',
-  user: process.env.DB_USER || 'genealogy',
-  password: process.env.DB_PASSWORD || 'GenTree2024!',
-});
+// Use DATABASE_URL if available (AWS), otherwise fall back to individual env vars (local Docker)
+const pool = process.env.DATABASE_URL
+  ? new Pool({ connectionString: process.env.DATABASE_URL })
+  : new Pool({
+      host: process.env.DB_HOST || 'shared-data_postgres',
+      port: parseInt(process.env.DB_PORT || '5432'),
+      database: process.env.DB_NAME || 'genealogy',
+      user: process.env.DB_USER || 'genealogy',
+      password: process.env.DB_PASSWORD || 'GenTree2024!',
+    });
 
 export async function getPeople(): Promise<Person[]> {
   const result = await pool.query(`

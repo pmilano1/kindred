@@ -86,6 +86,14 @@ jobs:
                   "VpcConnectorArn": "${{ secrets.VPC_CONNECTOR_ARN }}"
                 }
               }' \
+              --health-check-configuration '{
+                "Protocol": "HTTP",
+                "Path": "/api/health",
+                "Interval": 10,
+                "Timeout": 5,
+                "HealthyThreshold": 1,
+                "UnhealthyThreshold": 5
+              }' \
               --tags Key=Project,Value=genealogy Key=Environment,Value=production
           else
             echo "Updating existing App Runner service..."

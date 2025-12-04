@@ -1,5 +1,5 @@
 import { Pool } from 'pg';
-import { Person, Family, Stats, Residence, Occupation, Event, Fact, Source, ResearchLog, ResearchQueueItem } from './types';
+import { Person, Family, Stats, Residence, Occupation, Event, Fact, ResearchLog, ResearchQueueItem } from './types';
 
 export { pool };
 

@@ -59,6 +59,13 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         if (userResult.rows.length > 0) {
           session.user.id = userResult.rows[0].id;
           session.user.role = userResult.rows[0].role;
+
+          // Update last_accessed (throttled to once per minute to reduce DB writes)
+          pool.query(
+            `UPDATE users SET last_accessed = NOW()
+             WHERE id = $1 AND (last_accessed IS NULL OR last_accessed < NOW() - INTERVAL '1 minute')`,
+            [userResult.rows[0].id]
+          ).catch(() => {}); // Fire and forget, don't block session
         }
       }
       return session;

@@ -13,6 +13,7 @@ interface User {
   role: string;
   created_at: string;
   last_login: string | null;
+  last_accessed: string | null;
 }
 
 interface Invitation {
@@ -162,7 +163,7 @@ export default function AdminPage() {
           <h2 className="text-xl font-semibold mb-4">Users ({users.length})</h2>
           <table className="w-full">
             <thead><tr className="text-left text-sm text-gray-500 border-b">
-              <th className="pb-2">User</th><th className="pb-2">Role</th><th className="pb-2">Last Login</th><th></th>
+              <th className="pb-2">User</th><th className="pb-2">Role</th><th className="pb-2">Last Login</th><th className="pb-2">Last Accessed</th><th></th>
             </tr></thead>
             <tbody>
               {users.map(user => (
@@ -181,6 +182,9 @@ export default function AdminPage() {
                   </td>
                   <td className="py-3 text-sm text-gray-500">
                     {user.last_login ? new Date(user.last_login).toLocaleString() : 'Never'}
+                  </td>
+                  <td className="py-3 text-sm text-gray-500">
+                    {user.last_accessed ? new Date(user.last_accessed).toLocaleString() : 'Never'}
                   </td>
                   <td className="py-3">
                     {user.id !== session?.user?.id && (

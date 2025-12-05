@@ -629,19 +629,22 @@ export default function FamilyTree({ rootPersonId, showAncestors, onPersonClick,
 
     const g = svg.append('g');
 
-    // Draw links - straight lines with horizontal connector (matching descendant view style)
+    // Draw links - straight lines with horizontal connector (identical to descendant view)
     const drawLinks = (node: PedigreeNode) => {
       if (!node.x || !node.y) return;
       const hasParents = node.father || node.mother;
       if (!hasParents) return;
 
-      const childY = node.y + nodeHeight;
-      const parentY = node.y + levelGap;
-      const midY = childY + (parentY - childY) / 2;
+      // Get actual parent y position (use father or mother, whichever exists)
+      const parentY = node.father?.y ?? node.mother?.y;
+      if (parentY === undefined) return;
 
-      // Vertical line down from child
+      const nodeBottom = node.y + nodeHeight;
+      const midY = nodeBottom + (parentY - nodeBottom) / 2;
+
+      // Vertical line down from current node (same as descendant)
       g.append('line')
-        .attr('x1', node.x).attr('y1', childY)
+        .attr('x1', node.x).attr('y1', nodeBottom)
         .attr('x2', node.x).attr('y2', midY)
         .attr('stroke', '#4a5568').attr('stroke-width', 1);
 
@@ -659,24 +662,24 @@ export default function FamilyTree({ rootPersonId, showAncestors, onPersonClick,
           .attr('x2', maxX).attr('y2', midY)
           .attr('stroke', '#4a5568').attr('stroke-width', 1);
 
-        // Vertical lines up to each parent
-        if (node.father?.x && node.father?.y) {
+        // Vertical lines down to each parent (from midY to top of parent tile)
+        if (node.father?.x !== undefined && node.father?.y !== undefined) {
           g.append('line')
             .attr('x1', node.father.x).attr('y1', midY)
-            .attr('x2', node.father.x).attr('y2', parentY)
+            .attr('x2', node.father.x).attr('y2', node.father.y)
             .attr('stroke', '#4a5568').attr('stroke-width', 1);
           drawLinks(node.father);
         }
-        if (node.mother?.x && node.mother?.y) {
+        if (node.mother?.x !== undefined && node.mother?.y !== undefined) {
           g.append('line')
             .attr('x1', node.mother.x).attr('y1', midY)
-            .attr('x2', node.mother.x).attr('y2', parentY)
+            .attr('x2', node.mother.x).attr('y2', node.mother.y)
             .attr('stroke', '#4a5568').attr('stroke-width', 1);
           drawLinks(node.mother);
         }
 
-        // Marriage line between parents (gold)
-        if (node.father?.x && node.mother?.x && node.father?.y) {
+        // Marriage line between parents (gold) - same style as descendant
+        if (node.father?.x !== undefined && node.mother?.x !== undefined && node.father?.y !== undefined) {
           g.append('line')
             .attr('x1', node.father.x + nodeWidth/2).attr('y1', node.father.y + nodeHeight/2)
             .attr('x2', node.mother.x - nodeWidth/2).attr('y2', node.father.y + nodeHeight/2)

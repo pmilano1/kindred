@@ -358,9 +358,9 @@ export default function FamilyTree({ rootPersonId, showAncestors, onPersonClick,
           .text('👑');
       }
 
-      // Coat of arms image on bottom-left (mostly inside tile)
+      // Coat of arms image - positioned outside tile, overlapping bottom-left corner
       if (person.coatOfArmsUrl) {
-        const crestSize = 24;
+        const crestSize = 28;
         const crestG = nodeG.append('g')
           .style('cursor', 'pointer')
           .on('click', (e: MouseEvent) => {
@@ -369,11 +369,11 @@ export default function FamilyTree({ rootPersonId, showAncestors, onPersonClick,
           });
         crestG.append('title').text('Family coat of arms - click to view profile');
 
-        // The actual coat of arms image - positioned in bottom-left corner of tile
+        // Position: half outside tile to bottom-left
         crestG.append('image')
           .attr('href', person.coatOfArmsUrl)
-          .attr('x', 4)
-          .attr('y', nodeHeight - crestSize - 4)
+          .attr('x', -crestSize / 3)
+          .attr('y', nodeHeight - crestSize / 2)
           .attr('width', crestSize)
           .attr('height', crestSize)
           .attr('preserveAspectRatio', 'xMidYMid meet');
@@ -486,9 +486,9 @@ export default function FamilyTree({ rootPersonId, showAncestors, onPersonClick,
             nodeG.append('text').attr('x', 8).attr('y', 14).attr('font-size', '12px').text('👑');
           }
 
-          // Coat of arms image on bottom-left (inside tile)
+          // Coat of arms image - positioned outside tile, overlapping bottom-left corner
           if (person.coatOfArmsUrl) {
-            const crestSize = 24;
+            const crestSize = 28;
             const crestG = nodeG.append('g')
               .style('cursor', 'pointer')
               .on('click', (e: MouseEvent) => {
@@ -497,11 +497,11 @@ export default function FamilyTree({ rootPersonId, showAncestors, onPersonClick,
               });
             crestG.append('title').text('Family coat of arms - click to view profile');
 
-            // The actual coat of arms image - positioned in bottom-left corner
+            // Position: half outside tile to bottom-left
             crestG.append('image')
               .attr('href', person.coatOfArmsUrl)
-              .attr('x', 4)
-              .attr('y', nodeHeight - crestSize - 4)
+              .attr('x', -crestSize / 3)
+              .attr('y', nodeHeight - crestSize / 2)
               .attr('width', crestSize)
               .attr('height', crestSize)
               .attr('preserveAspectRatio', 'xMidYMid meet');

@@ -17,20 +17,19 @@ const handler = startServerAndCreateNextHandler<NextRequest>(server, {
   context: async (req) => {
     // Get session from NextAuth
     const session = await auth();
-    
-    // Return context with user info if authenticated
-    if (session?.user) {
-      return {
-        user: {
-          id: (session.user as { id?: string }).id || '',
-          email: session.user.email || '',
-          role: (session.user as { role?: string }).role || 'viewer',
-        },
-      };
+
+    // Require authentication for all operations
+    if (!session?.user) {
+      throw new Error('Authentication required');
     }
-    
-    // No authentication - queries still work, mutations will fail
-    return {};
+
+    return {
+      user: {
+        id: (session.user as { id?: string }).id || '',
+        email: session.user.email || '',
+        role: (session.user as { role?: string }).role || 'viewer',
+      },
+    };
   },
 });
 

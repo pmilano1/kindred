@@ -629,32 +629,34 @@ export default function FamilyTree({ rootPersonId, showAncestors, onPersonClick,
 
     const g = svg.append('g');
 
-    // Draw links - straight lines with horizontal connector (identical to descendant view)
+    // Draw links - identical to descendant view (vertical from node, horizontal bar, vertical to parents)
     const drawLinks = (node: PedigreeNode) => {
-      if (!node.x || !node.y) return;
+      if (node.x === undefined || node.y === undefined) return;
       const hasParents = node.father || node.mother;
       if (!hasParents) return;
 
-      // Get actual parent y position (use father or mother, whichever exists)
+      // Get parent y position (parents are ABOVE, so lower y value)
       const parentY = node.father?.y ?? node.mother?.y;
       if (parentY === undefined) return;
 
-      const nodeBottom = node.y + nodeHeight;
-      const midY = nodeBottom + (parentY - nodeBottom) / 2;
+      // Same pattern as descendant: node bottom → midY → parent bottom
+      const nodeTop = node.y;
+      const parentBottom = parentY + nodeHeight;
+      const midY = parentBottom + (nodeTop - parentBottom) / 2;
 
-      // Vertical line down from current node (same as descendant)
+      // Vertical line UP from current node top to midY
       g.append('line')
-        .attr('x1', node.x).attr('y1', nodeBottom)
+        .attr('x1', node.x).attr('y1', nodeTop)
         .attr('x2', node.x).attr('y2', midY)
         .attr('stroke', '#4a5568').attr('stroke-width', 1);
 
       // Get parent x positions
       const parentXs: number[] = [];
-      if (node.father?.x) parentXs.push(node.father.x);
-      if (node.mother?.x) parentXs.push(node.mother.x);
+      if (node.father?.x !== undefined) parentXs.push(node.father.x);
+      if (node.mother?.x !== undefined) parentXs.push(node.mother.x);
 
       if (parentXs.length > 0) {
-        // Horizontal line spanning parents
+        // Horizontal line spanning parents at midY
         const minX = Math.min(...parentXs);
         const maxX = Math.max(...parentXs);
         g.append('line')
@@ -662,23 +664,23 @@ export default function FamilyTree({ rootPersonId, showAncestors, onPersonClick,
           .attr('x2', maxX).attr('y2', midY)
           .attr('stroke', '#4a5568').attr('stroke-width', 1);
 
-        // Vertical lines down to each parent (from midY to top of parent tile)
+        // Vertical lines UP from midY to each parent's bottom
         if (node.father?.x !== undefined && node.father?.y !== undefined) {
           g.append('line')
             .attr('x1', node.father.x).attr('y1', midY)
-            .attr('x2', node.father.x).attr('y2', node.father.y)
+            .attr('x2', node.father.x).attr('y2', node.father.y + nodeHeight)
             .attr('stroke', '#4a5568').attr('stroke-width', 1);
           drawLinks(node.father);
         }
         if (node.mother?.x !== undefined && node.mother?.y !== undefined) {
           g.append('line')
             .attr('x1', node.mother.x).attr('y1', midY)
-            .attr('x2', node.mother.x).attr('y2', node.mother.y)
+            .attr('x2', node.mother.x).attr('y2', node.mother.y + nodeHeight)
             .attr('stroke', '#4a5568').attr('stroke-width', 1);
           drawLinks(node.mother);
         }
 
-        // Marriage line between parents (gold) - same style as descendant
+        // Marriage line between parents (gold) - between their tiles
         if (node.father?.x !== undefined && node.mother?.x !== undefined && node.father?.y !== undefined) {
           g.append('line')
             .attr('x1', node.father.x + nodeWidth/2).attr('y1', node.father.y + nodeHeight/2)

@@ -36,8 +36,8 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         // Accept invitation and create user
         const inv = invitation.rows[0];
         await pool.query(
-          `INSERT INTO users (email, name, image, role, invited_at)
-           VALUES ($1, $2, $3, $4, NOW())`,
+          `INSERT INTO users (email, name, image, role, invited_at, last_login)
+           VALUES ($1, $2, $3, $4, NOW(), NOW())`,
           [user.email, user.name, user.image, inv.role]
         );
         await pool.query(

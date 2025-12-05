@@ -1,8 +1,6 @@
 import { Pool } from 'pg';
 import { Person, Family, Stats, Residence, Occupation, Event, Fact, ResearchLog, ResearchQueueItem } from './types';
 
-export { pool };
-
 // Lazy pool initialization - created on first use with runtime env vars
 let _pool: Pool | null = null;
 
@@ -41,6 +39,8 @@ const pool = new Proxy({} as Pool, {
     return typeof value === 'function' ? value.bind(realPool) : value;
   }
 });
+
+export { pool };
 
 export async function getPeople(): Promise<Person[]> {
   const result = await pool.query(`

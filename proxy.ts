@@ -22,8 +22,8 @@ export default auth((req) => {
 
 export const config = {
   matcher: [
-    // Match all paths except static files, images, health check, and auth API
-    '/((?!_next/static|_next/image|images/|favicon.ico|api/health|api/auth).*)',
+    // Match all paths except static files, images, health check, auth API, and GraphQL API
+    '/((?!_next/static|_next/image|images/|favicon.ico|api/health|api/auth|api/graphql).*)',
   ],
 };
 

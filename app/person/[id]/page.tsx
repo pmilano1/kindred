@@ -142,55 +142,6 @@ export default async function PersonPage({ params }: PageProps) {
             {/* Research Panel */}
             <ResearchPanel personId={id} personName={person.name_full} />
 
-            {/* Parents */}
-            {asChild.length > 0 && (
-              <div className="card p-6 mb-6">
-                <h3 className="section-title">Parents</h3>
-                <div className="grid md:grid-cols-2 gap-4">
-                  {asChild[0].parents.map(parent => (
-                    <Link key={parent.id} href={`/person/${parent.id}`} className="block">
-                      <div className={`p-4 rounded-lg border-l-4 ${parent.sex === 'F' ? 'border-l-pink-400 bg-pink-50' : 'border-l-blue-400 bg-blue-50'} hover:shadow-md transition`}>
-                        <p className="font-semibold">{parent.name_full}</p>
-                        <p className="text-sm text-gray-500">{parent.birth_year || '?'} – {parent.death_year || (parent.living ? 'Living' : '?')}</p>
-                      </div>
-                    </Link>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {/* Siblings */}
-            {siblings.length > 0 && (
-              <div className="card p-6 mb-6">
-                <h3 className="section-title">Siblings ({siblings.length})</h3>
-                <div className="grid md:grid-cols-2 gap-2">
-                  {siblings.map(sibling => (
-                    <Link key={sibling.id} href={`/person/${sibling.id}`}>
-                      <div className={`p-3 rounded border-l-4 ${sibling.sex === 'F' ? 'border-l-pink-300 bg-pink-50/50' : 'border-l-blue-300 bg-blue-50/50'} hover:shadow-sm transition text-sm`}>
-                        {sibling.name_full} {sibling.birth_year ? `(b. ${sibling.birth_year})` : ''}
-                      </div>
-                    </Link>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {/* Siblings */}
-            {siblings.length > 0 && (
-              <div className="card p-6 mb-6">
-                <h3 className="section-title">Siblings ({siblings.length})</h3>
-                <div className="grid md:grid-cols-2 gap-2">
-                  {siblings.map(sibling => (
-                    <Link key={sibling.id} href={`/person/${sibling.id}`}>
-                      <div className={`p-3 rounded border-l-4 ${sibling.sex === 'F' ? 'border-l-pink-300 bg-pink-50/50' : 'border-l-blue-300 bg-blue-50/50'} hover:shadow-sm transition text-sm`}>
-                        {sibling.name_full} {sibling.birth_year ? `(b. ${sibling.birth_year})` : ''}
-                      </div>
-                    </Link>
-                  ))}
-                </div>
-              </div>
-            )}
-
             {/* Spouse & Children */}
             {familiesWithChildren.length > 0 && familiesWithChildren.map(({ family, children, spouse }, i) => (
               <div key={family.id} className="card p-6 mb-6">
@@ -229,6 +180,39 @@ export default async function PersonPage({ params }: PageProps) {
                 )}
               </div>
             ))}
+
+            {/* Parents */}
+            {asChild.length > 0 && (
+              <div className="card p-6 mb-6">
+                <h3 className="section-title">Parents</h3>
+                <div className="grid md:grid-cols-2 gap-4">
+                  {asChild[0].parents.map(parent => (
+                    <Link key={parent.id} href={`/person/${parent.id}`} className="block">
+                      <div className={`p-4 rounded-lg border-l-4 ${parent.sex === 'F' ? 'border-l-pink-400 bg-pink-50' : 'border-l-blue-400 bg-blue-50'} hover:shadow-md transition`}>
+                        <p className="font-semibold">{parent.name_full}</p>
+                        <p className="text-sm text-gray-500">{parent.birth_year || '?'} – {parent.death_year || (parent.living ? 'Living' : '?')}</p>
+                      </div>
+                    </Link>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Siblings */}
+            {siblings.length > 0 && (
+              <div className="card p-6 mb-6">
+                <h3 className="section-title">Siblings ({siblings.length})</h3>
+                <div className="grid md:grid-cols-2 gap-2">
+                  {siblings.map(sibling => (
+                    <Link key={sibling.id} href={`/person/${sibling.id}`}>
+                      <div className={`p-3 rounded border-l-4 ${sibling.sex === 'F' ? 'border-l-pink-300 bg-pink-50/50' : 'border-l-blue-300 bg-blue-50/50'} hover:shadow-sm transition text-sm`}>
+                        {sibling.name_full} {sibling.birth_year ? `(b. ${sibling.birth_year})` : ''}
+                      </div>
+                    </Link>
+                  ))}
+                </div>
+              </div>
+            )}
 
             {/* Occupations */}
             {occupations.length > 0 && (

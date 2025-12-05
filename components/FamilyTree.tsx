@@ -380,12 +380,7 @@ export default function FamilyTree({ rootPersonId, showAncestors, onPersonClick,
 
         // Marriage connector line between person and spouse
         if (node.spouse && node.x !== undefined && node.y !== undefined) {
-          g.append('line')
-            .attr('x1', node.x - nodeWidth / 2 - spouseGap / 2)
-            .attr('y1', node.y + nodeHeight / 2)
-            .attr('x2', node.x + nodeWidth / 2 + spouseGap / 2)
-            .attr('y2', node.y + nodeHeight / 2)
-            .attr('stroke', '#f59e0b').attr('stroke-width', 2);
+          // No marriage line - cleaner look
         }
       });
 
@@ -513,12 +508,7 @@ export default function FamilyTree({ rootPersonId, showAncestors, onPersonClick,
         }
         // Marriage line between parents
         if (fatherPerson && motherPerson) {
-          g.append('line')
-            .attr('x1', descendantTree.x - nodeWidth/2 - spouseGap + nodeWidth/2)
-            .attr('y1', 30 + nodeHeight/2)
-            .attr('x2', descendantTree.x + nodeWidth/2 + spouseGap - nodeWidth/2)
-            .attr('y2', 30 + nodeHeight/2)
-            .attr('stroke', '#f59e0b').attr('stroke-width', 2);
+          // No marriage line - cleaner look
         }
 
         // Draw parent tiles (dimmed to indicate navigation)
@@ -572,49 +562,125 @@ export default function FamilyTree({ rootPersonId, showAncestors, onPersonClick,
 
     const nodeWidth = 115;
     const nodeHeight = 42;
-    const levelGap = 52; // Vertical gap between generations
-    const nodeGap = 4; // Horizontal gap between sibling nodes
+    const levelGap = 60; // Vertical gap between generations (same as descendants)
+    const nodeGap = 8; // Horizontal gap between nodes
+    const spouseGap = 4; // Gap between person and spouse (same as descendants)
 
-    // Position nodes bottom-up: leaves first, parents centered above children
+    // Find spouse of root person for level 0 display (like descendant view)
+    const rootFamilies = data.families.filter(f => f.husband_id === rootPersonId || f.wife_id === rootPersonId);
+    const rootSpouseId = rootFamilies.length > 0
+      ? (rootFamilies[0].husband_id === rootPersonId ? rootFamilies[0].wife_id : rootFamilies[0].husband_id)
+      : null;
+    const rootSpouse = rootSpouseId ? data.people[rootSpouseId] : null;
+
+    // Position nodes - parents displayed as couples side-by-side at SAME Y level
     let leafX = 0;
-    const positionNodes = (node: PedigreeNode, gen: number): number => {
+
+    // Track visited nodes to handle pedigree collapse (same ancestor through multiple lines)
+    const visitedPositions = new Map<string, { x: number; y: number }>();
+
+    // First pass: assign generation levels (parents must be at same level as each other)
+    // Track assigned generations to handle pedigree collapse - use the MINIMUM gen (closest to root)
+    const assignedGens = new Map<string, number>();
+    // Also track all node objects for each person ID so we can update all of them
+    const nodesByPersonId = new Map<string, PedigreeNode[]>();
+
+    const collectAllNodeInstances = (node: PedigreeNode) => {
+      const existing = nodesByPersonId.get(node.id) || [];
+      existing.push(node);
+      nodesByPersonId.set(node.id, existing);
+      if (node.father) collectAllNodeInstances(node.father);
+      if (node.mother) collectAllNodeInstances(node.mother);
+    };
+
+    const assignGenerations = (node: PedigreeNode, gen: number) => {
+      const existingGen = assignedGens.get(node.id);
+      if (existingGen !== undefined) {
+        // Already visited - use the stored generation for THIS node object
+        node.y = existingGen * levelGap + 30;
+        // If new path is closer to root, update stored gen and all node instances
+        if (gen < existingGen) {
+          assignedGens.set(node.id, gen);
+          const allNodes = nodesByPersonId.get(node.id) || [];
+          allNodes.forEach(n => n.y = gen * levelGap + 30);
+        }
+        return; // Don't recurse again
+      }
+
+      assignedGens.set(node.id, gen);
       node.y = gen * levelGap + 30;
 
-      if (!node.father && !node.mother) {
+      // Both parents at same generation level (gen + 1)
+      if (node.father) assignGenerations(node.father, gen + 1);
+      if (node.mother) assignGenerations(node.mother, gen + 1);
+    };
+
+    // First collect all nodes, then assign generations
+    collectAllNodeInstances(pedigree);
+    assignGenerations(pedigree, 0);
+
+    // Second pass: assign X positions bottom-up (from leaves to root)
+    const positionNodes = (node: PedigreeNode): { minX: number; maxX: number } => {
+      // Check if this person was already positioned (pedigree collapse)
+      const existing = visitedPositions.get(node.id);
+      if (existing) {
+        node.x = existing.x;
+        // Don't overwrite Y - it was set correctly in assignGenerations
+        return { minX: node.x - nodeWidth / 2, maxX: node.x + nodeWidth / 2 };
+      }
+
+      const hasParents = node.father || node.mother;
+
+      if (!hasParents) {
         // Leaf node - assign next available X
         node.x = leafX + nodeWidth / 2;
         leafX += nodeWidth + nodeGap;
-        return node.x;
+        visitedPositions.set(node.id, { x: node.x, y: node.y! });
+        return { minX: node.x - nodeWidth / 2, maxX: node.x + nodeWidth / 2 };
       }
 
-      // Position children first
-      let fatherX = node.x || 0;
-      let motherX = node.x || 0;
+      // Position parents first (they're displayed as a couple above this node)
+      let minX = Infinity;
+      let maxX = -Infinity;
 
-      if (node.father) {
-        fatherX = positionNodes(node.father, gen + 1);
-      }
-      if (node.mother) {
-        motherX = positionNodes(node.mother, gen + 1);
-      }
-
-      // Parent centered between children
       if (node.father && node.mother) {
-        node.x = (fatherX + motherX) / 2;
+        // Both parents - position them as a couple unit
+        const fatherBounds = positionNodes(node.father);
+        const motherBounds = positionNodes(node.mother);
+        minX = Math.min(fatherBounds.minX, motherBounds.minX);
+        maxX = Math.max(fatherBounds.maxX, motherBounds.maxX);
       } else if (node.father) {
-        node.x = fatherX;
+        const bounds = positionNodes(node.father);
+        minX = bounds.minX;
+        maxX = bounds.maxX;
       } else if (node.mother) {
-        node.x = motherX;
+        const bounds = positionNodes(node.mother);
+        minX = bounds.minX;
+        maxX = bounds.maxX;
       }
 
-      return node.x!;
+      // Center this node under its parents
+      node.x = (minX + maxX) / 2;
+      visitedPositions.set(node.id, { x: node.x, y: node.y! });
+
+      return { minX: Math.min(minX, node.x - nodeWidth / 2), maxX: Math.max(maxX, node.x + nodeWidth / 2) };
     };
 
-    positionNodes(pedigree, 0);
+    positionNodes(pedigree);
 
-    // Collect all nodes
+    // Adjust root position if spouse exists - shift left to make room for spouse on right
+    if (rootSpouse && pedigree.x !== undefined) {
+      const shift = (nodeWidth + spouseGap) / 2;
+      pedigree.x -= shift;
+      visitedPositions.set(pedigree.id, { x: pedigree.x, y: pedigree.y! });
+    }
+
+    // Collect all nodes - deduplicate by ID to handle pedigree collapse
     const allNodes: PedigreeNode[] = [];
+    const seenIds = new Set<string>();
     const collectNodes = (node: PedigreeNode) => {
+      if (seenIds.has(node.id)) return; // Skip duplicates
+      seenIds.add(node.id);
       allNodes.push(node);
       if (node.father) collectNodes(node.father);
       if (node.mother) collectNodes(node.mother);
@@ -629,26 +695,52 @@ export default function FamilyTree({ rootPersonId, showAncestors, onPersonClick,
 
     const g = svg.append('g');
 
-    // Draw links - identical to descendant view (vertical from node, horizontal bar, vertical to parents)
-    const drawLinks = (node: PedigreeNode) => {
+    // Draw links - same pattern as descendant view
+    // Note: node.y is CENTER of node, so top = y - nodeHeight/2, bottom = y + nodeHeight/2
+    // Track links by unique coordinates to prevent duplicates from pedigree collapse
+    const drawnLineKeys = new Set<string>();
+
+    const drawLine = (x1: number, y1: number, x2: number, y2: number) => {
+      // Create a unique key for this line (rounded to avoid floating point issues)
+      const key = `${Math.round(x1)},${Math.round(y1)}-${Math.round(x2)},${Math.round(y2)}`;
+      if (drawnLineKeys.has(key)) return;
+      drawnLineKeys.add(key);
+
+      g.append('line')
+        .attr('x1', x1).attr('y1', y1)
+        .attr('x2', x2).attr('y2', y2)
+        .attr('stroke', '#4a5568').attr('stroke-width', 1);
+    };
+
+    const drawLinks = (node: PedigreeNode, visited = new Set<string>()) => {
       if (node.x === undefined || node.y === undefined) return;
       const hasParents = node.father || node.mother;
       if (!hasParents) return;
 
-      // Get parent y position (parents are ABOVE, so lower y value)
-      const parentY = node.father?.y ?? node.mother?.y;
-      if (parentY === undefined) return;
+      // Skip if we've already processed this node in this traversal path
+      const nodeKey = `${node.id}-${Math.round(node.x)}-${Math.round(node.y)}`;
+      if (visited.has(nodeKey)) return;
+      visited.add(nodeKey);
 
-      // Same pattern as descendant: node bottom → midY → parent bottom
-      const nodeTop = node.y;
-      const parentBottom = parentY + nodeHeight;
+      // Both parents should be at the SAME Y level (one generation above current node)
+      // Use the assigned generation from our tracking map
+      const expectedParentY = node.y + levelGap; // Parents are above (higher Y in our coordinate system)
+
+      // Ensure both parents use the correct Y (their assigned generation)
+      const fatherY = node.father?.y;
+      const motherY = node.mother?.y;
+
+      // Use the consistent parent Y level (should be same for both)
+      const parentY = Math.min(fatherY ?? Infinity, motherY ?? Infinity);
+      if (parentY === Infinity) return;
+
+      // Node top and parent bottom (y is center-based)
+      const nodeTop = node.y - nodeHeight / 2;
+      const parentBottom = parentY + nodeHeight / 2;
       const midY = parentBottom + (nodeTop - parentBottom) / 2;
 
       // Vertical line UP from current node top to midY
-      g.append('line')
-        .attr('x1', node.x).attr('y1', nodeTop)
-        .attr('x2', node.x).attr('y2', midY)
-        .attr('stroke', '#4a5568').attr('stroke-width', 1);
+      drawLine(node.x, nodeTop, node.x, midY);
 
       // Get parent x positions
       const parentXs: number[] = [];
@@ -659,33 +751,16 @@ export default function FamilyTree({ rootPersonId, showAncestors, onPersonClick,
         // Horizontal line spanning parents at midY
         const minX = Math.min(...parentXs);
         const maxX = Math.max(...parentXs);
-        g.append('line')
-          .attr('x1', minX).attr('y1', midY)
-          .attr('x2', maxX).attr('y2', midY)
-          .attr('stroke', '#4a5568').attr('stroke-width', 1);
+        drawLine(minX, midY, maxX, midY);
 
-        // Vertical lines UP from midY to each parent's bottom
+        // Vertical lines UP from midY to each parent's bottom - use their ACTUAL Y positions
         if (node.father?.x !== undefined && node.father?.y !== undefined) {
-          g.append('line')
-            .attr('x1', node.father.x).attr('y1', midY)
-            .attr('x2', node.father.x).attr('y2', node.father.y + nodeHeight)
-            .attr('stroke', '#4a5568').attr('stroke-width', 1);
-          drawLinks(node.father);
+          drawLine(node.father.x, midY, node.father.x, node.father.y + nodeHeight / 2);
+          drawLinks(node.father, visited);
         }
         if (node.mother?.x !== undefined && node.mother?.y !== undefined) {
-          g.append('line')
-            .attr('x1', node.mother.x).attr('y1', midY)
-            .attr('x2', node.mother.x).attr('y2', node.mother.y + nodeHeight)
-            .attr('stroke', '#4a5568').attr('stroke-width', 1);
-          drawLinks(node.mother);
-        }
-
-        // Marriage line between parents (gold) - between their tiles
-        if (node.father?.x !== undefined && node.mother?.x !== undefined && node.father?.y !== undefined) {
-          g.append('line')
-            .attr('x1', node.father.x + nodeWidth/2).attr('y1', node.father.y + nodeHeight/2)
-            .attr('x2', node.mother.x - nodeWidth/2).attr('y2', node.father.y + nodeHeight/2)
-            .attr('stroke', '#f59e0b').attr('stroke-width', 2);
+          drawLine(node.mother.x, midY, node.mother.x, node.mother.y + nodeHeight / 2);
+          drawLinks(node.mother, visited);
         }
       }
     };
@@ -824,6 +899,52 @@ export default function FamilyTree({ rootPersonId, showAncestors, onPersonClick,
         .text(years);
     });
 
+    // Draw root spouse at level 0 (like descendant view) - positioned to the right of root
+    if (rootSpouse && pedigree.x !== undefined && pedigree.y !== undefined) {
+      const spouseX = pedigree.x + nodeWidth + spouseGap;
+      const spouseY = pedigree.y;
+      const status = rootSpouse.research_status || 'not_started';
+
+      // No marriage line - cleaner look
+
+      const spouseG = g.append('g')
+        .attr('transform', `translate(${spouseX - nodeWidth / 2},${spouseY - nodeHeight / 2})`);
+
+      spouseG.append('rect')
+        .attr('width', nodeWidth).attr('height', nodeHeight).attr('rx', 6)
+        .attr('fill', rootSpouse.sex === 'F' ? '#fce7f3' : '#dbeafe')
+        .attr('stroke', rootSpouse.sex === 'F' ? '#ec4899' : '#3b82f6')
+        .attr('stroke-width', 2)
+        .style('cursor', 'pointer')
+        .on('click', () => onTileClick(rootSpouse.id));
+
+      // Status indicator
+      const spouseStatusG = spouseG.append('g').style('cursor', 'help');
+      spouseStatusG.append('title').text(statusLabels[status] || 'Unknown status');
+      spouseStatusG.append('circle')
+        .attr('cx', nodeWidth - 10).attr('cy', nodeHeight - 10).attr('r', 5)
+        .attr('fill', statusColors[status] || '#9ca3af')
+        .attr('stroke', '#fff').attr('stroke-width', 1);
+
+      const maxLen = 18;
+      const spouseDisplayName = rootSpouse.name.length > maxLen ? rootSpouse.name.substring(0, maxLen - 2) + '…' : rootSpouse.name;
+      const spouseNameText = spouseG.append('text')
+        .attr('x', nodeWidth / 2).attr('y', 20).attr('text-anchor', 'middle')
+        .attr('fill', '#1f2937').attr('font-size', '11px').attr('font-weight', '600')
+        .style('cursor', 'pointer')
+        .on('click', (e) => { e.stopPropagation(); onPersonClick(rootSpouse.id); })
+        .text(spouseDisplayName);
+      spouseNameText.append('title').text(rootSpouse.name);
+
+      const spouseYears = rootSpouse.living
+        ? `${rootSpouse.birth_year || '?'} – Living`
+        : `${rootSpouse.birth_year || '?'} – ${rootSpouse.death_year || '?'}`;
+      spouseG.append('text')
+        .attr('x', nodeWidth / 2).attr('y', 36).attr('text-anchor', 'middle')
+        .attr('fill', '#6b7280').attr('font-size', '10px')
+        .text(spouseYears);
+    }
+
     // Draw notable connections ONLY if the branching ancestor is in the current pedigree
     // Position them BELOW the main tree to avoid overlapping
     if (data.notableConnections) {
@@ -960,14 +1081,15 @@ export default function FamilyTree({ rootPersonId, showAncestors, onPersonClick,
     }
 
     // Draw children of root (-1 level for navigation) ABOVE the root (since tree goes down to ancestors)
+    // Note: y is CENTER-based, so we need to account for that
     if (childPeople.length > 0 && pedigree.x !== undefined && pedigree.y !== undefined) {
-      const childY = pedigree.y - levelGap; // Same spacing as other levels
+      const childCenterY = pedigree.y - levelGap; // Center of child tiles
       const totalChildWidth = childPeople.length * nodeWidth + (childPeople.length - 1) * nodeGap;
       const startX = pedigree.x - totalChildWidth / 2 + nodeWidth / 2;
 
       // Draw connection line from root up to children (same style as other connections)
-      const rootTop = pedigree.y; // Top of root tile (y is already at top)
-      const childBottom = childY + nodeHeight;
+      const rootTop = pedigree.y - nodeHeight / 2; // Top of root tile (y is center)
+      const childBottom = childCenterY + nodeHeight / 2; // Bottom of child tiles
       const midY = childBottom + (rootTop - childBottom) / 2;
 
       // Vertical line up from root
@@ -987,14 +1109,15 @@ export default function FamilyTree({ rootPersonId, showAncestors, onPersonClick,
       childPeople.forEach((child, idx) => {
         const childX = startX + idx * (nodeWidth + nodeGap);
 
-        // Line from horizontal bar up to child
+        // Line from horizontal bar up to child bottom
         g.append('line')
           .attr('x1', childX).attr('y1', midY)
           .attr('x2', childX).attr('y2', childBottom)
           .attr('stroke', '#4a5568').attr('stroke-width', 1);
 
+        // Position tile with center-based y (same as other nodes)
         const tileG = g.append('g')
-          .attr('transform', `translate(${childX - nodeWidth / 2}, ${childY})`)
+          .attr('transform', `translate(${childX - nodeWidth / 2}, ${childCenterY - nodeHeight / 2})`)
           .style('cursor', 'pointer').style('opacity', 0.7)
           .on('click', () => onTileClick(child.id));
 

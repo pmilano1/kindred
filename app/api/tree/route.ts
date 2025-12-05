@@ -29,6 +29,7 @@ export interface TreePerson {
   research_status?: string;
   research_priority?: number;
   last_researched?: string;
+  hasCoatOfArms?: boolean;
 }
 
 export interface TreeFamily {
@@ -56,11 +57,13 @@ async function getIdByLegacy(legacyId: string): Promise<string | null> {
 export async function GET() {
   try {
     // Get all people with relevant fields for tree (include legacy_id for lookups and research tracking)
+    // Also check if person has a coat_of_arms fact
     const peopleResult = await pool.query(`
-      SELECT id, legacy_id, name_full as name, sex, birth_year, death_year,
-             birth_place, death_place, living, familysearch_id,
-             research_status, research_priority, last_researched
-      FROM people
+      SELECT p.id, p.legacy_id, p.name_full as name, p.sex, p.birth_year, p.death_year,
+             p.birth_place, p.death_place, p.living, p.familysearch_id,
+             p.research_status, p.research_priority, p.last_researched,
+             EXISTS(SELECT 1 FROM facts f WHERE f.person_id = p.id AND f.fact_type = 'coat_of_arms') as has_coat_of_arms
+      FROM people p
     `);
 
     // Get all families with children
@@ -80,7 +83,10 @@ export async function GET() {
     const people: Record<string, TreePerson> = {};
     const legacyToId: Record<string, string> = {};
     for (const row of peopleResult.rows) {
-      people[row.id] = row;
+      people[row.id] = {
+        ...row,
+        hasCoatOfArms: row.has_coat_of_arms
+      };
       if (row.legacy_id) {
         legacyToId[row.legacy_id] = row.id;
       }

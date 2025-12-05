@@ -17,6 +17,7 @@ interface TreePerson {
   research_status?: string;
   research_priority?: number;
   last_researched?: string;
+  hasCoatOfArms?: boolean;
 }
 
 interface TreeFamily {
@@ -356,6 +357,17 @@ export default function FamilyTree({ rootPersonId, showAncestors, onPersonClick,
           .text('👑');
       }
 
+      // Shield for coat of arms (small, non-intrusive, top-left after crown or where crown would be)
+      if (person.hasCoatOfArms) {
+        const shieldG = nodeG.append('g').style('cursor', 'help');
+        shieldG.append('title').text('Has family coat of arms');
+        shieldG.append('text')
+          .attr('x', isNotable ? 22 : 8)  // Position after crown if notable
+          .attr('y', 14)
+          .attr('font-size', '10px')
+          .text('🛡️');
+      }
+
       // Research status indicator (small colored dot in bottom-left) with tooltip
       const statusG = nodeG.append('g').style('cursor', 'help');
       statusG.append('title').text(statusLabels[status] || 'Unknown status');
@@ -494,6 +506,13 @@ export default function FamilyTree({ rootPersonId, showAncestors, onPersonClick,
           // Crown for notable person - positioned in top-right corner
           if (person.isNotable) {
             nodeG.append('text').attr('x', nodeWidth - 16).attr('y', 14).attr('font-size', '12px').text('👑');
+          }
+
+          // Shield for coat of arms - positioned in top-left
+          if (person.hasCoatOfArms) {
+            const shieldG = nodeG.append('g').style('cursor', 'help');
+            shieldG.append('title').text('Has family coat of arms');
+            shieldG.append('text').attr('x', 4).attr('y', 14).attr('font-size', '10px').text('🛡️');
           }
 
           const displayName = person.name.length > 20 ? person.name.substring(0, 18) + '..' : person.name;

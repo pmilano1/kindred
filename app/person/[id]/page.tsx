@@ -248,12 +248,30 @@ export default async function PersonPage({ params }: PageProps) {
               </div>
             )}
 
+            {/* Coat of Arms */}
+            {facts.filter(f => f.fact_type === 'coat_of_arms').length > 0 && (
+              <div className="card p-6 mb-6 bg-gradient-to-r from-amber-50 to-yellow-50 border-2 border-amber-300">
+                <h3 className="section-title">🛡️ Coat of Arms</h3>
+                <div className="flex flex-wrap gap-4 justify-center">
+                  {facts.filter(f => f.fact_type === 'coat_of_arms').map((fact) => (
+                    <a key={fact.id} href={fact.fact_value || '#'} target="_blank" rel="noopener noreferrer" className="block">
+                      <img
+                        src={fact.fact_value || ''}
+                        alt="Family Coat of Arms"
+                        className="max-w-[200px] max-h-[250px] rounded-lg shadow-lg border-4 border-amber-200 hover:border-amber-400 transition-all hover:scale-105"
+                      />
+                    </a>
+                  ))}
+                </div>
+              </div>
+            )}
+
             {/* Facts */}
-            {facts.length > 0 && (
+            {facts.filter(f => f.fact_type !== 'coat_of_arms').length > 0 && (
               <div className="card p-6 mb-6">
                 <h3 className="section-title">📋 Additional Information</h3>
                 <div className="space-y-2">
-                  {facts.map((fact) => (
+                  {facts.filter(f => f.fact_type !== 'coat_of_arms').map((fact) => (
                     <div key={fact.id} className="text-sm">
                       <span className="text-gray-600 font-medium">{fact.fact_type || 'Fact'}:</span>{' '}
                       <span className="text-gray-800">{fact.fact_value}</span>

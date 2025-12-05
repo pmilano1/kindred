@@ -481,9 +481,14 @@ export default function FamilyTree({ rootPersonId, showAncestors, onPersonClick,
             .style('cursor', 'pointer')
             .on('click', () => onTileClick(personId));
 
-          // Crown for notable person - positioned in top-left
+          // Crown for notable person - positioned outside tile, overlapping top-left corner
           if (person.isNotable) {
-            nodeG.append('text').attr('x', 8).attr('y', 14).attr('font-size', '12px').text('👑');
+            const crownSize = 20;
+            nodeG.append('text')
+              .attr('x', -crownSize / 3)
+              .attr('y', crownSize / 3)
+              .attr('font-size', '16px')
+              .text('👑');
           }
 
           // Coat of arms image - positioned outside tile, overlapping bottom-left corner

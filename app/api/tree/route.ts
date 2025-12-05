@@ -58,12 +58,12 @@ async function getIdByLegacy(legacyId: string): Promise<string | null> {
 export async function GET() {
   try {
     // Get all people with relevant fields for tree (include legacy_id for lookups and research tracking)
-    // Also get coat_of_arms fact value if exists
+    // Only check if coat_of_arms exists (not the full base64 data) - fetch via separate cached endpoint
     const peopleResult = await pool.query(`
       SELECT p.id, p.legacy_id, p.name_full as name, p.sex, p.birth_year, p.death_year,
              p.birth_place, p.death_place, p.living, p.familysearch_id,
              p.research_status, p.research_priority, p.last_researched,
-             (SELECT f.fact_value FROM facts f WHERE f.person_id = p.id AND f.fact_type = 'coat_of_arms' LIMIT 1) as coat_of_arms_url
+             EXISTS(SELECT 1 FROM facts f WHERE f.person_id = p.id AND f.fact_type = 'coat_of_arms') as has_coat_of_arms
       FROM people p
     `);
 
@@ -86,8 +86,8 @@ export async function GET() {
     for (const row of peopleResult.rows) {
       people[row.id] = {
         ...row,
-        hasCoatOfArms: !!row.coat_of_arms_url,
-        coatOfArmsUrl: row.coat_of_arms_url || null
+        hasCoatOfArms: row.has_coat_of_arms,
+        coatOfArmsUrl: row.has_coat_of_arms ? `/api/crest/${row.id}` : null
       };
       if (row.legacy_id) {
         legacyToId[row.legacy_id] = row.id;

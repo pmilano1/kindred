@@ -1,20 +1,26 @@
-import { ApolloServer } from '@apollo/server';
+import { ApolloServer, BaseContext } from '@apollo/server';
 import { startServerAndCreateNextHandler } from '@as-integrations/next';
 import { NextRequest } from 'next/server';
 import { auth } from '@/lib/auth';
 import { pool } from '@/lib/db';
 import { typeDefs } from '@/lib/graphql/schema';
 import { resolvers } from '@/lib/graphql/resolvers';
-import { createLoaders } from '@/lib/graphql/dataloaders';
+import { createLoaders, Loaders } from '@/lib/graphql/dataloaders';
 import depthLimit from 'graphql-depth-limit';
 import { GraphQLError } from 'graphql';
+
+// Context type for Apollo Server
+interface Context extends BaseContext {
+  user: { id: string; email: string; role: string };
+  loaders: Loaders;
+}
 
 // Query limits
 const MAX_DEPTH = 7;           // Max nesting (person -> children -> children -> ...)
 const MAX_QUERY_SIZE = 10000;  // Max query string length
 
 // Create Apollo Server with security plugins
-const server = new ApolloServer({
+const server = new ApolloServer<Context>({
   typeDefs,
   resolvers,
   introspection: process.env.NODE_ENV !== 'production',
@@ -67,7 +73,7 @@ async function validateApiKey(apiKey: string) {
 }
 
 // Create handler with context from NextAuth session or API key
-const handler = startServerAndCreateNextHandler<NextRequest>(server, {
+const handler = startServerAndCreateNextHandler<NextRequest, Context>(server, {
   context: async (req) => {
     // Create fresh DataLoaders per request for batching
     const loaders = createLoaders();

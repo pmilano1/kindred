@@ -262,7 +262,9 @@ export const resolvers = {
     occupations: (person: { id: string }, _: unknown, ctx: Context) => ctx.loaders.occupationsLoader.load(person.id),
     events: (person: { id: string }, _: unknown, ctx: Context) => ctx.loaders.eventsLoader.load(person.id),
     facts: (person: { id: string }, _: unknown, ctx: Context) => ctx.loaders.factsLoader.load(person.id),
-    researchLog: (person: { id: string }, _: unknown, ctx: Context) => ctx.loaders.researchLogLoader.load(person.id),
+    sources: (person: { id: string }, _: unknown, ctx: Context) => ctx.loaders.sourcesLoader.load(person.id),
+    // Legacy alias - keep until UI fully migrated
+    researchLog: (person: { id: string }, _: unknown, ctx: Context) => ctx.loaders.sourcesLoader.load(person.id),
   },
 
   Family: {

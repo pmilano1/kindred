@@ -95,25 +95,32 @@ export interface TreeNode {
   };
 }
 
-// NOTE: Source interface removed - sources migrated to research_log table
-// Sources now appear as ResearchLog entries with action_type='found'
-
-export type ResearchActionType = 'searched' | 'found' | 'verified' | 'corrected' | 'todo' | 'note' | 'question' | 'brick_wall';
-export type ResearchSource = 'FamilySearch' | 'Geni' | 'Ancestry' | 'MyHeritage' | 'FindAGrave' | 'ANOM' | 'Geneanet' | 'WikiTree' | 'Newspapers' | 'Census' | 'VitalRecords' | 'ChurchRecords' | 'Immigration' | 'Military' | 'DNA' | 'FamilyBible' | 'Interview' | 'Other';
-export type ResearchConfidence = 'confirmed' | 'probable' | 'possible' | 'uncertain' | 'conflicting' | 'speculative';
+// Unified Source type - combines sources and research activity
+export type SourceType = 'FamilySearch' | 'Geni' | 'Ancestry' | 'MyHeritage' | 'FindAGrave' | 'ANOM' | 'Geneanet' | 'WikiTree' | 'Newspapers' | 'Census' | 'VitalRecords' | 'ChurchRecords' | 'Immigration' | 'Military' | 'DNA' | 'FamilyBible' | 'Interview' | 'Other';
+export type SourceAction = 'searched' | 'found' | 'verified' | 'rejected' | 'corrected' | 'todo' | 'note' | 'question' | 'brick_wall';
+export type SourceConfidence = 'confirmed' | 'probable' | 'possible' | 'uncertain' | 'conflicting' | 'speculative' | 'high' | 'medium' | 'low';
 export type ResearchStatus = 'not_started' | 'in_progress' | 'partial' | 'verified' | 'needs_review' | 'brick_wall';
 
-export interface ResearchLog {
+export interface Source {
   id: string;
   person_id: string;
+  source_type: SourceType | null;
+  source_name: string | null;
+  source_url: string | null;
+  action: SourceAction;
+  content: string | null;
+  confidence: SourceConfidence | null;
+  validated: boolean;
+  validated_date: string | null;
   created_at: string;
-  action_type: ResearchActionType;
-  source_checked: ResearchSource | null;
-  source_name: string | null;  // Name of the source (for migrated sources)
-  content: string;
-  confidence: ResearchConfidence | null;
-  external_url: string | null;
+  updated_at: string;
 }
+
+// Legacy aliases for backwards compatibility
+export type ResearchLog = Source;
+export type ResearchActionType = SourceAction;
+export type ResearchSource = SourceType;
+export type ResearchConfidence = SourceConfidence;
 
 export interface ResearchQueueItem {
   id: string;

@@ -44,6 +44,7 @@ export const typeDefs = `#graphql
     occupations: [Occupation!]!
     events: [Event!]!
     facts: [Fact!]!
+    sources: [Source!]!
     researchLog: [ResearchLog!]!
   }
 
@@ -99,6 +100,27 @@ export const typeDefs = `#graphql
     content: String!
     confidence: String
     external_url: String
+  }
+
+  type Source {
+    id: Int!
+    person_id: String!
+    source_type: String
+    source_name: String
+    source_url: String
+    data_retrieved: String
+    validated: Boolean!
+    validated_date: String
+    notes: String
+    created_at: String!
+  }
+
+  type RelationshipPath {
+    from: Person!
+    to: Person!
+    path: [Person!]!
+    relationship: String!
+    degrees: Int!
   }
 
   type Stats {

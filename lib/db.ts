@@ -1,5 +1,5 @@
 import { Pool } from 'pg';
-import { Person, Family, Stats, Residence, Occupation, Event, Fact, ResearchLog, ResearchQueueItem } from './types';
+import { Person, Family, Stats, Residence, Occupation, Event, Fact, Source, ResearchQueueItem } from './types';
 
 // Lazy pool initialization - created on first use with runtime env vars
 let _pool: Pool | null = null;
@@ -335,14 +335,41 @@ export async function getNotableRelatives(personId: string): Promise<NotableRela
 // RESEARCH TRACKING FUNCTIONS
 // ============================================
 
-export async function getResearchLog(personId: string): Promise<ResearchLog[]> {
+export async function getSources(personId: string): Promise<Source[]> {
   const result = await pool.query(
-    `SELECT * FROM research_log WHERE person_id = $1 ORDER BY created_at DESC`,
+    `SELECT * FROM sources WHERE person_id = $1 ORDER BY created_at DESC`,
     [personId]
   );
   return result.rows;
 }
 
+export async function addSource(
+  personId: string,
+  action: string,
+  content: string,
+  sourceType?: string,
+  sourceName?: string,
+  sourceUrl?: string,
+  confidence?: string
+): Promise<Source> {
+  const id = Math.random().toString(36).substring(2, 14);
+  const result = await pool.query(
+    `INSERT INTO sources (id, person_id, action, content, source_type, source_name, source_url, confidence)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+     RETURNING *`,
+    [id, personId, action, content, sourceType || null, sourceName || null, sourceUrl || null, confidence || null]
+  );
+
+  // Update last_researched and source_count on person
+  await pool.query(
+    `UPDATE people SET last_researched = NOW(), source_count = (SELECT COUNT(*) FROM sources WHERE person_id = $1) WHERE id = $1`,
+    [personId]
+  );
+
+  return result.rows[0];
+}
+
+// Legacy alias - keep for backwards compatibility
 export async function addResearchLog(
   personId: string,
   actionType: string,
@@ -350,21 +377,8 @@ export async function addResearchLog(
   sourceChecked?: string,
   confidence?: string,
   externalUrl?: string
-): Promise<ResearchLog> {
-  const result = await pool.query(
-    `INSERT INTO research_log (person_id, action_type, content, source_checked, confidence, external_url)
-     VALUES ($1, $2, $3, $4, $5, $6)
-     RETURNING *`,
-    [personId, actionType, content, sourceChecked || null, confidence || null, externalUrl || null]
-  );
-
-  // Update last_researched on person
-  await pool.query(
-    `UPDATE people SET last_researched = NOW() WHERE id = $1`,
-    [personId]
-  );
-
-  return result.rows[0];
+): Promise<Source> {
+  return addSource(personId, actionType, content, sourceChecked, undefined, externalUrl, confidence);
 }
 
 export async function updateResearchStatus(personId: string, status: string): Promise<void> {

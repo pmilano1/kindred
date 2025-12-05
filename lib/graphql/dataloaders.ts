@@ -1,6 +1,6 @@
 import DataLoader from 'dataloader';
 import { pool } from '../db';
-import { Person, Family, Residence, Occupation, Event, Fact, ResearchLog } from '../types';
+import { Person, Family, Residence, Occupation, Event, Fact, Source } from '../types';
 
 // ============================================
 // BATCH LOADERS - Single SQL query per batch
@@ -115,15 +115,15 @@ async function batchFacts(personIds: readonly string[]): Promise<Fact[][]> {
   return personIds.map(id => map.get(id) || []);
 }
 
-// Batch load research logs by person IDs
-async function batchResearchLogs(personIds: readonly string[]): Promise<ResearchLog[][]> {
+// Batch load sources by person IDs (unified sources table)
+async function batchSources(personIds: readonly string[]): Promise<Source[][]> {
   if (!personIds.length) return [];
   const { rows } = await pool.query(
-    `SELECT * FROM research_log WHERE person_id = ANY($1) ORDER BY created_at DESC`,
+    `SELECT * FROM sources WHERE person_id = ANY($1) ORDER BY created_at DESC`,
     [personIds as string[]]
   );
-  const map = new Map<string, ResearchLog[]>(personIds.map(id => [id, []]));
-  for (const r of rows) map.get(r.person_id)!.push(r);
+  const map = new Map<string, Source[]>(personIds.map(id => [id, []]));
+  for (const s of rows) map.get(s.person_id)!.push(s);
   return personIds.map(id => map.get(id) || []);
 }
 
@@ -142,7 +142,7 @@ export function createLoaders() {
     occupationsLoader: new DataLoader(batchOccupations, { cache: true }),
     eventsLoader: new DataLoader(batchEvents, { cache: true }),
     factsLoader: new DataLoader(batchFacts, { cache: true }),
-    researchLogLoader: new DataLoader(batchResearchLogs, { cache: true }),
+    sourcesLoader: new DataLoader(batchSources, { cache: true }),
   };
 }
 

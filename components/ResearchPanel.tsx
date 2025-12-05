@@ -82,7 +82,7 @@ export default function ResearchPanel({ personId, personName, compact = false }:
     try {
       const res = await fetch(`/api/research/${personId}`);
       const data = await res.json();
-      setLog(data.log || []);
+      setLog(data.sources || data.log || []);
       setStatus(data.status || 'not_started');
       setPriority(data.priority || 0);
     } catch (error) {
@@ -102,11 +102,11 @@ export default function ResearchPanel({ personId, personName, compact = false }:
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          actionType,
+          action: actionType,
           content,
-          sourceChecked: sourceChecked || undefined,
+          sourceType: sourceChecked || undefined,
+          sourceUrl: externalUrl || undefined,
           confidence: confidence || undefined,
-          externalUrl: externalUrl || undefined,
         }),
       });
       setContent('');
@@ -299,32 +299,32 @@ export default function ResearchPanel({ personId, personName, compact = false }:
       ) : (
         <div className="space-y-3 max-h-[500px] overflow-y-auto">
           {log.map((entry) => {
-            const actionInfo = ACTION_TYPES.find(t => t.value === entry.action_type);
+            const actionInfo = ACTION_TYPES.find(t => t.value === entry.action);
             const confInfo = CONFIDENCE.find(c => c.value === entry.confidence);
-            const isMigratedSource = entry.action_type === 'found' && entry.source_name;
+            const isCitation = entry.action === 'found' && entry.source_name;
             return (
-              <div key={entry.id} className={`p-3 rounded border ${isMigratedSource ? 'bg-blue-50 border-blue-200' : 'bg-white border-gray-200'}`}>
+              <div key={entry.id} className={`p-3 rounded border ${isCitation ? 'bg-blue-50 border-blue-200' : 'bg-white border-gray-200'}`}>
                 <div className="flex justify-between items-start mb-1">
                   <span className="font-medium text-sm">
                     {actionInfo?.emoji} {actionInfo?.label}
-                    {entry.source_checked && <span className="text-gray-500 ml-2">@ {entry.source_checked}</span>}
+                    {entry.source_type && <span className="text-gray-500 ml-2">@ {entry.source_type}</span>}
                   </span>
                   <span className="text-xs text-gray-400">{formatDate(entry.created_at)}</span>
                 </div>
-                {/* Show source name prominently for migrated sources */}
+                {/* Show source name prominently for citations */}
                 {entry.source_name && (
                   <div className="text-sm font-medium text-blue-800 mb-1">{entry.source_name}</div>
                 )}
                 <p className="text-sm text-gray-700 whitespace-pre-wrap">{entry.content}</p>
-                {(entry.confidence || entry.external_url) && (
+                {(entry.confidence || entry.source_url) && (
                   <div className="flex flex-wrap gap-2 mt-2">
                     {confInfo && (
                       <span className={`text-xs px-2 py-0.5 rounded ${confInfo.color}`}>
                         {confInfo.label}
                       </span>
                     )}
-                    {entry.external_url && (
-                      <a href={entry.external_url} target="_blank" rel="noopener noreferrer"
+                    {entry.source_url && (
+                      <a href={entry.source_url} target="_blank" rel="noopener noreferrer"
                          className="text-xs text-blue-600 hover:underline">
                         🔗 View Source
                       </a>

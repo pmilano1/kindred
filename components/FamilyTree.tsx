@@ -301,7 +301,15 @@ export default function FamilyTree({ rootPersonId, showAncestors, onPersonClick,
         return { minX: Math.min(minX, node.x - width / 2), maxX: Math.max(maxX, node.x + width / 2) };
       };
 
-      positionDescendants(descendantTree, 0);
+      // Find parents of root for -1 level navigation
+      const parentFamily = data.families.find(f => f.children.includes(rootPersonId));
+      const fatherPerson = parentFamily?.husband_id ? data.people[parentFamily.husband_id] : null;
+      const motherPerson = parentFamily?.wife_id ? data.people[parentFamily.wife_id] : null;
+      const hasParents = fatherPerson || motherPerson;
+
+      // Position descendants starting at gen 1 if we have parents, else gen 0
+      const rootGen = hasParents ? 1 : 0;
+      positionDescendants(descendantTree, rootGen);
 
       // Collect all nodes for rendering
       const allDescendants: DescendantNode[] = [];
@@ -310,6 +318,19 @@ export default function FamilyTree({ rootPersonId, showAncestors, onPersonClick,
         node.children.forEach(collectNodes);
       };
       collectNodes(descendantTree);
+
+      // Add parent nodes at generation 0 (above root)
+      interface ParentNode { person: TreePerson; x: number; y: number; }
+      const parentNodes: ParentNode[] = [];
+      if (hasParents && descendantTree.x !== undefined) {
+        const parentY = 30; // Generation 0
+        if (fatherPerson) {
+          parentNodes.push({ person: fatherPerson, x: descendantTree.x - nodeWidth/2 - spouseGap, y: parentY });
+        }
+        if (motherPerson) {
+          parentNodes.push({ person: motherPerson, x: descendantTree.x + nodeWidth/2 + spouseGap, y: parentY });
+        }
+      }
 
       // Calculate bounds
       const xs = allDescendants.map(n => n.x!);
@@ -368,68 +389,51 @@ export default function FamilyTree({ rootPersonId, showAncestors, onPersonClick,
         }
       });
 
-      // Draw nodes (person tiles)
+      // Status color map (same as ancestor view)
+      const statusColors: Record<string, string> = {
+        'not_started': '#9ca3af', 'in_progress': '#3b82f6', 'partial': '#eab308',
+        'verified': '#22c55e', 'needs_review': '#f97316', 'brick_wall': '#ef4444',
+      };
+      const statusLabels: Record<string, string> = {
+        'not_started': 'Not Started', 'in_progress': 'In Progress', 'partial': 'Partial',
+        'verified': 'Verified', 'needs_review': 'Needs Review', 'brick_wall': 'Brick Wall',
+      };
+
+      // Draw nodes (person tiles) - MATCHING ANCESTOR VIEW STYLING
       allDescendants.forEach(node => {
         if (node.x === undefined || node.y === undefined) return;
 
-        // Draw main person
-        const drawPersonTile = (person: TreePerson, x: number, y: number, _isSpouse = false) => {
+        const drawPersonTile = (person: TreePerson, x: number, y: number) => {
+          const isNotable = person.isNotable;
+          const status = person.research_status || 'not_started';
+
           const tileG = g.append('g')
             .attr('transform', `translate(${x - nodeWidth / 2}, ${y})`)
             .style('cursor', 'pointer')
             .on('click', () => onTileClick(person.id || node.id))
             .on('dblclick', () => onPersonClick(person.id || node.id));
 
-          // Background
-          const bgColor = person.sex === 'M' ? '#1e3a5f' : person.sex === 'F' ? '#4a1942' : '#374151';
+          // Background - SAME AS ANCESTOR VIEW (light pastels, gold for notable)
           tileG.append('rect')
             .attr('width', nodeWidth).attr('height', nodeHeight)
-            .attr('rx', 4)
-            .attr('fill', bgColor)
-            .attr('stroke', person.living ? '#10b981' : '#4a5568')
-            .attr('stroke-width', person.living ? 2 : 1);
+            .attr('rx', 6)
+            .attr('fill', isNotable ? '#fef3c7' : (person.sex === 'F' ? '#fce7f3' : '#dbeafe'))
+            .attr('stroke', isNotable ? '#f59e0b' : (person.sex === 'F' ? '#ec4899' : '#3b82f6'))
+            .attr('stroke-width', isNotable ? 3 : 2);
 
-          // Name with ellipsis and tooltip
-          const fullName = person.name || 'Unknown';
-          const maxNameLen = 16;
-          const displayName = fullName.length > maxNameLen ? fullName.substring(0, maxNameLen - 1) + '…' : fullName;
-          const nameText = tileG.append('text')
-            .attr('x', nodeWidth / 2).attr('y', 16)
-            .attr('text-anchor', 'middle')
-            .attr('fill', 'white').attr('font-size', '11px').attr('font-weight', 'bold')
-            .text(displayName);
-          nameText.append('title').text(fullName);
-
-          // Years
-          const years = person.birth_year
-            ? (person.death_year ? `${person.birth_year}–${person.death_year}` : `b. ${person.birth_year}`)
-            : '';
-          if (years) {
-            tileG.append('text')
-              .attr('x', nodeWidth / 2).attr('y', 30)
-              .attr('text-anchor', 'middle')
-              .attr('fill', '#9ca3af').attr('font-size', '9px')
-              .text(years);
-          }
-
-          // Crown for notable
-          if (person.isNotable) {
+          // Crown for notable - positioned outside tile top-left
+          if (isNotable) {
             tileG.append('text')
               .attr('x', -6).attr('y', 6)
               .attr('font-size', '14px')
               .text('👑');
           }
 
-          // Coat of arms with hover popup
-          if (person.hasCoatOfArms && person.coatOfArmsUrl) {
-            const crestSize = 24;
+          // Coat of arms with hover popup - positioned outside tile bottom-left
+          if (person.coatOfArmsUrl) {
+            const crestSize = 28;
             const crestUrl = person.coatOfArmsUrl;
-            tileG.append('image')
-              .attr('href', crestUrl)
-              .attr('x', -crestSize / 3)
-              .attr('y', nodeHeight - crestSize / 2)
-              .attr('width', crestSize).attr('height', crestSize)
-              .attr('preserveAspectRatio', 'xMidYMid meet')
+            const crestG = tileG.append('g')
               .style('cursor', 'pointer')
               .on('mouseenter', function(event: MouseEvent) {
                 const rect = containerRef.current?.getBoundingClientRect();
@@ -438,7 +442,42 @@ export default function FamilyTree({ rootPersonId, showAncestors, onPersonClick,
                 }
               })
               .on('mouseleave', () => setCrestPopup(null));
+            crestG.append('image')
+              .attr('href', crestUrl)
+              .attr('x', -crestSize / 3)
+              .attr('y', nodeHeight - crestSize / 2)
+              .attr('width', crestSize).attr('height', crestSize)
+              .attr('preserveAspectRatio', 'xMidYMid meet');
           }
+
+          // Research status indicator (bottom-right dot)
+          const statusG = tileG.append('g').style('cursor', 'help');
+          statusG.append('title').text(statusLabels[status] || 'Unknown status');
+          statusG.append('circle')
+            .attr('cx', nodeWidth - 10).attr('cy', nodeHeight - 10).attr('r', 5)
+            .attr('fill', statusColors[status] || '#9ca3af')
+            .attr('stroke', '#fff').attr('stroke-width', 1);
+
+          // Name with ellipsis and tooltip - dark text like ancestor view
+          const fullName = person.name || 'Unknown';
+          const maxNameLen = 18;
+          const displayName = fullName.length > maxNameLen ? fullName.substring(0, maxNameLen - 2) + '…' : fullName;
+          const nameText = tileG.append('text')
+            .attr('x', nodeWidth / 2).attr('y', 20)
+            .attr('text-anchor', 'middle')
+            .attr('fill', '#1f2937').attr('font-size', '11px').attr('font-weight', '600')
+            .text(displayName);
+          nameText.append('title').text(fullName);
+
+          // Years - same styling as ancestor view
+          const years = person.living
+            ? `${person.birth_year || '?'} – Living`
+            : `${person.birth_year || '?'} – ${person.death_year || '?'}`;
+          tileG.append('text')
+            .attr('x', nodeWidth / 2).attr('y', 36)
+            .attr('text-anchor', 'middle')
+            .attr('fill', '#6b7280').attr('font-size', '10px')
+            .text(years);
         };
 
         // Draw main person
@@ -448,9 +487,75 @@ export default function FamilyTree({ rootPersonId, showAncestors, onPersonClick,
         // Draw spouse if exists
         if (node.spouse) {
           const spouseX = node.x + nodeWidth / 2 + spouseGap / 2;
-          drawPersonTile(node.spouse, spouseX, node.y, true);
+          drawPersonTile(node.spouse, spouseX, node.y);
         }
       });
+
+      // Draw parent nodes (-1 level for navigation)
+      if (parentNodes.length > 0 && descendantTree.x !== undefined && descendantTree.y !== undefined) {
+        // Draw connection line from parents down to root
+        const rootY = descendantTree.y;
+        const parentY = 30 + nodeHeight;
+        const midY = (parentY + rootY) / 2;
+
+        // Line from father to midpoint
+        if (fatherPerson) {
+          const fatherX = descendantTree.x - nodeWidth/2 - spouseGap;
+          g.append('path')
+            .attr('d', `M${fatherX},${parentY} L${fatherX},${midY} L${descendantTree.x},${midY} L${descendantTree.x},${rootY}`)
+            .attr('fill', 'none').attr('stroke', '#3b82f6').attr('stroke-width', 2).attr('stroke-opacity', 0.6);
+        }
+        if (motherPerson) {
+          const motherX = descendantTree.x + nodeWidth/2 + spouseGap;
+          g.append('path')
+            .attr('d', `M${motherX},${parentY} L${motherX},${midY} L${descendantTree.x},${midY}`)
+            .attr('fill', 'none').attr('stroke', '#ec4899').attr('stroke-width', 2).attr('stroke-opacity', 0.6);
+        }
+        // Marriage line between parents
+        if (fatherPerson && motherPerson) {
+          g.append('line')
+            .attr('x1', descendantTree.x - nodeWidth/2 - spouseGap + nodeWidth/2)
+            .attr('y1', 30 + nodeHeight/2)
+            .attr('x2', descendantTree.x + nodeWidth/2 + spouseGap - nodeWidth/2)
+            .attr('y2', 30 + nodeHeight/2)
+            .attr('stroke', '#f59e0b').attr('stroke-width', 2);
+        }
+
+        // Draw parent tiles (dimmed to indicate navigation)
+        parentNodes.forEach(pn => {
+          const person = pn.person;
+          const isNotable = person.isNotable;
+          const tileG = g.append('g')
+            .attr('transform', `translate(${pn.x - nodeWidth/2}, ${pn.y})`)
+            .style('cursor', 'pointer').style('opacity', 0.7)
+            .on('click', () => onTileClick(person.id));
+
+          tileG.append('rect')
+            .attr('width', nodeWidth).attr('height', nodeHeight).attr('rx', 6)
+            .attr('fill', isNotable ? '#fef3c7' : (person.sex === 'F' ? '#fce7f3' : '#dbeafe'))
+            .attr('stroke', isNotable ? '#f59e0b' : (person.sex === 'F' ? '#ec4899' : '#3b82f6'))
+            .attr('stroke-width', 2).attr('stroke-dasharray', '4,2');
+
+          const fullName = person.name || 'Unknown';
+          const maxLen = 18;
+          const displayName = fullName.length > maxLen ? fullName.substring(0, maxLen - 2) + '…' : fullName;
+          const nameText = tileG.append('text')
+            .attr('x', nodeWidth/2).attr('y', 20).attr('text-anchor', 'middle')
+            .attr('fill', '#1f2937').attr('font-size', '11px').attr('font-weight', '600')
+            .text(displayName);
+          nameText.append('title').text(fullName + ' (click to navigate)');
+
+          const years = `${person.birth_year || '?'} – ${person.death_year || '?'}`;
+          tileG.append('text')
+            .attr('x', nodeWidth/2).attr('y', 36).attr('text-anchor', 'middle')
+            .attr('fill', '#6b7280').attr('font-size', '10px').text(years);
+
+          // Up arrow to indicate navigation
+          tileG.append('text')
+            .attr('x', nodeWidth - 12).attr('y', 14).attr('font-size', '10px').attr('fill', '#9ca3af')
+            .text('⬆');
+        });
+      }
 
       // Fit to view
       const bounds = { x: Math.min(...xs) - nodeWidth, y: 0, width: treeWidth, height: treeHeight };
@@ -515,6 +620,12 @@ export default function FamilyTree({ rootPersonId, showAncestors, onPersonClick,
       if (node.mother) collectNodes(node.mother);
     };
     collectNodes(pedigree);
+
+    // Find children of root for -1 level navigation
+    const childFamilies = data.families.filter(f => f.husband_id === rootPersonId || f.wife_id === rootPersonId);
+    const childIds: string[] = [];
+    childFamilies.forEach(f => childIds.push(...f.children));
+    const childPeople = childIds.map(id => data.people[id]).filter(Boolean).slice(0, 5); // Max 5 children shown
 
     const g = svg.append('g');
 
@@ -810,6 +921,70 @@ export default function FamilyTree({ rootPersonId, showAncestors, onPersonClick,
       });
     }
 
+    // Draw children of root (-1 level for navigation) ABOVE the root (since tree goes down to ancestors)
+    if (childPeople.length > 0 && pedigree.x !== undefined && pedigree.y !== undefined) {
+      const childY = pedigree.y - levelGap - 10; // Above root
+      const totalChildWidth = childPeople.length * nodeWidth + (childPeople.length - 1) * nodeGap;
+      const startX = pedigree.x - totalChildWidth / 2 + nodeWidth / 2;
+
+      // Draw connection line from root up to children
+      const midY = pedigree.y - nodeHeight / 2 - (levelGap - nodeHeight) / 2;
+      g.append('line')
+        .attr('x1', pedigree.x).attr('y1', pedigree.y - nodeHeight / 2)
+        .attr('x2', pedigree.x).attr('y2', midY)
+        .attr('stroke', '#4a5568').attr('stroke-width', 1);
+
+      // Horizontal line spanning children
+      if (childPeople.length > 1) {
+        g.append('line')
+          .attr('x1', startX).attr('y1', midY)
+          .attr('x2', startX + (childPeople.length - 1) * (nodeWidth + nodeGap)).attr('y2', midY)
+          .attr('stroke', '#4a5568').attr('stroke-width', 1);
+      }
+
+      childPeople.forEach((child, idx) => {
+        const childX = startX + idx * (nodeWidth + nodeGap);
+
+        // Line from horizontal bar to child
+        g.append('line')
+          .attr('x1', childX).attr('y1', midY)
+          .attr('x2', childX).attr('y2', childY + nodeHeight)
+          .attr('stroke', '#4a5568').attr('stroke-width', 1);
+
+        const tileG = g.append('g')
+          .attr('transform', `translate(${childX - nodeWidth / 2}, ${childY})`)
+          .style('cursor', 'pointer').style('opacity', 0.7)
+          .on('click', () => onTileClick(child.id));
+
+        tileG.append('rect')
+          .attr('width', nodeWidth).attr('height', nodeHeight).attr('rx', 6)
+          .attr('fill', child.isNotable ? '#fef3c7' : (child.sex === 'F' ? '#fce7f3' : '#dbeafe'))
+          .attr('stroke', child.isNotable ? '#f59e0b' : (child.sex === 'F' ? '#ec4899' : '#3b82f6'))
+          .attr('stroke-width', 2).attr('stroke-dasharray', '4,2');
+
+        const fullName = child.name || 'Unknown';
+        const maxLen = 18;
+        const displayName = fullName.length > maxLen ? fullName.substring(0, maxLen - 2) + '…' : fullName;
+        const nameText = tileG.append('text')
+          .attr('x', nodeWidth / 2).attr('y', 20).attr('text-anchor', 'middle')
+          .attr('fill', '#1f2937').attr('font-size', '11px').attr('font-weight', '600')
+          .text(displayName);
+        nameText.append('title').text(fullName + ' (click to navigate)');
+
+        const years = child.living
+          ? `${child.birth_year || '?'} – Living`
+          : `${child.birth_year || '?'} – ${child.death_year || '?'}`;
+        tileG.append('text')
+          .attr('x', nodeWidth / 2).attr('y', 36).attr('text-anchor', 'middle')
+          .attr('fill', '#6b7280').attr('font-size', '10px').text(years);
+
+        // Down arrow to indicate navigation
+        tileG.append('text')
+          .attr('x', nodeWidth - 12).attr('y', 14).attr('font-size', '10px').attr('fill', '#9ca3af')
+          .text('⬇');
+      });
+    }
+
     // Zoom/pan
     const zoom = d3.zoom<SVGSVGElement, unknown>()
       .scaleExtent([0.3, 3])
@@ -907,6 +1082,22 @@ export default function FamilyTree({ rootPersonId, showAncestors, onPersonClick,
             >
               Close
             </button>
+          </div>
+        </div>
+      )}
+
+      {/* Crest Hover Popup - larger coat of arms on mouseover */}
+      {crestPopup && (
+        <div
+          className="absolute pointer-events-none z-50"
+          style={{ left: crestPopup.x, top: crestPopup.y }}
+        >
+          <div className="bg-white rounded-lg shadow-xl border-2 border-amber-400 p-2">
+            <img
+              src={crestPopup.url}
+              alt="Coat of Arms"
+              className="w-36 h-36 object-contain"
+            />
           </div>
         </div>
       )}

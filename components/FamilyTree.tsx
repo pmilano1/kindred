@@ -18,6 +18,7 @@ interface TreePerson {
   research_priority?: number;
   last_researched?: string;
   hasCoatOfArms?: boolean;
+  coatOfArmsUrl?: string | null;
 }
 
 interface TreeFamily {
@@ -357,60 +358,56 @@ export default function FamilyTree({ rootPersonId, showAncestors, onPersonClick,
           .text('👑');
       }
 
-      // Shield for coat of arms (small, non-intrusive, top-left after crown or where crown would be)
-      if (person.hasCoatOfArms) {
-        const shieldG = nodeG.append('g').style('cursor', 'help');
-        shieldG.append('title').text('Has family coat of arms');
-        shieldG.append('text')
-          .attr('x', isNotable ? 22 : 8)  // Position after crown if notable
-          .attr('y', 14)
-          .attr('font-size', '10px')
-          .text('🛡️');
+      // Coat of arms image on bottom-left (half on tile, half off)
+      if (person.coatOfArmsUrl) {
+        const crestSize = 28;
+        const crestG = nodeG.append('g')
+          .style('cursor', 'pointer')
+          .on('click', (e: MouseEvent) => {
+            e.stopPropagation();
+            onPersonClick(person.id);
+          });
+        crestG.append('title').text('Family coat of arms - click to view profile');
+
+        // Create a clipPath for rounded corners
+        const clipId = `crest-clip-${person.id}`;
+        crestG.append('clipPath')
+          .attr('id', clipId)
+          .append('circle')
+          .attr('cx', crestSize / 2)
+          .attr('cy', crestSize / 2)
+          .attr('r', crestSize / 2 - 1);
+
+        // White background circle with border
+        crestG.append('circle')
+          .attr('cx', -crestSize / 4)
+          .attr('cy', nodeHeight + crestSize / 4)
+          .attr('r', crestSize / 2)
+          .attr('fill', '#fff')
+          .attr('stroke', '#d4af37')
+          .attr('stroke-width', 2);
+
+        // The actual coat of arms image
+        crestG.append('image')
+          .attr('href', person.coatOfArmsUrl)
+          .attr('x', -crestSize / 4 - crestSize / 2 + 2)
+          .attr('y', nodeHeight + crestSize / 4 - crestSize / 2 + 2)
+          .attr('width', crestSize - 4)
+          .attr('height', crestSize - 4)
+          .attr('preserveAspectRatio', 'xMidYMid meet')
+          .style('clip-path', `circle(${(crestSize - 4) / 2}px at ${(crestSize - 4) / 2}px ${(crestSize - 4) / 2}px)`);
       }
 
-      // Research status indicator (small colored dot in bottom-left) with tooltip
+      // Research status indicator (colored dot in bottom-right) with tooltip
       const statusG = nodeG.append('g').style('cursor', 'help');
       statusG.append('title').text(statusLabels[status] || 'Unknown status');
       statusG.append('circle')
-        .attr('cx', 10)
+        .attr('cx', nodeWidth - 10)
         .attr('cy', nodeHeight - 10)
         .attr('r', 5)
         .attr('fill', statusColors[status] || '#9ca3af')
         .attr('stroke', '#fff')
         .attr('stroke-width', 1);
-
-      // Priority indicator (small number in bottom-right if priority > 0) with tooltip
-      if (priority > 0) {
-        const priorityLabel = priority <= 3 ? 'Low' : priority <= 6 ? 'Medium' : priority <= 9 ? 'High' : 'Urgent';
-        const priorityG = nodeG.append('g').style('cursor', 'help');
-        priorityG.append('title').text(`Priority ${priority}/10 (${priorityLabel}) - Higher = research sooner`);
-        priorityG.append('rect')
-          .attr('x', nodeWidth - 18)
-          .attr('y', nodeHeight - 16)
-          .attr('width', 14)
-          .attr('height', 12)
-          .attr('rx', 2)
-          .attr('fill', priority >= 7 ? '#ef4444' : priority >= 4 ? '#f97316' : '#3b82f6');
-        priorityG.append('text')
-          .attr('x', nodeWidth - 11)
-          .attr('y', nodeHeight - 6)
-          .attr('text-anchor', 'middle')
-          .attr('font-size', '9px')
-          .attr('font-weight', 'bold')
-          .attr('fill', '#fff')
-          .text(priority.toString());
-      }
-
-      // Living indicator
-      if (person.living) {
-        nodeG.append('circle')
-          .attr('cx', nodeWidth - 10)
-          .attr('cy', 10)
-          .attr('r', 5)
-          .attr('fill', '#22c55e')
-          .attr('stroke', '#fff')
-          .attr('stroke-width', 1);
-      }
 
       // Name (clickable)
       const displayName = person.name.length > 20 ? person.name.substring(0, 18) + '..' : person.name;
@@ -503,16 +500,40 @@ export default function FamilyTree({ rootPersonId, showAncestors, onPersonClick,
             .style('cursor', 'pointer')
             .on('click', () => onTileClick(personId));
 
-          // Crown for notable person - positioned in top-right corner
+          // Crown for notable person - positioned in top-left
           if (person.isNotable) {
-            nodeG.append('text').attr('x', nodeWidth - 16).attr('y', 14).attr('font-size', '12px').text('👑');
+            nodeG.append('text').attr('x', 8).attr('y', 14).attr('font-size', '12px').text('👑');
           }
 
-          // Shield for coat of arms - positioned in top-left
-          if (person.hasCoatOfArms) {
-            const shieldG = nodeG.append('g').style('cursor', 'help');
-            shieldG.append('title').text('Has family coat of arms');
-            shieldG.append('text').attr('x', 4).attr('y', 14).attr('font-size', '10px').text('🛡️');
+          // Coat of arms image on bottom-left (half on tile, half off)
+          if (person.coatOfArmsUrl) {
+            const crestSize = 28;
+            const crestG = nodeG.append('g')
+              .style('cursor', 'pointer')
+              .on('click', (e: MouseEvent) => {
+                e.stopPropagation();
+                onPersonClick(personId);
+              });
+            crestG.append('title').text('Family coat of arms - click to view profile');
+
+            // White background circle with border
+            crestG.append('circle')
+              .attr('cx', -crestSize / 4)
+              .attr('cy', nodeHeight + crestSize / 4)
+              .attr('r', crestSize / 2)
+              .attr('fill', '#fff')
+              .attr('stroke', '#d4af37')
+              .attr('stroke-width', 2);
+
+            // The actual coat of arms image
+            crestG.append('image')
+              .attr('href', person.coatOfArmsUrl)
+              .attr('x', -crestSize / 4 - crestSize / 2 + 2)
+              .attr('y', nodeHeight + crestSize / 4 - crestSize / 2 + 2)
+              .attr('width', crestSize - 4)
+              .attr('height', crestSize - 4)
+              .attr('preserveAspectRatio', 'xMidYMid meet')
+              .style('clip-path', `circle(${(crestSize - 4) / 2}px at ${(crestSize - 4) / 2}px ${(crestSize - 4) / 2}px)`);
           }
 
           const displayName = person.name.length > 20 ? person.name.substring(0, 18) + '..' : person.name;

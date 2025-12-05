@@ -358,9 +358,9 @@ export default function FamilyTree({ rootPersonId, showAncestors, onPersonClick,
           .text('👑');
       }
 
-      // Coat of arms image on bottom-left (half on tile, half off)
+      // Coat of arms image on bottom-left (mostly inside tile)
       if (person.coatOfArmsUrl) {
-        const crestSize = 28;
+        const crestSize = 24;
         const crestG = nodeG.append('g')
           .style('cursor', 'pointer')
           .on('click', (e: MouseEvent) => {
@@ -369,33 +369,14 @@ export default function FamilyTree({ rootPersonId, showAncestors, onPersonClick,
           });
         crestG.append('title').text('Family coat of arms - click to view profile');
 
-        // Create a clipPath for rounded corners
-        const clipId = `crest-clip-${person.id}`;
-        crestG.append('clipPath')
-          .attr('id', clipId)
-          .append('circle')
-          .attr('cx', crestSize / 2)
-          .attr('cy', crestSize / 2)
-          .attr('r', crestSize / 2 - 1);
-
-        // White background circle with border
-        crestG.append('circle')
-          .attr('cx', -crestSize / 4)
-          .attr('cy', nodeHeight + crestSize / 4)
-          .attr('r', crestSize / 2)
-          .attr('fill', '#fff')
-          .attr('stroke', '#d4af37')
-          .attr('stroke-width', 2);
-
-        // The actual coat of arms image
+        // The actual coat of arms image - positioned in bottom-left corner of tile
         crestG.append('image')
           .attr('href', person.coatOfArmsUrl)
-          .attr('x', -crestSize / 4 - crestSize / 2 + 2)
-          .attr('y', nodeHeight + crestSize / 4 - crestSize / 2 + 2)
-          .attr('width', crestSize - 4)
-          .attr('height', crestSize - 4)
-          .attr('preserveAspectRatio', 'xMidYMid meet')
-          .style('clip-path', `circle(${(crestSize - 4) / 2}px at ${(crestSize - 4) / 2}px ${(crestSize - 4) / 2}px)`);
+          .attr('x', 4)
+          .attr('y', nodeHeight - crestSize - 4)
+          .attr('width', crestSize)
+          .attr('height', crestSize)
+          .attr('preserveAspectRatio', 'xMidYMid meet');
       }
 
       // Research status indicator (colored dot in bottom-right) with tooltip
@@ -505,9 +486,9 @@ export default function FamilyTree({ rootPersonId, showAncestors, onPersonClick,
             nodeG.append('text').attr('x', 8).attr('y', 14).attr('font-size', '12px').text('👑');
           }
 
-          // Coat of arms image on bottom-left (half on tile, half off)
+          // Coat of arms image on bottom-left (inside tile)
           if (person.coatOfArmsUrl) {
-            const crestSize = 28;
+            const crestSize = 24;
             const crestG = nodeG.append('g')
               .style('cursor', 'pointer')
               .on('click', (e: MouseEvent) => {
@@ -516,24 +497,14 @@ export default function FamilyTree({ rootPersonId, showAncestors, onPersonClick,
               });
             crestG.append('title').text('Family coat of arms - click to view profile');
 
-            // White background circle with border
-            crestG.append('circle')
-              .attr('cx', -crestSize / 4)
-              .attr('cy', nodeHeight + crestSize / 4)
-              .attr('r', crestSize / 2)
-              .attr('fill', '#fff')
-              .attr('stroke', '#d4af37')
-              .attr('stroke-width', 2);
-
-            // The actual coat of arms image
+            // The actual coat of arms image - positioned in bottom-left corner
             crestG.append('image')
               .attr('href', person.coatOfArmsUrl)
-              .attr('x', -crestSize / 4 - crestSize / 2 + 2)
-              .attr('y', nodeHeight + crestSize / 4 - crestSize / 2 + 2)
-              .attr('width', crestSize - 4)
-              .attr('height', crestSize - 4)
-              .attr('preserveAspectRatio', 'xMidYMid meet')
-              .style('clip-path', `circle(${(crestSize - 4) / 2}px at ${(crestSize - 4) / 2}px ${(crestSize - 4) / 2}px)`);
+              .attr('x', 4)
+              .attr('y', nodeHeight - crestSize - 4)
+              .attr('width', crestSize)
+              .attr('height', crestSize)
+              .attr('preserveAspectRatio', 'xMidYMid meet');
           }
 
           const displayName = person.name.length > 20 ? person.name.substring(0, 18) + '..' : person.name;

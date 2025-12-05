@@ -1,4 +1,8 @@
 export const typeDefs = `#graphql
+  # ===========================================
+  # CORE TYPES
+  # ===========================================
+
   type Person {
     id: ID!
     familysearch_id: String
@@ -26,12 +30,16 @@ export const typeDefs = `#graphql
     source_count: Int
     research_status: String
     research_priority: Int
-    # Relationships
+    last_researched: String
+
+    # Relationships (batched via DataLoader)
     parents: [Person!]!
     siblings: [Person!]!
     spouses: [Person!]!
     children: [Person!]!
     families: [Family!]!
+
+    # Life details (batched via DataLoader)
     residences: [Residence!]!
     occupations: [Occupation!]!
     events: [Event!]!
@@ -104,21 +112,54 @@ export const typeDefs = `#graphql
     with_familysearch_id: Int!
   }
 
+  # ===========================================
+  # PAGINATION (Relay-style cursors)
+  # ===========================================
+
+  type PageInfo {
+    hasNextPage: Boolean!
+    hasPreviousPage: Boolean!
+    startCursor: String
+    endCursor: String
+    totalCount: Int!
+  }
+
+  type PersonEdge {
+    node: Person!
+    cursor: String!
+  }
+
+  type PersonConnection {
+    edges: [PersonEdge!]!
+    pageInfo: PageInfo!
+  }
+
+  # ===========================================
+  # QUERIES
+  # ===========================================
+
   type Query {
-    # Person queries
+    # Single lookups
     person(id: ID!): Person
-    people(limit: Int, offset: Int): [Person!]!
-    search(query: String!): [Person!]!
-    
-    # Family queries
     family(id: ID!): Family
+
+    # Paginated lists (cursor-based for large datasets)
+    people(first: Int, after: String, last: Int, before: String): PersonConnection!
     families: [Family!]!
-    
-    # Stats
+
+    # Search with pagination
+    search(query: String!, first: Int, after: String): PersonConnection!
+
+    # Convenience queries (legacy offset-based, limited to 100)
+    peopleList(limit: Int, offset: Int): [Person!]!
+
+    # Stats & Research
     stats: Stats!
-    
-    # Research
     researchQueue(limit: Int): [Person!]!
+
+    # Ancestry traversal (optimized single query)
+    ancestors(personId: ID!, generations: Int): [Person!]!
+    descendants(personId: ID!, generations: Int): [Person!]!
   }
 
   input PersonInput {

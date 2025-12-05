@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { auth, isAdmin } from '@/lib/auth';
 import { getInvitations, createInvitation, deleteInvitation, logAudit } from '@/lib/users';
-import { sendInviteEmail } from '@/lib/email';
+import { sendInviteEmail, verifyEmailForSandbox } from '@/lib/email';
 
 export async function GET() {
   const session = await auth();
@@ -30,6 +30,9 @@ export async function POST(request: Request) {
 
   // Generate invitation URL
   const inviteUrl = `${process.env.NEXTAUTH_URL}/login?invite=${invitation.token}`;
+
+  // Verify email for SES sandbox mode (sends verification email to recipient)
+  await verifyEmailForSandbox(email);
 
   // Send invite email
   let emailSent = false;

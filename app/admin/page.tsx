@@ -20,6 +20,7 @@ interface Invitation {
   id: string;
   email: string;
   role: string;
+  token: string;
   expires_at: string;
   accepted_at: string | null;
 }
@@ -140,21 +141,37 @@ export default function AdminPage() {
           {invitations.filter(i => !i.accepted_at).length === 0 ? (
             <p className="text-gray-500">No pending invitations</p>
           ) : (
-            <table className="w-full">
-              <thead><tr className="text-left text-sm text-gray-500 border-b">
-                <th className="pb-2">Email</th><th className="pb-2">Role</th><th className="pb-2">Expires</th><th></th>
-              </tr></thead>
-              <tbody>
-                {invitations.filter(i => !i.accepted_at).map(inv => (
-                  <tr key={inv.id} className="border-b">
-                    <td className="py-2">{inv.email}</td>
-                    <td className="py-2 capitalize">{inv.role}</td>
-                    <td className="py-2">{new Date(inv.expires_at).toLocaleDateString()}</td>
-                    <td className="py-2"><button onClick={() => handleDeleteInvite(inv.id)} className="text-red-600 text-sm">Cancel</button></td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+            <div className="space-y-3">
+              {invitations.filter(i => !i.accepted_at).map(inv => {
+                const inviteLink = `${window.location.origin}/login?invite=${inv.token}`;
+                return (
+                  <div key={inv.id} className="border rounded-lg p-4">
+                    <div className="flex justify-between items-start mb-2">
+                      <div>
+                        <span className="font-medium">{inv.email}</span>
+                        <span className="ml-2 text-sm text-gray-500 capitalize">({inv.role})</span>
+                      </div>
+                      <div className="flex items-center gap-3">
+                        <span className="text-xs text-gray-400">Expires {new Date(inv.expires_at).toLocaleDateString()}</span>
+                        <button onClick={() => handleDeleteInvite(inv.id)} className="text-red-600 text-sm hover:underline">Cancel</button>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2 bg-gray-50 rounded p-2">
+                      <code className="text-xs text-gray-600 flex-1 break-all">{inviteLink}</code>
+                      <button
+                        onClick={() => {
+                          navigator.clipboard.writeText(inviteLink);
+                          alert('Link copied!');
+                        }}
+                        className="text-blue-600 text-xs hover:underline whitespace-nowrap"
+                      >
+                        Copy
+                      </button>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
           )}
         </div>
 

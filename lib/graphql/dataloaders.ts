@@ -1,0 +1,150 @@
+import DataLoader from 'dataloader';
+import { pool } from '../db';
+import { Person, Family, Residence, Occupation, Event, Fact, ResearchLog } from '../types';
+
+// ============================================
+// BATCH LOADERS - Single SQL query per batch
+// ============================================
+
+async function batchPeople(ids: readonly string[]): Promise<(Person | null)[]> {
+  if (!ids.length) return [];
+  const { rows } = await pool.query(
+    `SELECT *, COALESCE(notes, description) as description FROM people WHERE id = ANY($1)`,
+    [ids as string[]]
+  );
+  const map = new Map(rows.map((p: Person) => [p.id, p]));
+  return ids.map(id => map.get(id) || null);
+}
+
+async function batchFamilies(ids: readonly string[]): Promise<(Family | null)[]> {
+  if (!ids.length) return [];
+  const { rows } = await pool.query(`SELECT * FROM families WHERE id = ANY($1)`, [ids as string[]]);
+  const map = new Map(rows.map((f: Family) => [f.id, f]));
+  return ids.map(id => map.get(id) || null);
+}
+
+async function batchChildrenByFamily(familyIds: readonly string[]): Promise<string[][]> {
+  if (!familyIds.length) return [];
+  const { rows } = await pool.query(
+    `SELECT family_id, person_id FROM children WHERE family_id = ANY($1) ORDER BY family_id`,
+    [familyIds as string[]]
+  );
+  const map = new Map<string, string[]>();
+  for (const { family_id, person_id } of rows) {
+    if (!map.has(family_id)) map.set(family_id, []);
+    map.get(family_id)!.push(person_id);
+  }
+  return familyIds.map(id => map.get(id) || []);
+}
+
+async function batchFamiliesAsSpouse(personIds: readonly string[]): Promise<Family[][]> {
+  if (!personIds.length) return [];
+  const { rows } = await pool.query(
+    `SELECT * FROM families WHERE husband_id = ANY($1) OR wife_id = ANY($1)`,
+    [personIds as string[]]
+  );
+  const map = new Map<string, Family[]>(personIds.map(id => [id, []]));
+  for (const f of rows) {
+    if (f.husband_id && map.has(f.husband_id)) map.get(f.husband_id)!.push(f);
+    if (f.wife_id && map.has(f.wife_id)) map.get(f.wife_id)!.push(f);
+  }
+  return personIds.map(id => map.get(id) || []);
+}
+
+async function batchFamiliesAsChild(personIds: readonly string[]): Promise<Family[][]> {
+  if (!personIds.length) return [];
+  const { rows } = await pool.query(
+    `SELECT f.*, c.person_id as _child_id FROM families f
+     JOIN children c ON c.family_id = f.id WHERE c.person_id = ANY($1)`,
+    [personIds as string[]]
+  );
+  const map = new Map<string, Family[]>(personIds.map(id => [id, []]));
+  for (const row of rows) {
+    const childId = row._child_id;
+    delete row._child_id;
+    map.get(childId)!.push(row);
+  }
+  return personIds.map(id => map.get(id) || []);
+}
+
+// Batch load residences by person IDs
+async function batchResidences(personIds: readonly string[]): Promise<Residence[][]> {
+  if (!personIds.length) return [];
+  const { rows } = await pool.query(
+    `SELECT * FROM residences WHERE person_id = ANY($1) ORDER BY residence_year NULLS LAST`,
+    [personIds as string[]]
+  );
+  const map = new Map<string, Residence[]>(personIds.map(id => [id, []]));
+  for (const r of rows) map.get(r.person_id)!.push(r);
+  return personIds.map(id => map.get(id) || []);
+}
+
+// Batch load occupations by person IDs
+async function batchOccupations(personIds: readonly string[]): Promise<Occupation[][]> {
+  if (!personIds.length) return [];
+  const { rows } = await pool.query(
+    `SELECT * FROM occupations WHERE person_id = ANY($1) ORDER BY occupation_date NULLS LAST`,
+    [personIds as string[]]
+  );
+  const map = new Map<string, Occupation[]>(personIds.map(id => [id, []]));
+  for (const o of rows) map.get(o.person_id)!.push(o);
+  return personIds.map(id => map.get(id) || []);
+}
+
+// Batch load events by person IDs
+async function batchEvents(personIds: readonly string[]): Promise<Event[][]> {
+  if (!personIds.length) return [];
+  const { rows } = await pool.query(
+    `SELECT * FROM events WHERE person_id = ANY($1) ORDER BY event_date NULLS LAST`,
+    [personIds as string[]]
+  );
+  const map = new Map<string, Event[]>(personIds.map(id => [id, []]));
+  for (const e of rows) map.get(e.person_id)!.push(e);
+  return personIds.map(id => map.get(id) || []);
+}
+
+// Batch load facts by person IDs
+async function batchFacts(personIds: readonly string[]): Promise<Fact[][]> {
+  if (!personIds.length) return [];
+  const { rows } = await pool.query(
+    `SELECT * FROM facts WHERE person_id = ANY($1) ORDER BY fact_type`,
+    [personIds as string[]]
+  );
+  const map = new Map<string, Fact[]>(personIds.map(id => [id, []]));
+  for (const f of rows) map.get(f.person_id)!.push(f);
+  return personIds.map(id => map.get(id) || []);
+}
+
+// Batch load research logs by person IDs
+async function batchResearchLogs(personIds: readonly string[]): Promise<ResearchLog[][]> {
+  if (!personIds.length) return [];
+  const { rows } = await pool.query(
+    `SELECT * FROM research_log WHERE person_id = ANY($1) ORDER BY created_at DESC`,
+    [personIds as string[]]
+  );
+  const map = new Map<string, ResearchLog[]>(personIds.map(id => [id, []]));
+  for (const r of rows) map.get(r.person_id)!.push(r);
+  return personIds.map(id => map.get(id) || []);
+}
+
+// ============================================
+// LOADER FACTORY - Fresh loaders per request
+// ============================================
+
+export function createLoaders() {
+  return {
+    personLoader: new DataLoader(batchPeople, { cache: true }),
+    familyLoader: new DataLoader(batchFamilies, { cache: true }),
+    childrenByFamilyLoader: new DataLoader(batchChildrenByFamily, { cache: true }),
+    familiesAsSpouseLoader: new DataLoader(batchFamiliesAsSpouse, { cache: true }),
+    familiesAsChildLoader: new DataLoader(batchFamiliesAsChild, { cache: true }),
+    residencesLoader: new DataLoader(batchResidences, { cache: true }),
+    occupationsLoader: new DataLoader(batchOccupations, { cache: true }),
+    eventsLoader: new DataLoader(batchEvents, { cache: true }),
+    factsLoader: new DataLoader(batchFacts, { cache: true }),
+    researchLogLoader: new DataLoader(batchResearchLogs, { cache: true }),
+  };
+}
+
+export type Loaders = ReturnType<typeof createLoaders>;
+

@@ -1,6 +1,33 @@
-import { SESClient, SendEmailCommand } from '@aws-sdk/client-ses';
+import { SESClient, SendEmailCommand, VerifyEmailIdentityCommand, GetIdentityVerificationAttributesCommand } from '@aws-sdk/client-ses';
 
 const ses = new SESClient({ region: process.env.AWS_REGION || 'us-east-1' });
+
+/**
+ * Verify an email address in SES (for sandbox mode).
+ * This sends a verification email to the recipient.
+ */
+export async function verifyEmailForSandbox(email: string): Promise<boolean> {
+  try {
+    // Check if already verified
+    const checkResponse = await ses.send(new GetIdentityVerificationAttributesCommand({
+      Identities: [email]
+    }));
+
+    const status = checkResponse.VerificationAttributes?.[email]?.VerificationStatus;
+    if (status === 'Success') {
+      console.log(`[Email] ${email} already verified in SES`);
+      return true;
+    }
+
+    // Send verification email
+    await ses.send(new VerifyEmailIdentityCommand({ EmailAddress: email }));
+    console.log(`[Email] Verification email sent to ${email}`);
+    return true;
+  } catch (error) {
+    console.error('[Email] Failed to verify email:', error);
+    return false;
+  }
+}
 
 interface SendInviteEmailParams {
   to: string;

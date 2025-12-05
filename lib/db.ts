@@ -151,6 +151,20 @@ export async function getPersonFamilies(personId: string): Promise<{
   return { asSpouse: spouseFamilies.rows, asChild };
 }
 
+export async function getSiblings(personId: string): Promise<Person[]> {
+  // Find siblings by getting other children of the same family
+  const result = await pool.query(`
+    SELECT DISTINCT p.*
+    FROM people p
+    JOIN children c1 ON c1.person_id = p.id
+    JOIN children c2 ON c2.family_id = c1.family_id
+    WHERE c2.person_id = $1
+      AND p.id != $1
+    ORDER BY p.birth_year NULLS LAST, p.name_full
+  `, [personId]);
+  return result.rows;
+}
+
 export async function getStats(): Promise<Stats> {
   const result = await pool.query(`
     SELECT

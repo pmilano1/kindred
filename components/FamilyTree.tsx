@@ -307,6 +307,10 @@ export default function FamilyTree({ rootPersonId, showAncestors, onPersonClick,
       const motherPerson = parentFamily?.wife_id ? data.people[parentFamily.wife_id] : null;
       const hasParents = fatherPerson || motherPerson;
 
+      // Find siblings of root (other children of the same parent family)
+      const siblingIds = parentFamily ? parentFamily.children.filter(id => id !== rootPersonId) : [];
+      const siblingPeople = siblingIds.map(id => data.people[id]).filter(Boolean);
+
       // Position descendants starting at gen 1 if we have parents, else gen 0
       const rootGen = hasParents ? 1 : 0;
       positionDescendants(descendantTree, rootGen);
@@ -547,6 +551,89 @@ export default function FamilyTree({ rootPersonId, showAncestors, onPersonClick,
         });
       }
 
+      // Draw siblings at level 0 (same as root) - positioned to left and right of root
+      if (siblingPeople.length > 0 && descendantTree.x !== undefined && descendantTree.y !== undefined) {
+        const rootY = descendantTree.y;
+        const rootWidth = descendantTree.spouse ? nodeWidth * 2 + spouseGap : nodeWidth;
+        const rootCenterX = descendantTree.x;
+
+        // Split siblings into left and right groups
+        const leftSiblings = siblingPeople.slice(0, Math.ceil(siblingPeople.length / 2));
+        const rightSiblings = siblingPeople.slice(Math.ceil(siblingPeople.length / 2));
+
+        // Draw left siblings
+        leftSiblings.forEach((sibling, idx) => {
+          const sibX = rootCenterX - rootWidth / 2 - (idx + 1) * (nodeWidth + nodeGap);
+          const tileG = g.append('g')
+            .attr('transform', `translate(${sibX - nodeWidth / 2}, ${rootY})`)
+            .style('cursor', 'pointer')
+            .on('click', () => onTileClick(sibling.id));
+
+          tileG.append('rect')
+            .attr('width', nodeWidth).attr('height', nodeHeight).attr('rx', 6)
+            .attr('fill', sibling.isNotable ? '#fef3c7' : (sibling.sex === 'F' ? '#fce7f3' : '#dbeafe'))
+            .attr('stroke', sibling.isNotable ? '#f59e0b' : (sibling.sex === 'F' ? '#ec4899' : '#3b82f6'))
+            .attr('stroke-width', 2);
+
+          const fullName = sibling.name || 'Unknown';
+          const maxLen = 18;
+          const displayName = fullName.length > maxLen ? fullName.substring(0, maxLen - 2) + '…' : fullName;
+          const nameText = tileG.append('text')
+            .attr('x', nodeWidth / 2).attr('y', 20).attr('text-anchor', 'middle')
+            .attr('fill', '#1f2937').attr('font-size', '11px').attr('font-weight', '600')
+            .text(displayName);
+          nameText.append('title').text(fullName);
+
+          const years = sibling.living
+            ? `${sibling.birth_year || '?'} – Living`
+            : `${sibling.birth_year || '?'} – ${sibling.death_year || '?'}`;
+          tileG.append('text')
+            .attr('x', nodeWidth / 2).attr('y', 36).attr('text-anchor', 'middle')
+            .attr('fill', '#6b7280').attr('font-size', '10px').text(years);
+
+          // Sibling indicator (horizontal line to root)
+          tileG.append('text')
+            .attr('x', nodeWidth - 12).attr('y', 14).attr('font-size', '10px').attr('fill', '#9ca3af')
+            .text('↔');
+        });
+
+        // Draw right siblings
+        rightSiblings.forEach((sibling, idx) => {
+          const sibX = rootCenterX + rootWidth / 2 + (idx + 1) * (nodeWidth + nodeGap);
+          const tileG = g.append('g')
+            .attr('transform', `translate(${sibX - nodeWidth / 2}, ${rootY})`)
+            .style('cursor', 'pointer')
+            .on('click', () => onTileClick(sibling.id));
+
+          tileG.append('rect')
+            .attr('width', nodeWidth).attr('height', nodeHeight).attr('rx', 6)
+            .attr('fill', sibling.isNotable ? '#fef3c7' : (sibling.sex === 'F' ? '#fce7f3' : '#dbeafe'))
+            .attr('stroke', sibling.isNotable ? '#f59e0b' : (sibling.sex === 'F' ? '#ec4899' : '#3b82f6'))
+            .attr('stroke-width', 2);
+
+          const fullName = sibling.name || 'Unknown';
+          const maxLen = 18;
+          const displayName = fullName.length > maxLen ? fullName.substring(0, maxLen - 2) + '…' : fullName;
+          const nameText = tileG.append('text')
+            .attr('x', nodeWidth / 2).attr('y', 20).attr('text-anchor', 'middle')
+            .attr('fill', '#1f2937').attr('font-size', '11px').attr('font-weight', '600')
+            .text(displayName);
+          nameText.append('title').text(fullName);
+
+          const years = sibling.living
+            ? `${sibling.birth_year || '?'} – Living`
+            : `${sibling.birth_year || '?'} – ${sibling.death_year || '?'}`;
+          tileG.append('text')
+            .attr('x', nodeWidth / 2).attr('y', 36).attr('text-anchor', 'middle')
+            .attr('fill', '#6b7280').attr('font-size', '10px').text(years);
+
+          // Sibling indicator
+          tileG.append('text')
+            .attr('x', nodeWidth - 12).attr('y', 14).attr('font-size', '10px').attr('fill', '#9ca3af')
+            .text('↔');
+        });
+      }
+
       // Fit to view
       const bounds = { x: Math.min(...xs) - nodeWidth, y: 0, width: treeWidth, height: treeHeight };
       const scale = Math.min(width / (bounds.width + 100), height / (bounds.height + 100), 1);
@@ -572,6 +659,11 @@ export default function FamilyTree({ rootPersonId, showAncestors, onPersonClick,
       ? (rootFamilies[0].husband_id === rootPersonId ? rootFamilies[0].wife_id : rootFamilies[0].husband_id)
       : null;
     const rootSpouse = rootSpouseId ? data.people[rootSpouseId] : null;
+
+    // Find siblings of root (other children of the same parent family)
+    const ancestorParentFamily = data.families.find(f => f.children.includes(rootPersonId));
+    const ancestorSiblingIds = ancestorParentFamily ? ancestorParentFamily.children.filter(id => id !== rootPersonId) : [];
+    const ancestorSiblingPeople = ancestorSiblingIds.map(id => data.people[id]).filter(Boolean);
 
     // Position nodes - parents displayed as couples side-by-side at SAME Y level
     let leafX = 0;
@@ -943,6 +1035,59 @@ export default function FamilyTree({ rootPersonId, showAncestors, onPersonClick,
         .attr('x', nodeWidth / 2).attr('y', 36).attr('text-anchor', 'middle')
         .attr('fill', '#6b7280').attr('font-size', '10px')
         .text(spouseYears);
+    }
+
+    // Draw siblings at level 0 (same as root) - positioned to left of root (spouse is on right)
+    if (ancestorSiblingPeople.length > 0 && pedigree.x !== undefined && pedigree.y !== undefined) {
+      const rootY = pedigree.y;
+
+      // All siblings go to the LEFT of root (since spouse is on right)
+      ancestorSiblingPeople.forEach((sibling, idx) => {
+        const sibX = pedigree.x! - (idx + 1) * (nodeWidth + nodeGap);
+
+        const sibG = g.append('g')
+          .attr('transform', `translate(${sibX - nodeWidth / 2},${rootY - nodeHeight / 2})`)
+          .style('cursor', 'pointer')
+          .on('click', () => onTileClick(sibling.id));
+
+        sibG.append('rect')
+          .attr('width', nodeWidth).attr('height', nodeHeight).attr('rx', 6)
+          .attr('fill', sibling.isNotable ? '#fef3c7' : (sibling.sex === 'F' ? '#fce7f3' : '#dbeafe'))
+          .attr('stroke', sibling.isNotable ? '#f59e0b' : (sibling.sex === 'F' ? '#ec4899' : '#3b82f6'))
+          .attr('stroke-width', 2);
+
+        // Status indicator
+        const sibStatus = sibling.research_status || 'not_started';
+        const sibStatusG = sibG.append('g').style('cursor', 'help');
+        sibStatusG.append('title').text(statusLabels[sibStatus] || 'Unknown status');
+        sibStatusG.append('circle')
+          .attr('cx', nodeWidth - 10).attr('cy', nodeHeight - 10).attr('r', 5)
+          .attr('fill', statusColors[sibStatus] || '#9ca3af')
+          .attr('stroke', '#fff').attr('stroke-width', 1);
+
+        const fullName = sibling.name || 'Unknown';
+        const maxLen = 18;
+        const displayName = fullName.length > maxLen ? fullName.substring(0, maxLen - 2) + '…' : fullName;
+        const nameText = sibG.append('text')
+          .attr('x', nodeWidth / 2).attr('y', 20).attr('text-anchor', 'middle')
+          .attr('fill', '#1f2937').attr('font-size', '11px').attr('font-weight', '600')
+          .style('cursor', 'pointer')
+          .on('click', (e: MouseEvent) => { e.stopPropagation(); onPersonClick(sibling.id); })
+          .text(displayName);
+        nameText.append('title').text(fullName);
+
+        const years = sibling.living
+          ? `${sibling.birth_year || '?'} – Living`
+          : `${sibling.birth_year || '?'} – ${sibling.death_year || '?'}`;
+        sibG.append('text')
+          .attr('x', nodeWidth / 2).attr('y', 36).attr('text-anchor', 'middle')
+          .attr('fill', '#6b7280').attr('font-size', '10px').text(years);
+
+        // Sibling indicator
+        sibG.append('text')
+          .attr('x', nodeWidth - 12).attr('y', 14).attr('font-size', '10px').attr('fill', '#9ca3af')
+          .text('↔');
+      });
     }
 
     // Draw notable connections ONLY if the branching ancestor is in the current pedigree

@@ -3,7 +3,7 @@ import Sidebar from '@/components/Sidebar';
 import Hero from '@/components/Hero';
 import Footer from '@/components/Footer';
 import ResearchPanel from '@/components/ResearchPanel';
-import { getPerson, getPersonFamilies, getChildren, getPeople, getPersonResidences, getPersonOccupations, getPersonEvents, getPersonFacts, getNotableRelatives } from '@/lib/db';
+import { getPerson, getPersonFamilies, getChildren, getPeople, getPersonResidences, getPersonOccupations, getPersonEvents, getPersonFacts, getNotableRelatives, getSiblings } from '@/lib/db';
 import { notFound } from 'next/navigation';
 
 export const dynamic = 'force-dynamic';
@@ -14,13 +14,14 @@ interface PageProps {
 
 export default async function PersonPage({ params }: PageProps) {
   const { id } = await params;
-  const [person, residences, occupations, events, facts, notableRelatives] = await Promise.all([
+  const [person, residences, occupations, events, facts, notableRelatives, siblings] = await Promise.all([
     getPerson(id),
     getPersonResidences(id),
     getPersonOccupations(id),
     getPersonEvents(id),
     getPersonFacts(id),
-    getNotableRelatives(id)
+    getNotableRelatives(id),
+    getSiblings(id)
   ]);
 
   if (!person) {
@@ -151,6 +152,38 @@ export default async function PersonPage({ params }: PageProps) {
                       <div className={`p-4 rounded-lg border-l-4 ${parent.sex === 'F' ? 'border-l-pink-400 bg-pink-50' : 'border-l-blue-400 bg-blue-50'} hover:shadow-md transition`}>
                         <p className="font-semibold">{parent.name_full}</p>
                         <p className="text-sm text-gray-500">{parent.birth_year || '?'} – {parent.death_year || (parent.living ? 'Living' : '?')}</p>
+                      </div>
+                    </Link>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Siblings */}
+            {siblings.length > 0 && (
+              <div className="card p-6 mb-6">
+                <h3 className="section-title">Siblings ({siblings.length})</h3>
+                <div className="grid md:grid-cols-2 gap-2">
+                  {siblings.map(sibling => (
+                    <Link key={sibling.id} href={`/person/${sibling.id}`}>
+                      <div className={`p-3 rounded border-l-4 ${sibling.sex === 'F' ? 'border-l-pink-300 bg-pink-50/50' : 'border-l-blue-300 bg-blue-50/50'} hover:shadow-sm transition text-sm`}>
+                        {sibling.name_full} {sibling.birth_year ? `(b. ${sibling.birth_year})` : ''}
+                      </div>
+                    </Link>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Siblings */}
+            {siblings.length > 0 && (
+              <div className="card p-6 mb-6">
+                <h3 className="section-title">Siblings ({siblings.length})</h3>
+                <div className="grid md:grid-cols-2 gap-2">
+                  {siblings.map(sibling => (
+                    <Link key={sibling.id} href={`/person/${sibling.id}`}>
+                      <div className={`p-3 rounded border-l-4 ${sibling.sex === 'F' ? 'border-l-pink-300 bg-pink-50/50' : 'border-l-blue-300 bg-blue-50/50'} hover:shadow-sm transition text-sm`}>
+                        {sibling.name_full} {sibling.birth_year ? `(b. ${sibling.birth_year})` : ''}
                       </div>
                     </Link>
                   ))}

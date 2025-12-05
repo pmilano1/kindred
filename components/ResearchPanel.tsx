@@ -6,6 +6,7 @@ import { ResearchLog, ResearchActionType, ResearchSource, ResearchConfidence, Re
 interface ResearchPanelProps {
   personId: string;
   personName: string;
+  compact?: boolean;
 }
 
 const ACTION_TYPES: { value: ResearchActionType; label: string; emoji: string }[] = [
@@ -58,7 +59,7 @@ const STATUS_OPTIONS: { value: ResearchStatus; label: string; color: string; des
   { value: 'brick_wall', label: 'Brick Wall', color: 'bg-red-200', desc: 'Cannot find more info' },
 ];
 
-export default function ResearchPanel({ personId, personName }: ResearchPanelProps) {
+export default function ResearchPanel({ personId, personName, compact = false }: ResearchPanelProps) {
   const [log, setLog] = useState<ResearchLog[]>([]);
   const [status, setStatus] = useState<ResearchStatus>('not_started');
   const [priority, setPriority] = useState(0);
@@ -145,19 +146,31 @@ export default function ResearchPanel({ personId, personName }: ResearchPanelPro
     });
   };
 
-  if (loading) return <div className="p-4 text-gray-500">Loading research data...</div>;
+  if (loading) return <div className={`${compact ? 'p-2' : 'p-4'} text-gray-500 text-sm`}>Loading...</div>;
 
   return (
-    <div className="card p-4 mb-6">
-      <div className="flex justify-between items-center mb-4">
-        <h3 className="text-lg font-semibold">📚 Research Notes</h3>
-        <button
-          onClick={() => setShowForm(!showForm)}
-          className="tree-btn text-sm"
-        >
-          {showForm ? 'Cancel' : '+ Add Note'}
-        </button>
-      </div>
+    <div className={compact ? '' : 'card p-4 mb-6'}>
+      {!compact && (
+        <div className="flex justify-between items-center mb-4">
+          <h3 className="text-lg font-semibold">📚 Research Notes</h3>
+          <button
+            onClick={() => setShowForm(!showForm)}
+            className="tree-btn text-sm"
+          >
+            {showForm ? 'Cancel' : '+ Add Note'}
+          </button>
+        </div>
+      )}
+      {compact && (
+        <div className="flex justify-end mb-2">
+          <button
+            onClick={() => setShowForm(!showForm)}
+            className="tree-btn text-xs py-1 px-2"
+          >
+            {showForm ? 'Cancel' : '+ Add'}
+          </button>
+        </div>
+      )}
 
       {/* Status and Priority Controls */}
       <div className="flex flex-wrap gap-4 mb-4 p-3 bg-gray-50 rounded-lg">

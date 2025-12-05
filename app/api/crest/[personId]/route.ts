@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { Pool } from 'pg';
+import crypto from 'crypto';
 
 const pool = process.env.DATABASE_URL
   ? new Pool({
@@ -15,19 +16,28 @@ const pool = process.env.DATABASE_URL
     });
 
 // Cache for coat of arms - they don't change often
-const crestCache = new Map<string, { data: string; timestamp: number }>();
-const CACHE_TTL = 3600000; // 1 hour in milliseconds
+const crestCache = new Map<string, { data: string; etag: string; timestamp: number }>();
+const CACHE_TTL = 86400000; // 24 hours in milliseconds (extended since crests rarely change)
+
+function generateEtag(data: string): string {
+  return crypto.createHash('md5').update(data).digest('hex').substring(0, 16);
+}
 
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ personId: string }> }
 ) {
   const { personId } = await params;
-  
+  const ifNoneMatch = request.headers.get('if-none-match');
+
   // Check cache first
   const cached = crestCache.get(personId);
   if (cached && Date.now() - cached.timestamp < CACHE_TTL) {
-    // Return cached base64 image with appropriate headers
+    // Check if client has cached version (ETag match)
+    if (ifNoneMatch && ifNoneMatch === cached.etag) {
+      return new NextResponse(null, { status: 304 });
+    }
+
     const base64Data = cached.data;
     if (base64Data.startsWith('data:image/')) {
       const [header, data] = base64Data.split(',');
@@ -36,7 +46,8 @@ export async function GET(
       return new NextResponse(buffer, {
         headers: {
           'Content-Type': mimeType,
-          'Cache-Control': 'public, max-age=86400', // Browser cache for 24 hours
+          'Cache-Control': 'public, max-age=604800, immutable', // 7 days, immutable (crests don't change)
+          'ETag': cached.etag,
         },
       });
     }
@@ -53,9 +64,15 @@ export async function GET(
     }
 
     const base64Data = result.rows[0].fact_value;
-    
-    // Store in cache
-    crestCache.set(personId, { data: base64Data, timestamp: Date.now() });
+    const etag = generateEtag(base64Data);
+
+    // Store in cache with ETag
+    crestCache.set(personId, { data: base64Data, etag, timestamp: Date.now() });
+
+    // Check if client has cached version
+    if (ifNoneMatch && ifNoneMatch === etag) {
+      return new NextResponse(null, { status: 304 });
+    }
 
     // Parse and return as image
     if (base64Data.startsWith('data:image/')) {
@@ -65,7 +82,8 @@ export async function GET(
       return new NextResponse(buffer, {
         headers: {
           'Content-Type': mimeType,
-          'Cache-Control': 'public, max-age=86400',
+          'Cache-Control': 'public, max-age=604800, immutable', // 7 days, immutable
+          'ETag': etag,
         },
       });
     }

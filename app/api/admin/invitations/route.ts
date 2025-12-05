@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { auth, isAdmin } from '@/lib/auth';
 import { getInvitations, createInvitation, deleteInvitation, logAudit } from '@/lib/users';
+import { sendInviteEmail } from '@/lib/email';
 
 export async function GET() {
   const session = await auth();
@@ -30,10 +31,27 @@ export async function POST(request: Request) {
   // Generate invitation URL
   const inviteUrl = `${process.env.NEXTAUTH_URL}/login?invite=${invitation.token}`;
 
-  return NextResponse.json({ 
+  // Send invite email
+  let emailSent = false;
+  try {
+    emailSent = await sendInviteEmail({
+      to: email,
+      inviteUrl,
+      role,
+      inviterName: session.user.name || 'Admin',
+      inviterEmail: session.user.email || 'noreply@milanese.life'
+    });
+  } catch (error) {
+    console.error('Failed to send invite email:', error);
+  }
+
+  return NextResponse.json({
     invitation,
     inviteUrl,
-    message: `Invitation created. Share this link with ${email}: ${inviteUrl}`
+    emailSent,
+    message: emailSent
+      ? `Invitation sent to ${email}`
+      : `Invitation created. Share this link with ${email}: ${inviteUrl}`
   });
 }
 

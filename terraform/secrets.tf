@@ -21,7 +21,7 @@ resource "aws_secretsmanager_secret_version" "db_credentials" {
     host     = aws_db_instance.main.address
     port     = aws_db_instance.main.port
     database = aws_db_instance.main.db_name
-    url      = "postgresql://${aws_db_instance.main.username}:${random_password.db_password.result}@${aws_db_instance.main.address}:${aws_db_instance.main.port}/${aws_db_instance.main.db_name}?sslmode=require"
+    url      = "postgresql://${aws_db_instance.main.username}:${random_password.db_password.result}@${aws_db_instance.main.address}:${aws_db_instance.main.port}/${aws_db_instance.main.db_name}?sslmode=no-verify"
   })
 }
 

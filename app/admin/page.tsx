@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import Sidebar from '@/components/Sidebar';
+import Hero from '@/components/Hero';
 
 interface User {
   id: string;
@@ -94,13 +95,14 @@ export default function AdminPage() {
     fetchData();
   };
 
-  if (loading) return <div className="flex"><Sidebar /><div className="flex-1 p-8">Loading...</div></div>;
+  if (loading) return <><Sidebar /><main className="main-content"><Hero title="User Management" subtitle="Manage users and invitations" /><div className="content-wrapper"><p>Loading...</p></div></main></>;
 
   return (
-    <div className="flex min-h-screen bg-gray-50">
+    <>
       <Sidebar />
-      <main className="flex-1 p-8">
-        <h1 className="text-3xl font-bold text-gray-900 mb-8">👥 User Management</h1>
+      <main className="main-content">
+        <Hero title="User Management" subtitle="Manage users and invitations" />
+        <div className="content-wrapper">
 
         {/* Invite Section */}
         <div className="bg-white rounded-xl shadow-sm border p-6 mb-8">

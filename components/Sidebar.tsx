@@ -51,7 +51,7 @@ export default function Sidebar() {
       </ul>
       <div className="p-6 border-t border-white/10">
         {session?.user && (
-          <div className="mb-4">
+          <div>
             <p className="text-sm text-gray-300 truncate">{session.user.name}</p>
             <p className="text-xs text-gray-500 truncate">{session.user.email}</p>
             <p className="text-xs text-gray-600 capitalize mt-1">{session.user.role}</p>
@@ -63,9 +63,6 @@ export default function Sidebar() {
             </button>
           </div>
         )}
-        <p className="text-xs text-gray-500 text-center">
-          Data from FamilySearch
-        </p>
       </div>
     </nav>
   );

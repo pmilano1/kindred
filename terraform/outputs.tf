@@ -40,7 +40,7 @@ output "rds_security_group_id" {
 
 output "database_url" {
   description = "Database connection URL (sensitive)"
-  value       = "postgresql://${aws_db_instance.main.username}:${random_password.db_password.result}@${aws_db_instance.main.address}:${aws_db_instance.main.port}/${aws_db_instance.main.db_name}?sslmode=require"
+  value       = "postgresql://${aws_db_instance.main.username}:${random_password.db_password.result}@${aws_db_instance.main.address}:${aws_db_instance.main.port}/${aws_db_instance.main.db_name}?sslmode=no-verify"
   sensitive   = true
 }
 
@@ -65,3 +65,27 @@ output "vpc_connector_arn" {
   value       = aws_apprunner_vpc_connector.main.arn
 }
 
+output "apprunner_service_url" {
+  description = "App Runner service URL"
+  value       = aws_apprunner_service.main.service_url
+}
+
+output "apprunner_service_arn" {
+  description = "App Runner service ARN"
+  value       = aws_apprunner_service.main.arn
+}
+
+output "custom_domain" {
+  description = "Custom domain for the app"
+  value       = "https://family.milanese.life"
+}
+
+output "ses_verification_token" {
+  description = "SES domain verification token (add as TXT record _amazonses.milanese.life)"
+  value       = aws_ses_domain_identity.main.verification_token
+}
+
+output "ses_dkim_tokens" {
+  description = "SES DKIM tokens (add as CNAME records)"
+  value       = aws_ses_domain_dkim.main.dkim_tokens
+}

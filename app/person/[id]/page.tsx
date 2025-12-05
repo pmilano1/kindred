@@ -3,22 +3,9 @@ import Sidebar from '@/components/Sidebar';
 import Hero from '@/components/Hero';
 import Footer from '@/components/Footer';
 import PersonSplitLayout from '@/components/PersonSplitLayout';
+import TreeLink from '@/components/TreeLink';
 import { getPerson, getPersonFamilies, getChildren, getPeople, getPersonResidences, getPersonOccupations, getPersonEvents, getPersonFacts, getNotableRelatives, getSiblings } from '@/lib/db';
 import { notFound } from 'next/navigation';
-
-// Tree link component for consistent styling
-function TreeLink({ personId, className = '' }: { personId: string; className?: string }) {
-  return (
-    <Link
-      href={`/tree?person=${personId}&view=ancestors`}
-      className={`text-gray-400 hover:text-green-600 transition ${className}`}
-      title="View in Tree"
-      onClick={(e) => e.stopPropagation()}
-    >
-      🌳
-    </Link>
-  );
-}
 
 export const dynamic = 'force-dynamic';
 

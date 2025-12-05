@@ -103,16 +103,18 @@ export const typeDefs = `#graphql
   }
 
   type Source {
-    id: Int!
+    id: String!
     person_id: String!
     source_type: String
     source_name: String
     source_url: String
-    data_retrieved: String
-    validated: Boolean!
+    action: String!
+    content: String
+    confidence: String
+    validated: Boolean
     validated_date: String
-    notes: String
     created_at: String!
+    updated_at: String
   }
 
   type RelationshipPath {

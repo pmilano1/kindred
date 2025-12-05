@@ -629,33 +629,59 @@ export default function FamilyTree({ rootPersonId, showAncestors, onPersonClick,
 
     const g = svg.append('g');
 
-    // Draw links - from bottom of person to top of parent (tree flows down)
+    // Draw links - straight lines with horizontal connector (matching descendant view style)
     const drawLinks = (node: PedigreeNode) => {
-      if (node.father && node.x !== undefined && node.y !== undefined && node.father.x !== undefined && node.father.y !== undefined) {
-        const startX = node.x;
-        const startY = node.y + nodeHeight / 2; // bottom of person
-        const endX = node.father.x;
-        const endY = node.father.y - nodeHeight / 2; // top of father
-        g.append('path')
-          .attr('d', `M${startX},${startY} C${startX},${(startY + endY) / 2} ${endX},${(startY + endY) / 2} ${endX},${endY}`)
-          .attr('fill', 'none')
-          .attr('stroke', '#3b82f6')
-          .attr('stroke-width', 2)
-          .attr('stroke-opacity', 0.6);
-        drawLinks(node.father);
-      }
-      if (node.mother && node.x !== undefined && node.y !== undefined && node.mother.x !== undefined && node.mother.y !== undefined) {
-        const startX = node.x;
-        const startY = node.y + nodeHeight / 2; // bottom of person
-        const endX = node.mother.x;
-        const endY = node.mother.y - nodeHeight / 2; // top of mother
-        g.append('path')
-          .attr('d', `M${startX},${startY} C${startX},${(startY + endY) / 2} ${endX},${(startY + endY) / 2} ${endX},${endY}`)
-          .attr('fill', 'none')
-          .attr('stroke', '#ec4899')
-          .attr('stroke-width', 2)
-          .attr('stroke-opacity', 0.6);
-        drawLinks(node.mother);
+      if (!node.x || !node.y) return;
+      const hasParents = node.father || node.mother;
+      if (!hasParents) return;
+
+      const childY = node.y + nodeHeight;
+      const parentY = node.y + levelGap;
+      const midY = childY + (parentY - childY) / 2;
+
+      // Vertical line down from child
+      g.append('line')
+        .attr('x1', node.x).attr('y1', childY)
+        .attr('x2', node.x).attr('y2', midY)
+        .attr('stroke', '#4a5568').attr('stroke-width', 1);
+
+      // Get parent x positions
+      const parentXs: number[] = [];
+      if (node.father?.x) parentXs.push(node.father.x);
+      if (node.mother?.x) parentXs.push(node.mother.x);
+
+      if (parentXs.length > 0) {
+        // Horizontal line spanning parents
+        const minX = Math.min(...parentXs);
+        const maxX = Math.max(...parentXs);
+        g.append('line')
+          .attr('x1', minX).attr('y1', midY)
+          .attr('x2', maxX).attr('y2', midY)
+          .attr('stroke', '#4a5568').attr('stroke-width', 1);
+
+        // Vertical lines up to each parent
+        if (node.father?.x && node.father?.y) {
+          g.append('line')
+            .attr('x1', node.father.x).attr('y1', midY)
+            .attr('x2', node.father.x).attr('y2', parentY)
+            .attr('stroke', '#4a5568').attr('stroke-width', 1);
+          drawLinks(node.father);
+        }
+        if (node.mother?.x && node.mother?.y) {
+          g.append('line')
+            .attr('x1', node.mother.x).attr('y1', midY)
+            .attr('x2', node.mother.x).attr('y2', parentY)
+            .attr('stroke', '#4a5568').attr('stroke-width', 1);
+          drawLinks(node.mother);
+        }
+
+        // Marriage line between parents (gold)
+        if (node.father?.x && node.mother?.x && node.father?.y) {
+          g.append('line')
+            .attr('x1', node.father.x + nodeWidth/2).attr('y1', node.father.y + nodeHeight/2)
+            .attr('x2', node.mother.x - nodeWidth/2).attr('y2', node.father.y + nodeHeight/2)
+            .attr('stroke', '#f59e0b').attr('stroke-width', 2);
+        }
       }
     };
     drawLinks(pedigree);
@@ -923,14 +949,18 @@ export default function FamilyTree({ rootPersonId, showAncestors, onPersonClick,
 
     // Draw children of root (-1 level for navigation) ABOVE the root (since tree goes down to ancestors)
     if (childPeople.length > 0 && pedigree.x !== undefined && pedigree.y !== undefined) {
-      const childY = pedigree.y - levelGap - 10; // Above root
+      const childY = pedigree.y - levelGap; // Same spacing as other levels
       const totalChildWidth = childPeople.length * nodeWidth + (childPeople.length - 1) * nodeGap;
       const startX = pedigree.x - totalChildWidth / 2 + nodeWidth / 2;
 
-      // Draw connection line from root up to children
-      const midY = pedigree.y - nodeHeight / 2 - (levelGap - nodeHeight) / 2;
+      // Draw connection line from root up to children (same style as other connections)
+      const rootTop = pedigree.y - nodeHeight / 2;
+      const childBottom = childY + nodeHeight;
+      const midY = childBottom + (rootTop - childBottom) / 2;
+
+      // Vertical line up from root
       g.append('line')
-        .attr('x1', pedigree.x).attr('y1', pedigree.y - nodeHeight / 2)
+        .attr('x1', pedigree.x).attr('y1', rootTop)
         .attr('x2', pedigree.x).attr('y2', midY)
         .attr('stroke', '#4a5568').attr('stroke-width', 1);
 
@@ -945,10 +975,10 @@ export default function FamilyTree({ rootPersonId, showAncestors, onPersonClick,
       childPeople.forEach((child, idx) => {
         const childX = startX + idx * (nodeWidth + nodeGap);
 
-        // Line from horizontal bar to child
+        // Line from horizontal bar up to child
         g.append('line')
           .attr('x1', childX).attr('y1', midY)
-          .attr('x2', childX).attr('y2', childY + nodeHeight)
+          .attr('x2', childX).attr('y2', childBottom)
           .attr('stroke', '#4a5568').attr('stroke-width', 1);
 
         const tileG = g.append('g')

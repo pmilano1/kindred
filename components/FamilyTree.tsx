@@ -189,6 +189,55 @@ export default function FamilyTree({ rootPersonId, showAncestors, onPersonClick,
     return node;
   }, [data]);
 
+  // Descendant node - includes spouse and children
+  interface DescendantNode {
+    id: string;
+    person: TreePerson;
+    spouse?: TreePerson;
+    marriageYear?: number | null;
+    children: DescendantNode[];
+    x?: number;
+    y?: number;
+  }
+
+  // Build descendant tree - each person links to spouse and children
+  const buildDescendantTree = useCallback((personId: string, depth = 0, maxDepth = 8): DescendantNode | null => {
+    if (!data || depth > maxDepth) return null;
+    const person = data.people[personId];
+    if (!person) return null;
+
+    const node: DescendantNode = { id: personId, person, children: [] };
+
+    // Find families where this person is a parent
+    const familiesAsParent = data.families.filter(f =>
+      f.husband_id === personId || f.wife_id === personId
+    );
+
+    // Use the first family for spouse (primary marriage)
+    if (familiesAsParent.length > 0) {
+      const primaryFamily = familiesAsParent[0];
+      const spouseId = primaryFamily.husband_id === personId
+        ? primaryFamily.wife_id
+        : primaryFamily.husband_id;
+      if (spouseId && data.people[spouseId]) {
+        node.spouse = data.people[spouseId];
+        node.marriageYear = primaryFamily.marriage_year;
+      }
+
+      // Add children from all marriages
+      for (const family of familiesAsParent) {
+        for (const childId of family.children) {
+          const childNode = buildDescendantTree(childId, depth + 1, maxDepth);
+          if (childNode) {
+            node.children.push(childNode);
+          }
+        }
+      }
+    }
+
+    return node;
+  }, [data]);
+
   // Draw pedigree chart
   useEffect(() => {
     if (!data || !svgRef.current || !rootPersonId) return;
@@ -196,13 +245,200 @@ export default function FamilyTree({ rootPersonId, showAncestors, onPersonClick,
     svg.selectAll('*').remove();
 
     if (!showAncestors) {
-      // Descendant view - use simple message for now
-      svg.append('text')
-        .attr('x', dimensions.width / 2)
-        .attr('y', dimensions.height / 2)
-        .attr('text-anchor', 'middle')
-        .attr('fill', '#666')
-        .text('Descendant view coming soon');
+      // Descendant view - build tree going down
+      const descendantTree = buildDescendantTree(rootPersonId);
+      if (!descendantTree) return;
+
+      const nodeWidth = 115;
+      const nodeHeight = 42;
+      const levelGap = 60;
+      const nodeGap = 8;
+      const spouseGap = 4; // Gap between person and spouse
+
+      // Position nodes top-down: root at top, children spread below
+      interface DescendantNode {
+        id: string;
+        person: TreePerson;
+        spouse?: TreePerson;
+        marriageYear?: number | null;
+        children: DescendantNode[];
+        x?: number;
+        y?: number;
+      }
+
+      let leafX = 0;
+      const positionDescendants = (node: DescendantNode, gen: number): { minX: number; maxX: number } => {
+        node.y = gen * levelGap + 30;
+
+        if (node.children.length === 0) {
+          // Leaf node
+          const width = node.spouse ? nodeWidth * 2 + spouseGap : nodeWidth;
+          node.x = leafX + width / 2;
+          leafX += width + nodeGap;
+          return { minX: node.x - width / 2, maxX: node.x + width / 2 };
+        }
+
+        // Position children first
+        let minX = Infinity;
+        let maxX = -Infinity;
+        for (const child of node.children) {
+          const childBounds = positionDescendants(child, gen + 1);
+          minX = Math.min(minX, childBounds.minX);
+          maxX = Math.max(maxX, childBounds.maxX);
+        }
+
+        // Center parent above children
+        const width = node.spouse ? nodeWidth * 2 + spouseGap : nodeWidth;
+        node.x = (minX + maxX) / 2;
+        return { minX: Math.min(minX, node.x - width / 2), maxX: Math.max(maxX, node.x + width / 2) };
+      };
+
+      positionDescendants(descendantTree, 0);
+
+      // Collect all nodes for rendering
+      const allDescendants: DescendantNode[] = [];
+      const collectNodes = (node: DescendantNode) => {
+        allDescendants.push(node);
+        node.children.forEach(collectNodes);
+      };
+      collectNodes(descendantTree);
+
+      // Calculate bounds
+      const xs = allDescendants.map(n => n.x!);
+      const ys = allDescendants.map(n => n.y!);
+      const treeWidth = Math.max(...xs) - Math.min(...xs) + nodeWidth * 2;
+      const treeHeight = Math.max(...ys) + nodeHeight + 40;
+
+      // Setup zoom
+      const { width, height } = dimensions;
+      const zoom = d3.zoom<SVGSVGElement, unknown>()
+        .scaleExtent([0.2, 2])
+        .on('zoom', (event) => g.attr('transform', event.transform));
+      svg.call(zoom);
+
+      const g = svg.append('g');
+
+      // Draw connections (lines from parent to children)
+      allDescendants.forEach(node => {
+        if (node.children.length > 0 && node.x !== undefined && node.y !== undefined) {
+          const parentY = node.y + nodeHeight;
+          const childY = node.y + levelGap;
+
+          // Vertical line down from parent
+          const midY = parentY + (childY - parentY) / 2;
+          g.append('line')
+            .attr('x1', node.x).attr('y1', parentY)
+            .attr('x2', node.x).attr('y2', midY)
+            .attr('stroke', '#4a5568').attr('stroke-width', 1);
+
+          // Horizontal line spanning children
+          const childXs = node.children.map(c => c.x!);
+          const minChildX = Math.min(...childXs);
+          const maxChildX = Math.max(...childXs);
+          g.append('line')
+            .attr('x1', minChildX).attr('y1', midY)
+            .attr('x2', maxChildX).attr('y2', midY)
+            .attr('stroke', '#4a5568').attr('stroke-width', 1);
+
+          // Vertical lines down to each child
+          node.children.forEach(child => {
+            g.append('line')
+              .attr('x1', child.x!).attr('y1', midY)
+              .attr('x2', child.x!).attr('y2', childY)
+              .attr('stroke', '#4a5568').attr('stroke-width', 1);
+          });
+        }
+
+        // Marriage connector line between person and spouse
+        if (node.spouse && node.x !== undefined && node.y !== undefined) {
+          g.append('line')
+            .attr('x1', node.x - nodeWidth / 2 - spouseGap / 2)
+            .attr('y1', node.y + nodeHeight / 2)
+            .attr('x2', node.x + nodeWidth / 2 + spouseGap / 2)
+            .attr('y2', node.y + nodeHeight / 2)
+            .attr('stroke', '#f59e0b').attr('stroke-width', 2);
+        }
+      });
+
+      // Draw nodes (person tiles)
+      allDescendants.forEach(node => {
+        if (node.x === undefined || node.y === undefined) return;
+
+        // Draw main person
+        const drawPersonTile = (person: TreePerson, x: number, y: number, _isSpouse = false) => {
+          const tileG = g.append('g')
+            .attr('transform', `translate(${x - nodeWidth / 2}, ${y})`)
+            .style('cursor', 'pointer')
+            .on('click', () => onTileClick(person.id || node.id))
+            .on('dblclick', () => onPersonClick(person.id || node.id));
+
+          // Background
+          const bgColor = person.sex === 'M' ? '#1e3a5f' : person.sex === 'F' ? '#4a1942' : '#374151';
+          tileG.append('rect')
+            .attr('width', nodeWidth).attr('height', nodeHeight)
+            .attr('rx', 4)
+            .attr('fill', bgColor)
+            .attr('stroke', person.living ? '#10b981' : '#4a5568')
+            .attr('stroke-width', person.living ? 2 : 1);
+
+          // Name
+          const displayName = person.name?.split(' ').slice(0, 2).join(' ') || 'Unknown';
+          tileG.append('text')
+            .attr('x', nodeWidth / 2).attr('y', 16)
+            .attr('text-anchor', 'middle')
+            .attr('fill', 'white').attr('font-size', '11px').attr('font-weight', 'bold')
+            .text(displayName);
+
+          // Years
+          const years = person.birth_year
+            ? (person.death_year ? `${person.birth_year}–${person.death_year}` : `b. ${person.birth_year}`)
+            : '';
+          if (years) {
+            tileG.append('text')
+              .attr('x', nodeWidth / 2).attr('y', 30)
+              .attr('text-anchor', 'middle')
+              .attr('fill', '#9ca3af').attr('font-size', '9px')
+              .text(years);
+          }
+
+          // Crown for notable
+          if (person.isNotable) {
+            tileG.append('text')
+              .attr('x', -6).attr('y', 6)
+              .attr('font-size', '14px')
+              .text('👑');
+          }
+
+          // Coat of arms
+          if (person.hasCoatOfArms && person.coatOfArmsUrl) {
+            const crestSize = 24;
+            tileG.append('image')
+              .attr('href', person.coatOfArmsUrl)
+              .attr('x', -crestSize / 3)
+              .attr('y', nodeHeight - crestSize / 2)
+              .attr('width', crestSize).attr('height', crestSize)
+              .attr('preserveAspectRatio', 'xMidYMid meet');
+          }
+        };
+
+        // Draw main person
+        const personX = node.spouse ? node.x - nodeWidth / 2 - spouseGap / 2 : node.x;
+        drawPersonTile(node.person, personX, node.y);
+
+        // Draw spouse if exists
+        if (node.spouse) {
+          const spouseX = node.x + nodeWidth / 2 + spouseGap / 2;
+          drawPersonTile(node.spouse, spouseX, node.y, true);
+        }
+      });
+
+      // Fit to view
+      const bounds = { x: Math.min(...xs) - nodeWidth, y: 0, width: treeWidth, height: treeHeight };
+      const scale = Math.min(width / (bounds.width + 100), height / (bounds.height + 100), 1);
+      const tx = (width - bounds.width * scale) / 2 - bounds.x * scale;
+      const ty = 20;
+      svg.call(zoom.transform, d3.zoomIdentity.translate(tx, ty).scale(scale));
+
       return;
     }
 
@@ -557,7 +793,7 @@ export default function FamilyTree({ rootPersonId, showAncestors, onPersonClick,
       const ty = (height - bounds.height * scale) / 2 - bounds.y * scale;
       svg.call(zoom.transform, d3.zoomIdentity.translate(tx, ty).scale(scale));
     }
-  }, [data, rootPersonId, showAncestors, dimensions, buildPedigree, buildDescendantChain, onPersonClick, onTileClick]);
+  }, [data, rootPersonId, showAncestors, dimensions, buildPedigree, buildDescendantChain, buildDescendantTree, onPersonClick, onTileClick]);
 
   const STATUS_OPTIONS = [
     { value: 'not_started', label: '⚪ Not Started', desc: 'No research done yet' },

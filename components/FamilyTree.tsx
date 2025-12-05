@@ -551,65 +551,37 @@ export default function FamilyTree({ rootPersonId, showAncestors, onPersonClick,
         });
       }
 
-      // Draw siblings at level 0 (same as root) - positioned to left and right of root
+      // Draw siblings at level 0 - positioned on father's side (left of root)
+      // Siblings connect to the parent junction line
       if (siblingPeople.length > 0 && descendantTree.x !== undefined && descendantTree.y !== undefined) {
         const rootY = descendantTree.y;
-        const rootWidth = descendantTree.spouse ? nodeWidth * 2 + spouseGap : nodeWidth;
         const rootCenterX = descendantTree.x;
+        const parentY = 30 + nodeHeight;
+        const midY = (parentY + rootY) / 2;
 
-        // Split siblings into left and right groups
-        const leftSiblings = siblingPeople.slice(0, Math.ceil(siblingPeople.length / 2));
-        const rightSiblings = siblingPeople.slice(Math.ceil(siblingPeople.length / 2));
+        // Position all siblings to the left of root (father's side)
+        // Start from the father's X position and go further left
+        const fatherX = fatherPerson ? rootCenterX - nodeWidth/2 - spouseGap : rootCenterX - nodeWidth;
 
-        // Draw left siblings
-        leftSiblings.forEach((sibling, idx) => {
-          const sibX = rootCenterX - rootWidth / 2 - (idx + 1) * (nodeWidth + nodeGap);
+        siblingPeople.forEach((sibling, idx) => {
+          const sibX = fatherX - (idx + 1) * (nodeWidth + nodeGap);
+          const sibCenterX = sibX;
+
+          // Draw connecting line from sibling to the parent junction
+          g.append('path')
+            .attr('d', `M${sibCenterX},${rootY} L${sibCenterX},${midY} L${rootCenterX},${midY}`)
+            .attr('fill', 'none').attr('stroke', '#9ca3af').attr('stroke-width', 1.5).attr('stroke-opacity', 0.5);
+
           const tileG = g.append('g')
             .attr('transform', `translate(${sibX - nodeWidth / 2}, ${rootY})`)
-            .style('cursor', 'pointer')
+            .style('cursor', 'pointer').style('opacity', 0.7)
             .on('click', () => onTileClick(sibling.id));
 
           tileG.append('rect')
             .attr('width', nodeWidth).attr('height', nodeHeight).attr('rx', 6)
             .attr('fill', sibling.isNotable ? '#fef3c7' : (sibling.sex === 'F' ? '#fce7f3' : '#dbeafe'))
             .attr('stroke', sibling.isNotable ? '#f59e0b' : (sibling.sex === 'F' ? '#ec4899' : '#3b82f6'))
-            .attr('stroke-width', 2);
-
-          const fullName = sibling.name || 'Unknown';
-          const maxLen = 18;
-          const displayName = fullName.length > maxLen ? fullName.substring(0, maxLen - 2) + '…' : fullName;
-          const nameText = tileG.append('text')
-            .attr('x', nodeWidth / 2).attr('y', 20).attr('text-anchor', 'middle')
-            .attr('fill', '#1f2937').attr('font-size', '11px').attr('font-weight', '600')
-            .text(displayName);
-          nameText.append('title').text(fullName);
-
-          const years = sibling.living
-            ? `${sibling.birth_year || '?'} – Living`
-            : `${sibling.birth_year || '?'} – ${sibling.death_year || '?'}`;
-          tileG.append('text')
-            .attr('x', nodeWidth / 2).attr('y', 36).attr('text-anchor', 'middle')
-            .attr('fill', '#6b7280').attr('font-size', '10px').text(years);
-
-          // Sibling indicator (horizontal line to root)
-          tileG.append('text')
-            .attr('x', nodeWidth - 12).attr('y', 14).attr('font-size', '10px').attr('fill', '#9ca3af')
-            .text('↔');
-        });
-
-        // Draw right siblings
-        rightSiblings.forEach((sibling, idx) => {
-          const sibX = rootCenterX + rootWidth / 2 + (idx + 1) * (nodeWidth + nodeGap);
-          const tileG = g.append('g')
-            .attr('transform', `translate(${sibX - nodeWidth / 2}, ${rootY})`)
-            .style('cursor', 'pointer')
-            .on('click', () => onTileClick(sibling.id));
-
-          tileG.append('rect')
-            .attr('width', nodeWidth).attr('height', nodeHeight).attr('rx', 6)
-            .attr('fill', sibling.isNotable ? '#fef3c7' : (sibling.sex === 'F' ? '#fce7f3' : '#dbeafe'))
-            .attr('stroke', sibling.isNotable ? '#f59e0b' : (sibling.sex === 'F' ? '#ec4899' : '#3b82f6'))
-            .attr('stroke-width', 2);
+            .attr('stroke-width', 2).attr('stroke-dasharray', '4,2');
 
           const fullName = sibling.name || 'Unknown';
           const maxLen = 18;
@@ -1038,23 +1010,34 @@ export default function FamilyTree({ rootPersonId, showAncestors, onPersonClick,
     }
 
     // Draw siblings at level 0 (same as root) - positioned to left of root (spouse is on right)
+    // Siblings connect via line to the root's parent connection point
     if (ancestorSiblingPeople.length > 0 && pedigree.x !== undefined && pedigree.y !== undefined) {
       const rootY = pedigree.y;
+      const rootX = pedigree.x;
+
+      // Find parent Y for connecting line (if parents exist)
+      const parentY = pedigree.father?.y ?? pedigree.mother?.y;
+      const midY = parentY !== undefined ? rootY + (parentY - rootY) / 2 : rootY - 30;
 
       // All siblings go to the LEFT of root (since spouse is on right)
       ancestorSiblingPeople.forEach((sibling, idx) => {
         const sibX = pedigree.x! - (idx + 1) * (nodeWidth + nodeGap);
 
+        // Draw connecting line from sibling to the parent junction
+        g.append('path')
+          .attr('d', `M${sibX},${rootY} L${sibX},${midY} L${rootX},${midY}`)
+          .attr('fill', 'none').attr('stroke', '#9ca3af').attr('stroke-width', 1.5).attr('stroke-opacity', 0.5);
+
         const sibG = g.append('g')
           .attr('transform', `translate(${sibX - nodeWidth / 2},${rootY - nodeHeight / 2})`)
-          .style('cursor', 'pointer')
+          .style('cursor', 'pointer').style('opacity', 0.7)
           .on('click', () => onTileClick(sibling.id));
 
         sibG.append('rect')
           .attr('width', nodeWidth).attr('height', nodeHeight).attr('rx', 6)
           .attr('fill', sibling.isNotable ? '#fef3c7' : (sibling.sex === 'F' ? '#fce7f3' : '#dbeafe'))
           .attr('stroke', sibling.isNotable ? '#f59e0b' : (sibling.sex === 'F' ? '#ec4899' : '#3b82f6'))
-          .attr('stroke-width', 2);
+          .attr('stroke-width', 2).attr('stroke-dasharray', '4,2');
 
         // Status indicator
         const sibStatus = sibling.research_status || 'not_started';

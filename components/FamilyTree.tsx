@@ -72,12 +72,20 @@ interface PriorityPopup {
   status: string;
 }
 
+// Crest popup state
+interface CrestPopup {
+  url: string;
+  x: number;
+  y: number;
+}
+
 export default function FamilyTree({ rootPersonId, showAncestors, onPersonClick, onTileClick }: FamilyTreeProps) {
   const svgRef = useRef<SVGSVGElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const [data, setData] = useState<TreeData | null>(null);
   const [dimensions, setDimensions] = useState({ width: 800, height: 600 });
   const [priorityPopup, setPriorityPopup] = useState<PriorityPopup | null>(null);
+  const [crestPopup, setCrestPopup] = useState<CrestPopup | null>(null);
 
   const handlePriorityChange = async (personId: string, priority: number) => {
     await fetch(`/api/research/${personId}/priority`, {
@@ -381,13 +389,16 @@ export default function FamilyTree({ rootPersonId, showAncestors, onPersonClick,
             .attr('stroke', person.living ? '#10b981' : '#4a5568')
             .attr('stroke-width', person.living ? 2 : 1);
 
-          // Name
-          const displayName = person.name?.split(' ').slice(0, 2).join(' ') || 'Unknown';
-          tileG.append('text')
+          // Name with ellipsis and tooltip
+          const fullName = person.name || 'Unknown';
+          const maxNameLen = 16;
+          const displayName = fullName.length > maxNameLen ? fullName.substring(0, maxNameLen - 1) + '…' : fullName;
+          const nameText = tileG.append('text')
             .attr('x', nodeWidth / 2).attr('y', 16)
             .attr('text-anchor', 'middle')
             .attr('fill', 'white').attr('font-size', '11px').attr('font-weight', 'bold')
             .text(displayName);
+          nameText.append('title').text(fullName);
 
           // Years
           const years = person.birth_year
@@ -409,15 +420,24 @@ export default function FamilyTree({ rootPersonId, showAncestors, onPersonClick,
               .text('👑');
           }
 
-          // Coat of arms
+          // Coat of arms with hover popup
           if (person.hasCoatOfArms && person.coatOfArmsUrl) {
             const crestSize = 24;
+            const crestUrl = person.coatOfArmsUrl;
             tileG.append('image')
-              .attr('href', person.coatOfArmsUrl)
+              .attr('href', crestUrl)
               .attr('x', -crestSize / 3)
               .attr('y', nodeHeight - crestSize / 2)
               .attr('width', crestSize).attr('height', crestSize)
-              .attr('preserveAspectRatio', 'xMidYMid meet');
+              .attr('preserveAspectRatio', 'xMidYMid meet')
+              .style('cursor', 'pointer')
+              .on('mouseenter', function(event: MouseEvent) {
+                const rect = containerRef.current?.getBoundingClientRect();
+                if (rect) {
+                  setCrestPopup({ url: crestUrl, x: event.clientX - rect.left + 20, y: event.clientY - rect.top - 75 });
+                }
+              })
+              .on('mouseleave', () => setCrestPopup(null));
           }
         };
 
@@ -597,17 +617,24 @@ export default function FamilyTree({ rootPersonId, showAncestors, onPersonClick,
       // Coat of arms image - positioned outside tile, overlapping bottom-left corner
       if (person.coatOfArmsUrl) {
         const crestSize = 28;
+        const crestUrl = person.coatOfArmsUrl;
         const crestG = nodeG.append('g')
           .style('cursor', 'pointer')
           .on('click', (e: MouseEvent) => {
             e.stopPropagation();
             onPersonClick(person.id);
-          });
-        crestG.append('title').text('Family coat of arms - click to view profile');
+          })
+          .on('mouseenter', function(event: MouseEvent) {
+            const rect = containerRef.current?.getBoundingClientRect();
+            if (rect) {
+              setCrestPopup({ url: crestUrl, x: event.clientX - rect.left + 20, y: event.clientY - rect.top - 75 });
+            }
+          })
+          .on('mouseleave', () => setCrestPopup(null));
 
         // Position: half outside tile to bottom-left
         crestG.append('image')
-          .attr('href', person.coatOfArmsUrl)
+          .attr('href', crestUrl)
           .attr('x', -crestSize / 3)
           .attr('y', nodeHeight - crestSize / 2)
           .attr('width', crestSize)
@@ -626,9 +653,10 @@ export default function FamilyTree({ rootPersonId, showAncestors, onPersonClick,
         .attr('stroke', '#fff')
         .attr('stroke-width', 1);
 
-      // Name (clickable)
-      const displayName = person.name.length > 20 ? person.name.substring(0, 18) + '..' : person.name;
-      nodeG.append('text')
+      // Name (clickable) with ellipsis and tooltip
+      const maxNameLen = 18;
+      const displayName = person.name.length > maxNameLen ? person.name.substring(0, maxNameLen - 2) + '…' : person.name;
+      const nameText = nodeG.append('text')
         .attr('x', nodeWidth / 2)
         .attr('y', 20)
         .attr('text-anchor', 'middle')
@@ -638,6 +666,8 @@ export default function FamilyTree({ rootPersonId, showAncestors, onPersonClick,
         .style('cursor', 'pointer')
         .on('click', (e) => { e.stopPropagation(); onPersonClick(person.id); })
         .text(displayName);
+      // Add tooltip with full name
+      nameText.append('title').text(person.name);
 
       // Years
       const years = person.living
@@ -748,13 +778,15 @@ export default function FamilyTree({ rootPersonId, showAncestors, onPersonClick,
               .attr('preserveAspectRatio', 'xMidYMid meet');
           }
 
-          const displayName = person.name.length > 20 ? person.name.substring(0, 18) + '..' : person.name;
-          nodeG.append('text')
+          const maxNameLen = 18;
+          const displayName = person.name.length > maxNameLen ? person.name.substring(0, maxNameLen - 2) + '…' : person.name;
+          const nameText = nodeG.append('text')
             .attr('x', nodeWidth / 2).attr('y', 22)
             .attr('text-anchor', 'middle').attr('font-size', '11px').attr('font-weight', '600')
             .attr('fill', '#1f2937').style('cursor', 'pointer')
             .on('click', (e: MouseEvent) => { e.stopPropagation(); onPersonClick(personId); })
             .text(displayName);
+          nameText.append('title').text(person.name);
 
           const years = `${person.birth_year || '?'} – ${person.death_year || '?'}`;
           nodeG.append('text')

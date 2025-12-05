@@ -900,17 +900,24 @@ export default function FamilyTree({ rootPersonId, showAncestors, onPersonClick,
           // Coat of arms image - positioned outside tile, overlapping bottom-left corner
           if (person.coatOfArmsUrl) {
             const crestSize = 28;
+            const crestUrl = person.coatOfArmsUrl;
             const crestG = nodeG.append('g')
               .style('cursor', 'pointer')
               .on('click', (e: MouseEvent) => {
                 e.stopPropagation();
                 onPersonClick(personId);
-              });
-            crestG.append('title').text('Family coat of arms - click to view profile');
+              })
+              .on('mouseenter', function(event: MouseEvent) {
+                const rect = containerRef.current?.getBoundingClientRect();
+                if (rect) {
+                  setCrestPopup({ url: crestUrl, x: event.clientX - rect.left + 20, y: event.clientY - rect.top - 75 });
+                }
+              })
+              .on('mouseleave', () => setCrestPopup(null));
 
             // Position: half outside tile to bottom-left
             crestG.append('image')
-              .attr('href', person.coatOfArmsUrl)
+              .attr('href', crestUrl)
               .attr('x', -crestSize / 3)
               .attr('y', nodeHeight - crestSize / 2)
               .attr('width', crestSize)
@@ -957,7 +964,7 @@ export default function FamilyTree({ rootPersonId, showAncestors, onPersonClick,
       const startX = pedigree.x - totalChildWidth / 2 + nodeWidth / 2;
 
       // Draw connection line from root up to children (same style as other connections)
-      const rootTop = pedigree.y - nodeHeight / 2;
+      const rootTop = pedigree.y; // Top of root tile (y is already at top)
       const childBottom = childY + nodeHeight;
       const midY = childBottom + (rootTop - childBottom) / 2;
 

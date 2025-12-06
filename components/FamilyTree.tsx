@@ -157,10 +157,15 @@ export default function FamilyTree({ rootPersonId, showAncestors, onPersonClick,
       }>;
     } | null;
   }
-  const { data: queryData } = useQuery<QueryResult>(TREE_DATA_QUERY, {
+  const { data: queryData, loading, error } = useQuery<QueryResult>(TREE_DATA_QUERY, {
     variables: { rootPersonId },
   });
   const [updateStatus] = useMutation(UPDATE_RESEARCH_STATUS);
+
+  // Log errors for debugging
+  if (error) {
+    console.error('FamilyTree GraphQL error:', error);
+  }
   const [updatePriority] = useMutation(UPDATE_RESEARCH_PRIORITY);
 
   // Transform GraphQL response to tree data format
@@ -1247,7 +1252,14 @@ export default function FamilyTree({ rootPersonId, showAncestors, onPersonClick,
   return (
     <div className="relative w-full h-full" ref={containerRef} onClick={() => setPriorityPopup(null)}>
       <svg ref={svgRef} width={dimensions.width} height={dimensions.height} className="bg-gradient-to-br from-slate-50 to-slate-100 rounded-lg" />
-      {!data && <div className="absolute inset-0 flex items-center justify-center text-gray-500">Loading...</div>}
+      {error && (
+        <div className="absolute inset-0 flex items-center justify-center text-red-600">
+          Failed to load data: {error.message}
+        </div>
+      )}
+      {loading && !data && (
+        <div className="absolute inset-0 flex items-center justify-center text-gray-500">Loading...</div>
+      )}
 
       {/* Notable Relatives Panel */}
       {data && data.notableRelatives.length > 0 && (

@@ -5,7 +5,6 @@ import {
   updateResearchStatus,
   updateResearchPriority,
   getStats,
-  getResearchQueue,
   getTimeline,
   pool
 } from '../db';
@@ -99,9 +98,10 @@ export const resolvers = {
     },
 
     // Legacy offset-based (for backwards compatibility)
+    // Tree component needs all people - allow up to 10000 for tree view
     peopleList: async (_: unknown, { limit = 100, offset = 0 }: { limit?: number; offset?: number }) => {
       const people = await getPeople();
-      return people.slice(offset, offset + Math.min(limit, 100));
+      return people.slice(offset, offset + Math.min(limit, 10000));
     },
 
     // Recent people (for home page)
@@ -170,8 +170,17 @@ export const resolvers = {
     stats: () => getStats(),
 
     researchQueue: async (_: unknown, { limit = 50 }: { limit?: number }) => {
-      const queue = await getResearchQueue();
-      return queue.slice(0, Math.min(limit, 100));
+      const { rows } = await pool.query(`
+        SELECT * FROM people
+        WHERE research_status != 'verified' OR research_status IS NULL
+        ORDER BY
+          research_priority DESC NULLS LAST,
+          (research_status = 'brick_wall') DESC,
+          (research_status = 'in_progress') DESC,
+          last_researched NULLS FIRST
+        LIMIT $1
+      `, [Math.min(limit, 100)]);
+      return rows;
     },
 
     // Optimized ancestry traversal (single recursive CTE)

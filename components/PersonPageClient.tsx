@@ -7,6 +7,7 @@ import { useSession } from 'next-auth/react';
 import { GET_PERSON, UPDATE_NOTABLE_STATUS } from '@/lib/graphql/queries';
 import ResearchPanel from '@/components/ResearchPanel';
 import TreeLink from '@/components/TreeLink';
+import Hero from '@/components/Hero';
 import { Person, Family, LifeEvent, Fact } from '@/lib/types';
 
 interface PersonData {
@@ -92,27 +93,26 @@ export default function PersonPageClient({ personId }: Props) {
     f => f.husband_id === personId || f.wife_id === personId
   );
 
+  const subtitle = person.living
+    ? 'Living'
+    : `${person.birth_year || '?'} – ${person.death_year || '?'}`;
+
   return (
-    <div className="flex flex-col lg:flex-row gap-6">
-      {/* Main Content */}
-      <div className="flex-1 min-w-0">
-        {/* Hero */}
-        <div className="mb-6">
-          <div className="flex items-center gap-3">
-            <h1 className="text-3xl font-bold text-gray-800">{person.name_full}</h1>
-            {person.is_notable && (
-              <span className="inline-flex items-center gap-1 px-3 py-1 bg-gradient-to-r from-amber-100 to-yellow-100 border border-amber-300 rounded-full text-amber-800 text-sm font-medium">
-                ⭐ Notable Figure
-              </span>
+    <>
+      <Hero
+        title={person.name_full}
+        subtitle={person.is_notable ? `⭐ ${subtitle} • Notable Figure` : subtitle}
+      />
+      <div className="content-wrapper">
+        <div className="flex flex-col lg:flex-row gap-6">
+          {/* Main Content */}
+          <div className="flex-1 min-w-0">
+            {/* Notable description */}
+            {person.is_notable && person.notable_description && (
+              <div className="mb-6 p-4 bg-gradient-to-r from-amber-50 to-yellow-50 border border-amber-200 rounded-lg">
+                <p className="text-amber-700 italic">{person.notable_description}</p>
+              </div>
             )}
-          </div>
-          <p className="text-gray-600">
-            {person.living ? 'Living' : `${person.birth_year || '?'} – ${person.death_year || '?'}`}
-          </p>
-          {person.is_notable && person.notable_description && (
-            <p className="mt-2 text-sm text-amber-700 italic">{person.notable_description}</p>
-          )}
-        </div>
 
         {/* Notable Editor Modal */}
         {notableEditing && (
@@ -381,11 +381,13 @@ export default function PersonPageClient({ personId }: Props) {
         </Link>
       </div>
 
-      {/* Sidebar with Research Panel */}
-      <div className="lg:w-80 flex-shrink-0">
-        <ResearchPanel personId={personId} personName={person.name_full} />
+        {/* Sidebar with Research Panel */}
+        <div className="lg:w-80 flex-shrink-0">
+          <ResearchPanel personId={personId} personName={person.name_full} />
+        </div>
+        </div>
       </div>
-    </div>
+    </>
   );
 }
 

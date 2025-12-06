@@ -9,9 +9,5 @@ interface PageProps {
 export default async function PersonPage({ params }: PageProps) {
   const { id } = await params;
 
-  return (
-    <div className="content-wrapper px-4 py-6">
-      <PersonPageClient personId={id} />
-    </div>
-  );
+  return <PersonPageClient personId={id} />;
 }

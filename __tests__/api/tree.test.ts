@@ -4,10 +4,12 @@
  * These tests verify data transformation logic
  */
 
-// Mock the database module
+// Mock the database pool module
 const mockQuery = jest.fn();
-jest.mock('@/lib/db', () => ({
-  query: mockQuery,
+jest.mock('@/lib/pool', () => ({
+  pool: {
+    query: mockQuery,
+  },
 }));
 
 describe('Tree data structure', () => {

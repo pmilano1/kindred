@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import "./globals.css";
 import { Providers } from "@/components/Providers";
+import Sidebar from "@/components/Sidebar";
+import Footer from "@/components/Footer";
 
 export const metadata: Metadata = {
   title: "Milanese Family Genealogy",
@@ -15,7 +17,13 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body>
-        <Providers>{children}</Providers>
+        <Providers>
+          <Sidebar />
+          <main className="main-content">
+            {children}
+            <Footer />
+          </main>
+        </Providers>
       </body>
     </html>
   );

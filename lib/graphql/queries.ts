@@ -1,27 +1,41 @@
 import { gql } from '@apollo/client';
 
 // =====================================================
-// FRAGMENTS - Reusable field selections
+// FRAGMENTS - Optimized for specific UI needs
 // =====================================================
 
-export const SOURCE_FIELDS = gql`
-  fragment SourceFields on Source {
+// Minimal fields for cards/lists - PersonCard component
+export const PERSON_CARD_FIELDS = gql`
+  fragment PersonCardFields on Person {
     id
-    person_id
-    source_type
-    source_name
-    source_url
-    action
-    content
-    confidence
-    validated
-    validated_date
-    created_at
+    name_full
+    sex
+    living
+    birth_year
+    birth_place
+    death_year
+    death_place
+    burial_place
   }
 `;
 
-export const PERSON_BASIC_FIELDS = gql`
-  fragment PersonBasicFields on Person {
+// Fields for search results
+export const PERSON_SEARCH_FIELDS = gql`
+  fragment PersonSearchFields on Person {
+    id
+    name_full
+    sex
+    living
+    birth_year
+    birth_place
+    death_year
+    death_place
+  }
+`;
+
+// Full fields for person detail page
+export const PERSON_FULL_FIELDS = gql`
+  fragment PersonFullFields on Person {
     id
     name_full
     name_given
@@ -49,8 +63,28 @@ export const PERSON_BASIC_FIELDS = gql`
     research_status
     research_priority
     last_researched
+    is_notable
+    notable_description
   }
 `;
+
+// Source fields
+export const SOURCE_FIELDS = gql`
+  fragment SourceFields on Source {
+    id
+    action
+    content
+    source_type
+    source_name
+    source_url
+    confidence
+    validated
+    created_at
+  }
+`;
+
+// Legacy alias - remove after migration
+export const PERSON_BASIC_FIELDS = PERSON_FULL_FIELDS;
 
 // =====================================================
 // QUERIES
@@ -72,24 +106,25 @@ export const GET_PERSON_SOURCES = gql`
   }
 `;
 
-// Get full person details with relationships
+// Get full person details with relationships (detail page)
 export const GET_PERSON = gql`
-  ${PERSON_BASIC_FIELDS}
+  ${PERSON_FULL_FIELDS}
+  ${PERSON_CARD_FIELDS}
   ${SOURCE_FIELDS}
   query GetPerson($id: ID!) {
     person(id: $id) {
-      ...PersonBasicFields
+      ...PersonFullFields
       parents {
-        ...PersonBasicFields
+        ...PersonCardFields
       }
       siblings {
-        ...PersonBasicFields
+        ...PersonCardFields
       }
       spouses {
-        ...PersonBasicFields
+        ...PersonCardFields
       }
       children {
-        ...PersonBasicFields
+        ...PersonCardFields
       }
       families {
         id
@@ -99,35 +134,25 @@ export const GET_PERSON = gql`
         marriage_year
         marriage_place
         husband {
-          ...PersonBasicFields
+          ...PersonCardFields
         }
         wife {
-          ...PersonBasicFields
+          ...PersonCardFields
         }
         children {
-          ...PersonBasicFields
+          ...PersonCardFields
         }
       }
       sources {
         ...SourceFields
       }
-      residences {
-        id
-        residence_date
-        residence_year
-        residence_place
-      }
-      occupations {
-        id
-        title
-        occupation_date
-        occupation_place
-      }
-      events {
+      lifeEvents {
         id
         event_type
         event_date
+        event_year
         event_place
+        event_value
       }
       facts {
         id
@@ -138,14 +163,14 @@ export const GET_PERSON = gql`
   }
 `;
 
-// Search people
+// Search people - minimal fields for list
 export const SEARCH_PEOPLE = gql`
-  ${PERSON_BASIC_FIELDS}
+  ${PERSON_SEARCH_FIELDS}
   query SearchPeople($query: String!, $first: Int, $after: String) {
     search(query: $query, first: $first, after: $after) {
       edges {
         node {
-          ...PersonBasicFields
+          ...PersonSearchFields
         }
         cursor
       }
@@ -158,14 +183,14 @@ export const SEARCH_PEOPLE = gql`
   }
 `;
 
-// Get paginated people list
+// Get paginated people list - for people page cards
 export const GET_PEOPLE = gql`
-  ${PERSON_BASIC_FIELDS}
+  ${PERSON_CARD_FIELDS}
   query GetPeople($first: Int, $after: String) {
     people(first: $first, after: $after) {
       edges {
         node {
-          ...PersonBasicFields
+          ...PersonCardFields
         }
         cursor
       }
@@ -180,40 +205,14 @@ export const GET_PEOPLE = gql`
   }
 `;
 
-// Get stats
-export const GET_STATS = gql`
-  query GetStats {
-    stats {
-      total_people
-      total_families
-      living_count
-      male_count
-      female_count
-      earliest_birth
-      latest_birth
-      with_familysearch_id
-    }
-  }
-`;
-
-// Get research queue
-export const GET_RESEARCH_QUEUE = gql`
-  ${PERSON_BASIC_FIELDS}
-  query GetResearchQueue($limit: Int) {
-    researchQueue(limit: $limit) {
-      ...PersonBasicFields
-    }
-  }
-`;
-
 // =====================================================
 // MUTATIONS
 // =====================================================
 
 export const ADD_SOURCE = gql`
   ${SOURCE_FIELDS}
-  mutation AddSource($personId: ID!, $input: ResearchLogInput!) {
-    addResearchLog(personId: $personId, input: $input) {
+  mutation AddSource($personId: ID!, $input: SourceInput!) {
+    addSource(personId: $personId, input: $input) {
       ...SourceFields
     }
   }
@@ -238,11 +237,249 @@ export const UPDATE_RESEARCH_PRIORITY = gql`
 `;
 
 export const UPDATE_PERSON = gql`
-  ${PERSON_BASIC_FIELDS}
+  ${PERSON_FULL_FIELDS}
   mutation UpdatePerson($id: ID!, $input: PersonInput!) {
     updatePerson(id: $id, input: $input) {
-      ...PersonBasicFields
+      ...PersonFullFields
     }
   }
 `;
 
+export const UPDATE_NOTABLE_STATUS = gql`
+  mutation UpdateNotableStatus($id: ID!, $isNotable: Boolean!, $notableDescription: String) {
+    updatePerson(id: $id, input: { is_notable: $isNotable, notable_description: $notableDescription }) {
+      id
+      is_notable
+      notable_description
+    }
+  }
+`;
+
+// ============================================
+// HOME PAGE QUERIES
+// ============================================
+
+export const GET_STATS = gql`
+  query GetStats {
+    stats {
+      total_people
+      total_families
+      living_count
+      male_count
+      female_count
+      earliest_birth
+      latest_birth
+      with_familysearch_id
+    }
+  }
+`;
+
+export const GET_RECENT_PEOPLE = gql`
+  ${PERSON_CARD_FIELDS}
+  query GetRecentPeople($limit: Int) {
+    recentPeople(limit: $limit) {
+      ...PersonCardFields
+    }
+  }
+`;
+
+export const GET_NOTABLE_PEOPLE = gql`
+  ${PERSON_CARD_FIELDS}
+  query GetNotablePeople {
+    notablePeople {
+      ...PersonCardFields
+      notable_description
+    }
+  }
+`;
+
+// Notable relatives are now fetched as a field on Person, e.g.:
+// person(id: $id) { notableRelatives { person { ...PersonCardFields } generation } }
+
+// ============================================
+// TIMELINE QUERY
+// ============================================
+
+export const GET_TIMELINE = gql`
+  ${PERSON_CARD_FIELDS}
+  query GetTimeline {
+    timeline {
+      year
+      events {
+        type
+        person {
+          ...PersonCardFields
+        }
+      }
+    }
+  }
+`;
+
+// ============================================
+// PEOPLE & FAMILIES QUERIES
+// ============================================
+
+export const GET_PEOPLE_LIST = gql`
+  ${PERSON_CARD_FIELDS}
+  query GetPeopleList($limit: Int, $offset: Int) {
+    peopleList(limit: $limit, offset: $offset) {
+      ...PersonCardFields
+    }
+  }
+`;
+
+export const GET_FAMILIES = gql`
+  query GetFamilies {
+    families {
+      id
+      husband_id
+      wife_id
+      marriage_year
+      marriage_place
+      children {
+        id
+      }
+    }
+  }
+`;
+
+// ============================================
+// RESEARCH QUEUE QUERY
+// ============================================
+
+export const GET_RESEARCH_QUEUE = gql`
+  ${PERSON_CARD_FIELDS}
+  query GetResearchQueue($limit: Int) {
+    researchQueue(limit: $limit) {
+      ...PersonCardFields
+      research_status
+      research_priority
+      last_researched
+    }
+  }
+`;
+
+// ============================================
+// ADMIN QUERIES
+// ============================================
+
+export const GET_USERS = gql`
+  query GetUsers {
+    users {
+      id
+      email
+      name
+      role
+      created_at
+      last_login
+      last_accessed
+    }
+  }
+`;
+
+export const GET_INVITATIONS = gql`
+  query GetInvitations {
+    invitations {
+      id
+      email
+      role
+      token
+      expires_at
+      accepted_at
+      created_by
+    }
+  }
+`;
+
+export const CREATE_INVITATION = gql`
+  mutation CreateInvitation($email: String!, $role: String!) {
+    createInvitation(email: $email, role: $role) {
+      id
+      email
+      role
+      token
+      expires_at
+    }
+  }
+`;
+
+export const DELETE_INVITATION = gql`
+  mutation DeleteInvitation($id: ID!) {
+    deleteInvitation(id: $id)
+  }
+`;
+
+export const UPDATE_USER_ROLE = gql`
+  mutation UpdateUserRole($userId: ID!, $role: String!) {
+    updateUserRole(userId: $userId, role: $role) {
+      id
+      email
+      role
+    }
+  }
+`;
+
+export const DELETE_USER = gql`
+  mutation DeleteUser($userId: ID!) {
+    deleteUser(userId: $userId)
+  }
+`;
+
+// ============================================
+// COAT OF ARMS / SURNAME CRESTS
+// ============================================
+
+export const GET_SURNAME_CRESTS = gql`
+  query GetSurnameCrests {
+    surnameCrests {
+      id
+      surname
+      coat_of_arms
+      description
+      origin
+      motto
+      created_at
+    }
+  }
+`;
+
+export const GET_SURNAME_CREST = gql`
+  query GetSurnameCrest($surname: String!) {
+    surnameCrest(surname: $surname) {
+      id
+      surname
+      coat_of_arms
+      description
+      origin
+      motto
+    }
+  }
+`;
+
+export const SET_SURNAME_CREST = gql`
+  mutation SetSurnameCrest($surname: String!, $coatOfArms: String!, $description: String, $origin: String, $motto: String) {
+    setSurnameCrest(surname: $surname, coatOfArms: $coatOfArms, description: $description, origin: $origin, motto: $motto) {
+      id
+      surname
+      coat_of_arms
+    }
+  }
+`;
+
+export const REMOVE_SURNAME_CREST = gql`
+  mutation RemoveSurnameCrest($surname: String!) {
+    removeSurnameCrest(surname: $surname)
+  }
+`;
+
+export const SET_PERSON_COAT_OF_ARMS = gql`
+  mutation SetPersonCoatOfArms($personId: ID!, $coatOfArms: String!) {
+    setPersonCoatOfArms(personId: $personId, coatOfArms: $coatOfArms)
+  }
+`;
+
+export const REMOVE_PERSON_COAT_OF_ARMS = gql`
+  mutation RemovePersonCoatOfArms($personId: ID!) {
+    removePersonCoatOfArms(personId: $personId)
+  }
+`;

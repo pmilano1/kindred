@@ -31,6 +31,8 @@ export const typeDefs = `#graphql
     research_status: String
     research_priority: Int
     last_researched: String
+    is_notable: Boolean
+    notable_description: String
 
     # Relationships (batched via DataLoader)
     parents: [Person!]!
@@ -40,12 +42,13 @@ export const typeDefs = `#graphql
     families: [Family!]!
 
     # Life details (batched via DataLoader)
-    residences: [Residence!]!
-    occupations: [Occupation!]!
-    events: [Event!]!
+    lifeEvents: [LifeEvent!]!
     facts: [Fact!]!
     sources: [Source!]!
-    researchLog: [ResearchLog!]!
+    coatOfArms: String
+
+    # Notable relatives connected through ancestry
+    notableRelatives: [NotableRelative!]!
   }
 
   type Family {
@@ -60,28 +63,15 @@ export const typeDefs = `#graphql
     children: [Person!]!
   }
 
-  type Residence {
+  # Unified life event type (replaces Residence, Occupation, Event)
+  type LifeEvent {
     id: Int!
     person_id: String!
-    residence_date: String
-    residence_year: Int
-    residence_place: String
-  }
-
-  type Occupation {
-    id: Int!
-    person_id: String!
-    title: String
-    occupation_date: String
-    occupation_place: String
-  }
-
-  type Event {
-    id: Int!
-    person_id: String!
-    event_type: String
+    event_type: String!
     event_date: String
+    event_year: Int
     event_place: String
+    event_value: String
   }
 
   type Fact {
@@ -89,17 +79,6 @@ export const typeDefs = `#graphql
     person_id: String!
     fact_type: String
     fact_value: String
-  }
-
-  type ResearchLog {
-    id: String!
-    person_id: String!
-    created_at: String!
-    action_type: String!
-    source_checked: String
-    content: String!
-    confidence: String
-    external_url: String
   }
 
   type Source {
@@ -117,13 +96,24 @@ export const typeDefs = `#graphql
     updated_at: String
   }
 
-  type RelationshipPath {
-    from: Person!
-    to: Person!
-    path: [Person!]!
-    relationship: String!
-    degrees: Int!
+  # ===========================================
+  # SURNAME CRESTS (Coat of Arms by surname)
+  # ===========================================
+
+  type SurnameCrest {
+    id: ID!
+    surname: String!
+    coat_of_arms: String!
+    description: String
+    origin: String
+    motto: String
+    created_at: String
+    updated_at: String
   }
+
+  # ===========================================
+  # STATS
+  # ===========================================
 
   type Stats {
     total_people: Int!
@@ -134,6 +124,44 @@ export const typeDefs = `#graphql
     earliest_birth: Int
     latest_birth: Int
     with_familysearch_id: Int!
+  }
+
+  # ===========================================
+  # TIMELINE
+  # ===========================================
+
+  type TimelineEvent {
+    type: String!
+    person: Person!
+  }
+
+  type TimelineYear {
+    year: Int!
+    events: [TimelineEvent!]!
+  }
+
+  # ===========================================
+  # ADMIN
+  # ===========================================
+
+  type User {
+    id: ID!
+    email: String!
+    name: String
+    role: String!
+    created_at: String!
+    last_login: String
+    last_accessed: String
+  }
+
+  type Invitation {
+    id: ID!
+    email: String!
+    role: String!
+    token: String!
+    expires_at: String!
+    accepted_at: String
+    created_by: String
   }
 
   # ===========================================
@@ -159,6 +187,15 @@ export const typeDefs = `#graphql
   }
 
   # ===========================================
+  # NOTABLE RELATIVES
+  # ===========================================
+
+  type NotableRelative {
+    person: Person!
+    generation: Int!
+  }
+
+  # ===========================================
   # QUERIES
   # ===========================================
 
@@ -176,6 +213,10 @@ export const typeDefs = `#graphql
 
     # Convenience queries (legacy offset-based, limited to 100)
     peopleList(limit: Int, offset: Int): [Person!]!
+    recentPeople(limit: Int): [Person!]!
+
+    # Notable people
+    notablePeople: [Person!]!
 
     # Stats & Research
     stats: Stats!
@@ -184,6 +225,17 @@ export const typeDefs = `#graphql
     # Ancestry traversal (optimized single query)
     ancestors(personId: ID!, generations: Int): [Person!]!
     descendants(personId: ID!, generations: Int): [Person!]!
+
+    # Timeline
+    timeline: [TimelineYear!]!
+
+    # Surname crests (coat of arms by surname)
+    surnameCrests: [SurnameCrest!]!
+    surnameCrest(surname: String!): SurnameCrest
+
+    # Admin (requires admin role)
+    users: [User!]!
+    invitations: [Invitation!]!
   }
 
   input PersonInput {
@@ -201,24 +253,41 @@ export const typeDefs = `#graphql
     description: String
     research_status: String
     research_priority: Int
+    is_notable: Boolean
+    notable_description: String
   }
 
-  input ResearchLogInput {
-    action_type: String!
-    content: String!
-    source_checked: String
+  input SourceInput {
+    source_type: String
+    source_name: String
+    source_url: String
+    action: String!
+    content: String
     confidence: String
-    external_url: String
   }
 
   type Mutation {
     # Person mutations
     updatePerson(id: ID!, input: PersonInput!): Person
-    
-    # Research mutations
-    addResearchLog(personId: ID!, input: ResearchLogInput!): ResearchLog
+
+    # Source mutations
+    addSource(personId: ID!, input: SourceInput!): Source
     updateResearchStatus(personId: ID!, status: String!): Person
     updateResearchPriority(personId: ID!, priority: Int!): Person
+
+    # Surname crest mutations (requires editor role)
+    setSurnameCrest(surname: String!, coatOfArms: String!, description: String, origin: String, motto: String): SurnameCrest
+    removeSurnameCrest(surname: String!): Boolean
+
+    # Person coat of arms override (requires editor role)
+    setPersonCoatOfArms(personId: ID!, coatOfArms: String!): String
+    removePersonCoatOfArms(personId: ID!): Boolean
+
+    # Admin mutations (requires admin role)
+    createInvitation(email: String!, role: String!): Invitation
+    deleteInvitation(id: ID!): Boolean
+    updateUserRole(userId: ID!, role: String!): User
+    deleteUser(userId: ID!): Boolean
   }
 `;
 

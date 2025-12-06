@@ -26,30 +26,19 @@ export interface Person {
   research_status: string | null;
   research_priority: number | null;
   last_researched: string | null;
+  is_notable: boolean;
+  notable_description: string | null;
 }
 
-export interface Residence {
+// Unified life event (combines residence, occupation, and other events)
+export interface LifeEvent {
   id: number;
   person_id: string;
-  residence_date: string | null;
-  residence_year: number | null;
-  residence_place: string | null;
-}
-
-export interface Occupation {
-  id: number;
-  person_id: string;
-  title: string | null;
-  occupation_date: string | null;
-  occupation_place: string | null;
-}
-
-export interface Event {
-  id: number;
-  person_id: string;
-  event_type: string | null;
+  event_type: string;
   event_date: string | null;
+  event_year: number | null;
   event_place: string | null;
+  event_value: string | null;
 }
 
 export interface Fact {
@@ -82,20 +71,6 @@ export interface Stats {
   earliest_birth: number | null;
   latest_birth: number | null;
   with_familysearch_id: number;
-}
-
-export interface TreeNode {
-  id: string;
-  name: string;
-  sex: 'M' | 'F' | null;
-  birth_year: number | null;
-  death_year: number | null;
-  living: boolean;
-  children?: TreeNode[];
-  spouse?: {
-    id: string;
-    name: string;
-  };
 }
 
 // Unified Source type - combines sources and research activity

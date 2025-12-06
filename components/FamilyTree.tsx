@@ -1,7 +1,46 @@
 'use client';
 
-import { useEffect, useRef, useState, useCallback } from 'react';
+import { useEffect, useRef, useState, useCallback, useMemo } from 'react';
+import { useQuery, useMutation } from '@apollo/client/react';
+import { gql } from '@apollo/client/core';
 import * as d3 from 'd3';
+import { UPDATE_RESEARCH_STATUS, UPDATE_RESEARCH_PRIORITY } from '@/lib/graphql/queries';
+
+// GraphQL query - component asks for exactly what it needs
+const TREE_DATA_QUERY = gql`
+  query TreeData($rootPersonId: ID!) {
+    peopleList(limit: 10000) {
+      id
+      name_full
+      sex
+      birth_year
+      death_year
+      birth_place
+      death_place
+      living
+      familysearch_id
+      is_notable
+      research_status
+      research_priority
+      last_researched
+      coatOfArms
+    }
+    families {
+      id
+      husband_id
+      wife_id
+      marriage_year
+      marriage_place
+      children { id }
+    }
+    person(id: $rootPersonId) {
+      notableRelatives {
+        person { id name_full }
+        generation
+      }
+    }
+  }
+`;
 
 interface TreePerson {
   id: string;
@@ -30,17 +69,15 @@ interface TreeFamily {
   children: string[];
 }
 
-interface NotableConnection {
-  branchingAncestorId: string;
-  siblingId: string;
-  notablePersonId: string;
-  path: string[];
+interface NotableRelative {
+  person: { id: string; name_full: string };
+  generation: number;
 }
 
 interface TreeData {
   people: Record<string, TreePerson>;
   families: TreeFamily[];
-  notableConnections?: NotableConnection[];
+  notableRelatives: NotableRelative[];
 }
 
 // Pedigree node - each person has their own node with father/mother links
@@ -82,55 +119,91 @@ interface CrestPopup {
 export default function FamilyTree({ rootPersonId, showAncestors, onPersonClick, onTileClick }: FamilyTreeProps) {
   const svgRef = useRef<SVGSVGElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
-  const [data, setData] = useState<TreeData | null>(null);
   const [dimensions, setDimensions] = useState({ width: 800, height: 600 });
   const [priorityPopup, setPriorityPopup] = useState<PriorityPopup | null>(null);
   const [crestPopup, setCrestPopup] = useState<CrestPopup | null>(null);
+  const [notablePanelOpen, setNotablePanelOpen] = useState(true);
+
+  // GraphQL data fetching
+  interface QueryResult {
+    peopleList: Array<{
+      id: string;
+      name_full: string;
+      sex: 'M' | 'F' | null;
+      birth_year: number | null;
+      death_year: number | null;
+      birth_place: string | null;
+      death_place: string | null;
+      living: boolean;
+      familysearch_id: string | null;
+      is_notable: boolean;
+      research_status: string | null;
+      research_priority: number | null;
+      last_researched: string | null;
+      coatOfArms: string | null;
+    }>;
+    families: Array<{
+      id: string;
+      husband_id: string | null;
+      wife_id: string | null;
+      marriage_year: number | null;
+      marriage_place: string | null;
+      children: { id: string }[];
+    }>;
+    person: {
+      notableRelatives: Array<{
+        person: { id: string; name_full: string };
+        generation: number;
+      }>;
+    } | null;
+  }
+  const { data: queryData } = useQuery<QueryResult>(TREE_DATA_QUERY, {
+    variables: { rootPersonId },
+  });
+  const [updateStatus] = useMutation(UPDATE_RESEARCH_STATUS);
+  const [updatePriority] = useMutation(UPDATE_RESEARCH_PRIORITY);
+
+  // Transform GraphQL response to tree data format
+  const data: TreeData | null = useMemo(() => {
+    if (!queryData) return null;
+    const people: Record<string, TreePerson> = {};
+    for (const p of queryData.peopleList) {
+      people[p.id] = {
+        id: p.id,
+        name: p.name_full,
+        sex: p.sex,
+        birth_year: p.birth_year,
+        death_year: p.death_year,
+        birth_place: p.birth_place,
+        death_place: p.death_place,
+        living: p.living,
+        familysearch_id: p.familysearch_id,
+        isNotable: p.is_notable,
+        research_status: p.research_status ?? undefined,
+        research_priority: p.research_priority ?? undefined,
+        last_researched: p.last_researched ?? undefined,
+        coatOfArmsUrl: p.coatOfArms ?? undefined,
+      };
+    }
+    const families: TreeFamily[] = queryData.families.map((f) => ({
+      id: f.id,
+      husband_id: f.husband_id,
+      wife_id: f.wife_id,
+      marriage_year: f.marriage_year,
+      marriage_place: f.marriage_place,
+      children: f.children.map(c => c.id),
+    }));
+    return { people, families, notableRelatives: queryData.person?.notableRelatives ?? [] };
+  }, [queryData]);
 
   const handlePriorityChange = async (personId: string, priority: number) => {
-    await fetch(`/api/research/${personId}/priority`, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ priority }),
-    });
-    // Update local data
-    if (data && data.people[personId]) {
-      setData({
-        ...data,
-        people: {
-          ...data.people,
-          [personId]: { ...data.people[personId], research_priority: priority }
-        }
-      });
-    }
+    await updatePriority({ variables: { personId, priority } });
     setPriorityPopup(null);
   };
 
   const handleStatusChange = async (personId: string, status: string) => {
-    await fetch(`/api/research/${personId}/status`, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ status }),
-    });
-    // Update local data
-    if (data && data.people[personId]) {
-      setData({
-        ...data,
-        people: {
-          ...data.people,
-          [personId]: { ...data.people[personId], research_status: status }
-        }
-      });
-    }
+    await updateStatus({ variables: { personId, status } });
   };
-
-  // Fetch data
-  useEffect(() => {
-    fetch('/api/tree')
-      .then(res => res.json())
-      .then(setData)
-      .catch(console.error);
-  }, []);
 
   // Handle resize
   useEffect(() => {
@@ -1073,140 +1146,7 @@ export default function FamilyTree({ rootPersonId, showAncestors, onPersonClick,
       });
     }
 
-    // Draw notable connections ONLY if the branching ancestor is in the current pedigree
-    // Position them BELOW the main tree to avoid overlapping
-    if (data.notableConnections) {
-      // Find max Y (deepest generation) to position notable connections below
-      const maxY = Math.max(...allNodes.filter(n => n.y !== undefined).map(n => n.y!));
 
-      // Draw each connection that has a visible branching ancestor
-      let notableYOffset = maxY + nodeHeight + 80; // Start below the tree
-
-      data.notableConnections.forEach(connection => {
-        const branchingNode = allNodes.find(n => n.id === connection.branchingAncestorId);
-        if (!branchingNode || branchingNode.x === undefined || branchingNode.y === undefined) return;
-
-        // Position notable branch at bottom, centered under branching ancestor
-        const branchStartX = Math.max(branchingNode.x, 100);
-        const branchStartY = notableYOffset;
-
-        // Get notable person info for label
-        const notablePerson = data.people[connection.notablePersonId];
-        const notableName = notablePerson?.name || 'Notable Person';
-
-        // Draw dashed connection line from branching ancestor down to notable branch
-        // Line goes down from ancestor, then horizontally, then to the top of the first notable tile
-        const labelY = branchStartY - nodeHeight/2 - 25; // Above the label
-        g.append('path')
-          .attr('d', `M${branchingNode.x},${branchingNode.y + nodeHeight/2}
-                      L${branchingNode.x},${labelY}
-                      L${branchStartX - nodeWidth/2 - 10},${labelY}
-                      L${branchStartX - nodeWidth/2 - 10},${branchStartY - nodeHeight/2}`)
-          .attr('fill', 'none')
-          .attr('stroke', '#f59e0b')
-          .attr('stroke-width', 2)
-          .attr('stroke-dasharray', '5,3');
-
-        // Label for the branch - positioned ABOVE the tiles
-        g.append('text')
-          .attr('x', branchStartX - nodeWidth/2)
-          .attr('y', branchStartY - nodeHeight/2 - 12)
-          .attr('font-size', '11px')
-          .attr('font-weight', '600')
-          .attr('fill', '#b45309')
-          .text(`👑 Collateral Line to ${notableName}`);
-
-        // Draw notable path nodes horizontally
-        connection.path.forEach((personId, idx) => {
-          const person = data.people[personId];
-          if (!person) return;
-
-          const nodeX = branchStartX + idx * (nodeWidth + 10);
-          const nodeY = branchStartY;
-
-          const nodeG = g.append('g')
-            .attr('transform', `translate(${nodeX - nodeWidth/2},${nodeY - nodeHeight/2})`);
-
-          // Gold box for notable branch
-          nodeG.append('rect')
-            .attr('width', nodeWidth)
-            .attr('height', nodeHeight)
-            .attr('rx', 6)
-            .attr('fill', person.isNotable ? '#fef3c7' : '#fffbeb')
-            .attr('stroke', '#f59e0b')
-            .attr('stroke-width', person.isNotable ? 3 : 2)
-            .style('cursor', 'pointer')
-            .on('click', () => onTileClick(personId));
-
-          // Crown for notable person - positioned outside tile, overlapping top-left corner
-          if (person.isNotable) {
-            const crownSize = 20;
-            nodeG.append('text')
-              .attr('x', -crownSize / 3)
-              .attr('y', crownSize / 3)
-              .attr('font-size', '16px')
-              .text('👑');
-          }
-
-          // Coat of arms image - positioned outside tile, overlapping bottom-left corner
-          if (person.coatOfArmsUrl) {
-            const crestSize = 28;
-            const crestUrl = person.coatOfArmsUrl;
-            const crestG = nodeG.append('g')
-              .style('cursor', 'pointer')
-              .on('click', (e: MouseEvent) => {
-                e.stopPropagation();
-                onPersonClick(personId);
-              })
-              .on('mouseenter', function(event: MouseEvent) {
-                const rect = containerRef.current?.getBoundingClientRect();
-                if (rect) {
-                  setCrestPopup({ url: crestUrl, x: event.clientX - rect.left + 20, y: event.clientY - rect.top - 75 });
-                }
-              })
-              .on('mouseleave', () => setCrestPopup(null));
-
-            // Position: half outside tile to bottom-left
-            crestG.append('image')
-              .attr('href', crestUrl)
-              .attr('x', -crestSize / 3)
-              .attr('y', nodeHeight - crestSize / 2)
-              .attr('width', crestSize)
-              .attr('height', crestSize)
-              .attr('preserveAspectRatio', 'xMidYMid meet');
-          }
-
-          const maxNameLen = 18;
-          const displayName = person.name.length > maxNameLen ? person.name.substring(0, maxNameLen - 2) + '…' : person.name;
-          const nameText = nodeG.append('text')
-            .attr('x', nodeWidth / 2).attr('y', 22)
-            .attr('text-anchor', 'middle').attr('font-size', '11px').attr('font-weight', '600')
-            .attr('fill', '#1f2937').style('cursor', 'pointer')
-            .on('click', (e: MouseEvent) => { e.stopPropagation(); onPersonClick(personId); })
-            .text(displayName);
-          nameText.append('title').text(person.name);
-
-          const years = `${person.birth_year || '?'} – ${person.death_year || '?'}`;
-          nodeG.append('text')
-            .attr('x', nodeWidth / 2).attr('y', 36)
-            .attr('text-anchor', 'middle').attr('font-size', '10px').attr('fill', '#6b7280')
-            .text(years);
-
-          // Draw connecting line to previous node in path
-          if (idx > 0) {
-            const prevX = branchStartX + (idx-1) * (nodeWidth + 10);
-            g.append('path')
-              .attr('d', `M${prevX + nodeWidth/2},${nodeY} L${nodeX - nodeWidth/2},${nodeY}`)
-              .attr('fill', 'none')
-              .attr('stroke', '#f59e0b')
-              .attr('stroke-width', 2);
-          }
-        });
-
-        // Move offset down for next notable connection
-        notableYOffset += nodeHeight + 60;
-      });
-    }
 
     // Draw children of root (-1 level for navigation) ABOVE the root (since tree goes down to ancestors)
     // Note: y is CENTER-based, so we need to account for that
@@ -1308,6 +1248,35 @@ export default function FamilyTree({ rootPersonId, showAncestors, onPersonClick,
     <div className="relative w-full h-full" ref={containerRef} onClick={() => setPriorityPopup(null)}>
       <svg ref={svgRef} width={dimensions.width} height={dimensions.height} className="bg-gradient-to-br from-slate-50 to-slate-100 rounded-lg" />
       {!data && <div className="absolute inset-0 flex items-center justify-center text-gray-500">Loading...</div>}
+
+      {/* Notable Relatives Panel */}
+      {data && data.notableRelatives.length > 0 && (
+        <div className="absolute top-4 right-4 z-40">
+          <div className="bg-white rounded-lg shadow-lg border border-amber-300 overflow-hidden max-w-xs">
+            <button
+              onClick={(e) => { e.stopPropagation(); setNotablePanelOpen(!notablePanelOpen); }}
+              className="w-full px-3 py-2 bg-amber-50 hover:bg-amber-100 flex items-center justify-between text-sm font-medium text-amber-800"
+            >
+              <span>👑 Notable Relatives ({data.notableRelatives.length})</span>
+              <span className="text-xs">{notablePanelOpen ? '▼' : '▶'}</span>
+            </button>
+            {notablePanelOpen && (
+              <div className="max-h-64 overflow-y-auto">
+                {data.notableRelatives.map((rel) => (
+                  <button
+                    key={rel.person.id}
+                    onClick={(e) => { e.stopPropagation(); onTileClick(rel.person.id); }}
+                    className="w-full px-3 py-2 text-left hover:bg-amber-50 border-t border-amber-100 text-sm"
+                  >
+                    <div className="font-medium text-gray-800">{rel.person.name_full}</div>
+                    <div className="text-xs text-gray-500">{rel.generation} generation{rel.generation !== 1 ? 's' : ''} away</div>
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* Priority/Status Popup */}
       {priorityPopup && (

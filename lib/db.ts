@@ -1,5 +1,5 @@
 import { Pool } from 'pg';
-import { Person, Family, Stats, Residence, Occupation, Event, Fact, Source, ResearchQueueItem } from './types';
+import { Person, Family, Stats, LifeEvent, Fact, Source, ResearchQueueItem } from './types';
 
 // Lazy pool initialization - created on first use with runtime env vars
 let _pool: Pool | null = null;
@@ -63,28 +63,31 @@ export async function getPerson(id: string): Promise<Person | null> {
   return result.rows[0] || null;
 }
 
-export async function getPersonResidences(personId: string): Promise<Residence[]> {
-  const result = await pool.query(
-    `SELECT * FROM residences WHERE person_id = $1 ORDER BY residence_year NULLS LAST`,
-    [personId]
-  );
-  return result.rows;
-}
+export async function getPersonLifeEvents(personId: string): Promise<LifeEvent[]> {
+  // Query all three tables and unify into LifeEvent format
+  const [residences, occupations, events] = await Promise.all([
+    pool.query(
+      `SELECT id, person_id, 'residence' as event_type, residence_date as event_date,
+              residence_year as event_year, residence_place as event_place, NULL as event_value
+       FROM residences WHERE person_id = $1`,
+      [personId]
+    ),
+    pool.query(
+      `SELECT id, person_id, 'occupation' as event_type, occupation_date as event_date,
+              NULL as event_year, occupation_place as event_place, title as event_value
+       FROM occupations WHERE person_id = $1`,
+      [personId]
+    ),
+    pool.query(
+      `SELECT id, person_id, event_type, event_date, NULL as event_year, event_place, NULL as event_value
+       FROM events WHERE person_id = $1`,
+      [personId]
+    )
+  ]);
 
-export async function getPersonOccupations(personId: string): Promise<Occupation[]> {
-  const result = await pool.query(
-    `SELECT * FROM occupations WHERE person_id = $1 ORDER BY occupation_date NULLS LAST`,
-    [personId]
-  );
-  return result.rows;
-}
-
-export async function getPersonEvents(personId: string): Promise<Event[]> {
-  const result = await pool.query(
-    `SELECT * FROM events WHERE person_id = $1 ORDER BY event_date NULLS LAST`,
-    [personId]
-  );
-  return result.rows;
+  const allEvents = [...residences.rows, ...occupations.rows, ...events.rows];
+  allEvents.sort((a, b) => (a.event_year || 9999) - (b.event_year || 9999));
+  return allEvents;
 }
 
 export async function getPersonFacts(personId: string): Promise<Fact[]> {

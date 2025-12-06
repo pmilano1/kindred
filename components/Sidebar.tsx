@@ -10,13 +10,24 @@ const navItems = [
   { href: '/people', label: 'People', icon: '👥' },
   { href: '/research', label: 'Research Queue', icon: '📋' },
   { href: '/timeline', label: 'Timeline', icon: '📅' },
+  { href: '/coats-of-arms', label: 'Coats of Arms', icon: '🛡️' },
   { href: '/search', label: 'Search', icon: '🔍' },
 ];
 
 export default function Sidebar() {
   const pathname = usePathname();
-  const { data: session } = useSession();
+  const { data: session, status } = useSession();
   const isAdmin = session?.user?.role === 'admin';
+
+  // Don't show sidebar on login page or when not authenticated
+  if (pathname === '/login' || status === 'unauthenticated') {
+    return null;
+  }
+
+  // Show nothing while loading to prevent flash
+  if (status === 'loading') {
+    return null;
+  }
 
   return (
     <nav className="sidebar">

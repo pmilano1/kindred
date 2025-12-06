@@ -1,8 +1,8 @@
 import Link from 'next/link';
-import Sidebar from '@/components/Sidebar';
 import Hero from '@/components/Hero';
-import Footer from '@/components/Footer';
-import { getResearchQueue } from '@/lib/db';
+import { query } from '@/lib/graphql/server';
+import { GET_RESEARCH_QUEUE } from '@/lib/graphql/queries';
+import { Person } from '@/lib/types';
 
 export const dynamic = 'force-dynamic';
 
@@ -15,18 +15,28 @@ const STATUS_LABELS: Record<string, { label: string; color: string }> = {
   brick_wall: { label: 'Brick Wall', color: 'bg-red-100 text-red-800' },
 };
 
+interface ResearchPerson {
+  id: string;
+  name_full: string;
+  birth_year: number | null;
+  death_year: number | null;
+  research_status: string | null;
+  research_priority: number | null;
+  research_notes_count?: number;
+  last_researched?: string | null;
+}
+
 export default async function ResearchQueuePage() {
-  const queue = await getResearchQueue();
+  const { researchQueue } = await query<{ researchQueue: ResearchPerson[] }>(GET_RESEARCH_QUEUE, { limit: 100 });
+  const queue = researchQueue;
 
   return (
     <>
-      <Sidebar />
-      <main className="main-content">
-        <Hero
-          title="Research Queue"
-          subtitle={`${queue.length} people prioritized for research`}
-        />
-        <div className="content-wrapper">
+      <Hero
+        title="Research Queue"
+        subtitle={`${queue.length} people prioritized for research`}
+      />
+      <div className="content-wrapper">
           <div className="max-w-6xl mx-auto">
             <div className="card p-6">
               <div className="flex justify-between items-center mb-4">
@@ -55,7 +65,7 @@ export default async function ResearchQueuePage() {
                     </thead>
                     <tbody>
                       {queue.map((person) => {
-                        const statusInfo = STATUS_LABELS[person.research_status] || STATUS_LABELS.not_started;
+                        const statusInfo = STATUS_LABELS[person.research_status || 'not_started'] || STATUS_LABELS.not_started;
                         const years = person.birth_year || person.death_year
                           ? `${person.birth_year || '?'} – ${person.death_year || '?'}`
                           : 'Unknown';
@@ -63,10 +73,10 @@ export default async function ResearchQueuePage() {
                           <tr key={person.id} className="border-b hover:bg-gray-50">
                             <td className="py-3 px-3">
                               <span className={`inline-block w-8 h-8 rounded-full text-center leading-8 font-bold text-white ${
-                                person.research_priority >= 7 ? 'bg-red-500' :
-                                person.research_priority >= 4 ? 'bg-orange-500' : 'bg-blue-500'
+                                (person.research_priority || 0) >= 7 ? 'bg-red-500' :
+                                (person.research_priority || 0) >= 4 ? 'bg-orange-500' : 'bg-blue-500'
                               }`}>
-                                {person.research_priority}
+                                {person.research_priority || 0}
                               </span>
                             </td>
                             <td className="py-3 px-3">
@@ -124,8 +134,6 @@ export default async function ResearchQueuePage() {
             </div>
           </div>
         </div>
-        <Footer />
-      </main>
     </>
   );
 }

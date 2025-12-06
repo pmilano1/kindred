@@ -3,8 +3,16 @@
 import { useEffect, useState } from 'react';
 import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
-import Sidebar from '@/components/Sidebar';
+import { useQuery, useMutation } from '@apollo/client/react';
 import Hero from '@/components/Hero';
+import {
+  GET_USERS,
+  GET_INVITATIONS,
+  CREATE_INVITATION,
+  DELETE_INVITATION,
+  UPDATE_USER_ROLE,
+  DELETE_USER
+} from '@/lib/graphql/queries';
 
 interface User {
   id: string;
@@ -28,12 +36,21 @@ interface Invitation {
 export default function AdminPage() {
   const { data: session, status } = useSession();
   const router = useRouter();
-  const [users, setUsers] = useState<User[]>([]);
-  const [invitations, setInvitations] = useState<Invitation[]>([]);
   const [newEmail, setNewEmail] = useState('');
   const [newRole, setNewRole] = useState('viewer');
   const [inviteUrl, setInviteUrl] = useState('');
-  const [loading, setLoading] = useState(true);
+
+  const { data: usersData, loading: usersLoading, refetch: refetchUsers } = useQuery<{ users: User[] }>(GET_USERS);
+  const { data: invitationsData, loading: invitationsLoading, refetch: refetchInvitations } = useQuery<{ invitations: Invitation[] }>(GET_INVITATIONS);
+
+  const [createInvitation] = useMutation(CREATE_INVITATION);
+  const [deleteInvitation] = useMutation(DELETE_INVITATION);
+  const [updateUserRole] = useMutation(UPDATE_USER_ROLE);
+  const [deleteUser] = useMutation(DELETE_USER);
+
+  const users = usersData?.users || [];
+  const invitations = invitationsData?.invitations || [];
+  const loading = usersLoading || invitationsLoading;
 
   useEffect(() => {
     if (status === 'loading') return;
@@ -41,70 +58,58 @@ export default function AdminPage() {
       router.push('/');
       return;
     }
-    fetchData();
   }, [session, status, router]);
-
-  const fetchData = async () => {
-    const [usersRes, invitesRes] = await Promise.all([
-      fetch('/api/admin/users'),
-      fetch('/api/admin/invitations')
-    ]);
-    setUsers(await usersRes.json());
-    setInvitations(await invitesRes.json());
-    setLoading(false);
-  };
 
   const handleInvite = async () => {
     if (!newEmail) return;
-    const res = await fetch('/api/admin/invitations', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email: newEmail, role: newRole })
-    });
-    const data = await res.json();
-    if (data.inviteUrl) {
-      setInviteUrl(data.inviteUrl);
-      setNewEmail('');
-      fetchData();
+    try {
+      const result = await createInvitation({ variables: { email: newEmail, role: newRole } });
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const invitation = (result.data as any)?.createInvitation as Invitation | undefined;
+      if (invitation?.token) {
+        setInviteUrl(`${window.location.origin}/login?invite=${invitation.token}`);
+        setNewEmail('');
+        refetchInvitations();
+      }
+    } catch (err) {
+      console.error('Failed to create invitation:', err);
     }
   };
 
   const handleRoleChange = async (userId: string, role: string) => {
-    await fetch('/api/admin/users', {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ userId, role })
-    });
-    fetchData();
+    try {
+      await updateUserRole({ variables: { userId, role } });
+      refetchUsers();
+    } catch (err) {
+      console.error('Failed to update role:', err);
+    }
   };
 
   const handleDeleteUser = async (userId: string) => {
     if (!confirm('Delete this user?')) return;
-    await fetch('/api/admin/users', {
-      method: 'DELETE',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ userId })
-    });
-    fetchData();
+    try {
+      await deleteUser({ variables: { userId } });
+      refetchUsers();
+    } catch (err) {
+      console.error('Failed to delete user:', err);
+    }
   };
 
   const handleDeleteInvite = async (invitationId: string) => {
-    await fetch('/api/admin/invitations', {
-      method: 'DELETE',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ invitationId })
-    });
-    fetchData();
+    try {
+      await deleteInvitation({ variables: { id: invitationId } });
+      refetchInvitations();
+    } catch (err) {
+      console.error('Failed to delete invitation:', err);
+    }
   };
 
-  if (loading) return <><Sidebar /><main className="main-content"><Hero title="User Management" subtitle="Manage users and invitations" /><div className="content-wrapper"><p>Loading...</p></div></main></>;
+  if (loading) return <><Hero title="User Management" subtitle="Manage users and invitations" /><div className="content-wrapper"><p>Loading...</p></div></>;
 
   return (
     <>
-      <Sidebar />
-      <main className="main-content">
-        <Hero title="User Management" subtitle="Manage users and invitations" />
-        <div className="content-wrapper">
+      <Hero title="User Management" subtitle="Manage users and invitations" />
+      <div className="content-wrapper">
 
         {/* Invite Section */}
         <div className="bg-white rounded-xl shadow-sm border p-6 mb-8">
@@ -213,8 +218,7 @@ export default function AdminPage() {
             </tbody>
           </table>
         </div>
-        </div>
-      </main>
+      </div>
     </>
   );
 }

@@ -1,5 +1,3 @@
-import Sidebar from '@/components/Sidebar';
-import Footer from '@/components/Footer';
 import PersonPageClient from '@/components/PersonPageClient';
 
 export const dynamic = 'force-dynamic';
@@ -12,14 +10,8 @@ export default async function PersonPage({ params }: PageProps) {
   const { id } = await params;
 
   return (
-    <>
-      <Sidebar />
-      <main className="main-content">
-        <div className="content-wrapper px-4 py-6">
-          <PersonPageClient personId={id} />
-        </div>
-        <Footer />
-      </main>
-    </>
+    <div className="content-wrapper px-4 py-6">
+      <PersonPageClient personId={id} />
+    </div>
   );
 }

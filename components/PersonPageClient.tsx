@@ -1,11 +1,13 @@
 'use client';
 
+import { useState } from 'react';
 import Link from 'next/link';
-import { useQuery } from '@apollo/client/react';
-import { GET_PERSON } from '@/lib/graphql/queries';
+import { useQuery, useMutation } from '@apollo/client/react';
+import { useSession } from 'next-auth/react';
+import { GET_PERSON, UPDATE_NOTABLE_STATUS } from '@/lib/graphql/queries';
 import ResearchPanel from '@/components/ResearchPanel';
 import TreeLink from '@/components/TreeLink';
-import { Person, Family, Residence, Occupation, Event, Fact } from '@/lib/types';
+import { Person, Family, LifeEvent, Fact } from '@/lib/types';
 
 interface PersonData {
   person: Person & {
@@ -18,9 +20,7 @@ interface PersonData {
       wife: Person | null;
       children: Person[];
     })[];
-    residences: Residence[];
-    occupations: Occupation[];
-    events: Event[];
+    lifeEvents: LifeEvent[];
     facts: Fact[];
   } | null;
 }
@@ -30,9 +30,40 @@ interface Props {
 }
 
 export default function PersonPageClient({ personId }: Props) {
+  const { data: session } = useSession();
   const { data, loading, error } = useQuery<PersonData>(GET_PERSON, {
     variables: { id: personId },
   });
+  const [updateNotable] = useMutation(UPDATE_NOTABLE_STATUS);
+  const [notableEditing, setNotableEditing] = useState(false);
+  const [notableDesc, setNotableDesc] = useState('');
+
+  const canEdit = session?.user?.role === 'admin' || session?.user?.role === 'editor';
+
+  const handleToggleNotable = async () => {
+    const person = data?.person;
+    if (!person) return;
+
+    if (!person.is_notable) {
+      // If marking as notable, show description editor
+      setNotableDesc(person.notable_description || '');
+      setNotableEditing(true);
+    } else {
+      // If unmarking, just toggle off
+      await updateNotable({
+        variables: { id: personId, isNotable: false, notableDescription: null },
+        refetchQueries: [{ query: GET_PERSON, variables: { id: personId } }],
+      });
+    }
+  };
+
+  const handleSaveNotable = async () => {
+    await updateNotable({
+      variables: { id: personId, isNotable: true, notableDescription: notableDesc || null },
+      refetchQueries: [{ query: GET_PERSON, variables: { id: personId } }],
+    });
+    setNotableEditing(false);
+  };
 
   if (loading) {
     return (
@@ -67,11 +98,54 @@ export default function PersonPageClient({ personId }: Props) {
       <div className="flex-1 min-w-0">
         {/* Hero */}
         <div className="mb-6">
-          <h1 className="text-3xl font-bold text-gray-800">{person.name_full}</h1>
+          <div className="flex items-center gap-3">
+            <h1 className="text-3xl font-bold text-gray-800">{person.name_full}</h1>
+            {person.is_notable && (
+              <span className="inline-flex items-center gap-1 px-3 py-1 bg-gradient-to-r from-amber-100 to-yellow-100 border border-amber-300 rounded-full text-amber-800 text-sm font-medium">
+                ⭐ Notable Figure
+              </span>
+            )}
+          </div>
           <p className="text-gray-600">
             {person.living ? 'Living' : `${person.birth_year || '?'} – ${person.death_year || '?'}`}
           </p>
+          {person.is_notable && person.notable_description && (
+            <p className="mt-2 text-sm text-amber-700 italic">{person.notable_description}</p>
+          )}
         </div>
+
+        {/* Notable Editor Modal */}
+        {notableEditing && (
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+            <div className="bg-white rounded-xl p-6 max-w-md w-full mx-4 shadow-2xl">
+              <h3 className="text-lg font-semibold mb-4">⭐ Mark as Notable Figure</h3>
+              <p className="text-sm text-gray-600 mb-3">
+                Add a short description of why this person is notable (optional):
+              </p>
+              <textarea
+                value={notableDesc}
+                onChange={(e) => setNotableDesc(e.target.value)}
+                placeholder="e.g., First Empress of France, married Napoleon Bonaparte"
+                className="w-full border rounded-lg p-3 text-sm mb-4"
+                rows={3}
+              />
+              <div className="flex justify-end gap-2">
+                <button
+                  onClick={() => setNotableEditing(false)}
+                  className="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded-lg"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleSaveNotable}
+                  className="px-4 py-2 bg-amber-500 text-white rounded-lg hover:bg-amber-600"
+                >
+                  Save
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Main Info Card */}
         <div className={`card p-6 mb-6 border-l-4 ${isFemale ? 'border-l-pink-500' : 'border-l-blue-500'}`}>
@@ -80,6 +154,19 @@ export default function PersonPageClient({ personId }: Props) {
               {isFemale ? 'Female' : 'Male'}
             </span>
             {person.living && <span className="badge badge-living">Living</span>}
+            {canEdit && (
+              <button
+                onClick={handleToggleNotable}
+                className={`badge cursor-pointer transition-colors ${
+                  person.is_notable
+                    ? 'bg-amber-100 text-amber-800 border border-amber-300 hover:bg-amber-200'
+                    : 'bg-gray-100 text-gray-600 border border-gray-300 hover:bg-gray-200'
+                }`}
+                title={person.is_notable ? 'Click to remove notable status' : 'Click to mark as notable'}
+              >
+                {person.is_notable ? '⭐ Notable' : '☆ Mark Notable'}
+              </button>
+            )}
           </div>
 
           <div className="grid md:grid-cols-2 gap-6">
@@ -235,51 +322,21 @@ export default function PersonPageClient({ personId }: Props) {
           </div>
         )}
 
-        {/* Occupations */}
-        {person.occupations.length > 0 && (
-          <div className="card p-6 mb-6">
-            <h3 className="section-title">💼 Occupations</h3>
-            <div className="space-y-2">
-              {person.occupations.map((occ) => (
-                <div key={occ.id} className="flex items-start gap-2 text-sm">
-                  <span className="text-gray-800 font-medium">{occ.title || 'Unknown'}</span>
-                  {(occ.occupation_date || occ.occupation_place) && (
-                    <span className="text-gray-500">
-                      {occ.occupation_date && `(${occ.occupation_date})`}
-                      {occ.occupation_place && ` - ${occ.occupation_place}`}
-                    </span>
-                  )}
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* Residences */}
-        {person.residences.length > 0 && (
-          <div className="card p-6 mb-6">
-            <h3 className="section-title">🏠 Residences</h3>
-            <div className="space-y-2">
-              {person.residences.map((res) => (
-                <div key={res.id} className="flex items-start gap-2 text-sm">
-                  <span className="text-gray-500">{res.residence_date || res.residence_year || ''}</span>
-                  <span className="text-gray-800">{res.residence_place || 'Unknown location'}</span>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* Life Events */}
-        {person.events.length > 0 && (
+        {/* Life Events (residences, occupations, other events) */}
+        {person.lifeEvents.length > 0 && (
           <div className="card p-6 mb-6">
             <h3 className="section-title">📅 Life Events</h3>
             <div className="space-y-2">
-              {person.events.map((evt) => (
-                <div key={evt.id} className="flex items-start gap-2 text-sm">
-                  <span className="bg-gray-100 px-2 py-0.5 rounded text-gray-600">{evt.event_type || 'Event'}</span>
-                  {evt.event_date && <span className="text-gray-500">{evt.event_date}</span>}
-                  {evt.event_place && <span className="text-gray-800">{evt.event_place}</span>}
+              {person.lifeEvents.map((evt) => (
+                <div key={`${evt.event_type}-${evt.id}`} className="flex items-start gap-2 text-sm">
+                  <span className="bg-gray-100 px-2 py-0.5 rounded text-gray-600 capitalize">
+                    {evt.event_type === 'residence' ? '🏠' : evt.event_type === 'occupation' ? '💼' : '📌'} {evt.event_type}
+                  </span>
+                  {(evt.event_date || evt.event_year) && (
+                    <span className="text-gray-500">{evt.event_date || evt.event_year}</span>
+                  )}
+                  {evt.event_value && <span className="text-gray-800 font-medium">{evt.event_value}</span>}
+                  {evt.event_place && <span className="text-gray-600">{evt.event_place}</span>}
                 </div>
               ))}
             </div>

@@ -1,6 +1,6 @@
 import DataLoader from 'dataloader';
 import { pool } from '../db';
-import { Person, Family, Residence, Occupation, Event, Fact, Source } from '../types';
+import { Person, Family, Fact, Source, LifeEvent } from '../types';
 
 // ============================================
 // BATCH LOADERS - Single SQL query per batch
@@ -67,39 +67,42 @@ async function batchFamiliesAsChild(personIds: readonly string[]): Promise<Famil
   return personIds.map(id => map.get(id) || []);
 }
 
-// Batch load residences by person IDs
-async function batchResidences(personIds: readonly string[]): Promise<Residence[][]> {
+// Batch load unified life events (combines residences, occupations, events tables)
+async function batchLifeEvents(personIds: readonly string[]): Promise<LifeEvent[][]> {
   if (!personIds.length) return [];
-  const { rows } = await pool.query(
-    `SELECT * FROM residences WHERE person_id = ANY($1) ORDER BY residence_year NULLS LAST`,
-    [personIds as string[]]
-  );
-  const map = new Map<string, Residence[]>(personIds.map(id => [id, []]));
-  for (const r of rows) map.get(r.person_id)!.push(r);
-  return personIds.map(id => map.get(id) || []);
-}
 
-// Batch load occupations by person IDs
-async function batchOccupations(personIds: readonly string[]): Promise<Occupation[][]> {
-  if (!personIds.length) return [];
-  const { rows } = await pool.query(
-    `SELECT * FROM occupations WHERE person_id = ANY($1) ORDER BY occupation_date NULLS LAST`,
-    [personIds as string[]]
-  );
-  const map = new Map<string, Occupation[]>(personIds.map(id => [id, []]));
-  for (const o of rows) map.get(o.person_id)!.push(o);
-  return personIds.map(id => map.get(id) || []);
-}
+  // Query all three tables and unify into LifeEvent format
+  const [residences, occupations, events] = await Promise.all([
+    pool.query(
+      `SELECT id, person_id, 'residence' as event_type, residence_date as event_date,
+              residence_year as event_year, residence_place as event_place, NULL as event_value
+       FROM residences WHERE person_id = ANY($1)`,
+      [personIds as string[]]
+    ),
+    pool.query(
+      `SELECT id, person_id, 'occupation' as event_type, occupation_date as event_date,
+              NULL as event_year, occupation_place as event_place, title as event_value
+       FROM occupations WHERE person_id = ANY($1)`,
+      [personIds as string[]]
+    ),
+    pool.query(
+      `SELECT id, person_id, event_type, event_date, NULL as event_year, event_place, NULL as event_value
+       FROM events WHERE person_id = ANY($1)`,
+      [personIds as string[]]
+    )
+  ]);
 
-// Batch load events by person IDs
-async function batchEvents(personIds: readonly string[]): Promise<Event[][]> {
-  if (!personIds.length) return [];
-  const { rows } = await pool.query(
-    `SELECT * FROM events WHERE person_id = ANY($1) ORDER BY event_date NULLS LAST`,
-    [personIds as string[]]
-  );
-  const map = new Map<string, Event[]>(personIds.map(id => [id, []]));
-  for (const e of rows) map.get(e.person_id)!.push(e);
+  const map = new Map<string, LifeEvent[]>(personIds.map(id => [id, []]));
+
+  for (const row of [...residences.rows, ...occupations.rows, ...events.rows]) {
+    map.get(row.person_id)!.push(row);
+  }
+
+  // Sort by year/date
+  for (const events of map.values()) {
+    events.sort((a, b) => (a.event_year || 9999) - (b.event_year || 9999));
+  }
+
   return personIds.map(id => map.get(id) || []);
 }
 
@@ -138,9 +141,7 @@ export function createLoaders() {
     childrenByFamilyLoader: new DataLoader(batchChildrenByFamily, { cache: true }),
     familiesAsSpouseLoader: new DataLoader(batchFamiliesAsSpouse, { cache: true }),
     familiesAsChildLoader: new DataLoader(batchFamiliesAsChild, { cache: true }),
-    residencesLoader: new DataLoader(batchResidences, { cache: true }),
-    occupationsLoader: new DataLoader(batchOccupations, { cache: true }),
-    eventsLoader: new DataLoader(batchEvents, { cache: true }),
+    lifeEventsLoader: new DataLoader(batchLifeEvents, { cache: true }),
     factsLoader: new DataLoader(batchFacts, { cache: true }),
     sourcesLoader: new DataLoader(batchSources, { cache: true }),
   };

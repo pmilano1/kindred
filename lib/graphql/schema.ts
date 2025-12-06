@@ -152,6 +152,7 @@ export const typeDefs = `#graphql
     created_at: String!
     last_login: String
     last_accessed: String
+    api_key: String
   }
 
   type Invitation {
@@ -289,6 +290,9 @@ export const typeDefs = `#graphql
     surnameCrests: [SurnameCrest!]!
     surnameCrest(surname: String!): SurnameCrest
 
+    # Current user (authenticated user info)
+    me: User
+
     # Admin (requires admin role)
     users: [User!]!
     invitations: [Invitation!]!
@@ -353,6 +357,10 @@ export const typeDefs = `#graphql
     # Settings mutations (requires admin role)
     updateSettings(input: SettingsInput!): SiteSettings!
     runMigrations: MigrationResult!
+
+    # API Key mutations (user can manage their own key)
+    generateApiKey: String!
+    revokeApiKey: Boolean!
   }
 `;
 

@@ -152,8 +152,14 @@ export default function SettingsPage() {
       <Hero title="Site Settings" subtitle="Configure your genealogy site" />
       <div className="content-wrapper">
         {/* Navigation */}
-        <div className="mb-6">
-          <Link href="/admin" className="text-blue-600 hover:underline">← Back to User Management</Link>
+        <div className="flex gap-4 mb-8">
+          <Link href="/admin" className="bg-gray-200 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-300">
+            Users
+          </Link>
+          <span className="bg-blue-600 text-white px-4 py-2 rounded-lg">Site Settings</span>
+          <Link href="/admin/api-keys" className="bg-gray-200 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-300">
+            API Keys
+          </Link>
         </div>
 
         {/* Message */}

@@ -285,6 +285,16 @@ export const resolvers = {
         .sort((a, b) => b.year - a.year);
     },
 
+    // Current user query
+    me: async (_: unknown, __: unknown, context: Context) => {
+      const user = requireAuth(context);
+      const { rows } = await pool.query(
+        'SELECT id, email, name, role, created_at, last_login, last_accessed, api_key FROM users WHERE id = $1',
+        [user.id]
+      );
+      return rows[0] || null;
+    },
+
     // Admin queries
     users: async (_: unknown, __: unknown, context: Context) => {
       requireAuth(context, 'admin');
@@ -559,6 +569,26 @@ export const resolvers = {
       }
 
       return { success: true, results, message: 'Migrations completed' };
+    },
+
+    // API Key mutations
+    generateApiKey: async (_: unknown, __: unknown, context: Context) => {
+      const user = requireAuth(context);
+      // Generate a secure random API key (64 hex characters)
+      const crypto = await import('crypto');
+      const apiKey = crypto.randomBytes(32).toString('hex');
+
+      await pool.query('UPDATE users SET api_key = $1 WHERE id = $2', [apiKey, user.id]);
+      await logAudit(user.id, 'generate_api_key', { userId: user.id });
+
+      return apiKey;
+    },
+
+    revokeApiKey: async (_: unknown, __: unknown, context: Context) => {
+      const user = requireAuth(context);
+      await pool.query('UPDATE users SET api_key = NULL WHERE id = $1', [user.id]);
+      await logAudit(user.id, 'revoke_api_key', { userId: user.id });
+      return true;
     },
   },
 

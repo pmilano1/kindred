@@ -426,6 +426,34 @@ export const DELETE_USER = gql`
 `;
 
 // ============================================
+// API KEY MANAGEMENT
+// ============================================
+
+export const GET_ME = gql`
+  query GetMe {
+    me {
+      id
+      email
+      name
+      role
+      api_key
+    }
+  }
+`;
+
+export const GENERATE_API_KEY = gql`
+  mutation GenerateApiKey {
+    generateApiKey
+  }
+`;
+
+export const REVOKE_API_KEY = gql`
+  mutation RevokeApiKey {
+    revokeApiKey
+  }
+`;
+
+// ============================================
 // COAT OF ARMS / SURNAME CRESTS
 // ============================================
 

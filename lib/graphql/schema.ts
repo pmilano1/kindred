@@ -160,6 +160,7 @@ export const typeDefs = `#graphql
     email: String!
     role: String!
     token: String!
+    created_at: String!
     expires_at: String!
     accepted_at: String
     created_by: String

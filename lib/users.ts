@@ -1,4 +1,4 @@
-import { pool } from './db';
+import { pool } from './pool';
 import { AppUser, Invitation } from './auth-types';
 import crypto from 'crypto';
 

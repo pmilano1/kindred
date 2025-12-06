@@ -1,6 +1,6 @@
 import Hero from '@/components/Hero';
 import ResearchQueueClient from '@/components/ResearchQueueClient';
-import { pool } from '@/lib/db';
+import { pool } from '@/lib/pool';
 
 export const dynamic = 'force-dynamic';
 

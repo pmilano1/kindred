@@ -1,5 +1,5 @@
 import NextAuth from 'next-auth';
-import { pool } from './db';
+import { pool } from './pool';
 import authConfig from '../auth.config';
 
 // Full auth config with database callbacks

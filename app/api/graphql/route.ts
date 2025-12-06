@@ -2,7 +2,7 @@ import { ApolloServer, BaseContext } from '@apollo/server';
 import { startServerAndCreateNextHandler } from '@as-integrations/next';
 import { NextRequest } from 'next/server';
 import { auth } from '@/lib/auth';
-import { pool } from '@/lib/db';
+import { pool } from '@/lib/pool';
 import { typeDefs } from '@/lib/graphql/schema';
 import { resolvers } from '@/lib/graphql/resolvers';
 import { createLoaders, Loaders } from '@/lib/graphql/dataloaders';

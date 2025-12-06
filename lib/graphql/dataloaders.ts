@@ -1,5 +1,5 @@
 import DataLoader from 'dataloader';
-import { pool } from '../db';
+import { pool } from '../pool';
 import { Person, Family, Fact, Source, LifeEvent } from '../types';
 
 // ============================================

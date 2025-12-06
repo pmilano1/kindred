@@ -1,13 +1,5 @@
-import {
-  getPeople,
-  getPerson,
-  getFamilies,
-  updateResearchStatus,
-  updateResearchPriority,
-  getStats,
-  getTimeline,
-  pool
-} from '../db';
+import { pool } from '../pool';
+import { Person } from '../types';
 import {
   getUsers,
   getInvitations,
@@ -51,6 +43,15 @@ function requireAuth(context: Context, requiredRole: 'viewer' | 'editor' | 'admi
 // Cursor encoding/decoding
 const encodeCursor = (id: string) => Buffer.from(id).toString('base64');
 const decodeCursor = (cursor: string) => Buffer.from(cursor, 'base64').toString('utf-8');
+
+// Helper to get a person by ID
+async function getPerson(id: string): Promise<Person | null> {
+  const { rows } = await pool.query(
+    `SELECT *, COALESCE(notes, description) as description FROM people WHERE id = $1`,
+    [id]
+  );
+  return rows[0] || null;
+}
 
 export const resolvers = {
   Query: {
@@ -105,8 +106,13 @@ export const resolvers = {
     // Legacy offset-based (for backwards compatibility)
     // Tree component needs all people - allow up to 10000 for tree view
     peopleList: async (_: unknown, { limit = 100, offset = 0 }: { limit?: number; offset?: number }) => {
-      const people = await getPeople();
-      return people.slice(offset, offset + Math.min(limit, 10000));
+      const { rows } = await pool.query(`
+        SELECT *, COALESCE(notes, description) as description
+        FROM people
+        ORDER BY birth_year DESC NULLS LAST
+        LIMIT $1 OFFSET $2
+      `, [Math.min(limit, 10000), offset]);
+      return rows;
     },
 
     // Recent people (for home page)
@@ -176,8 +182,25 @@ export const resolvers = {
       };
     },
 
-    families: () => getFamilies(),
-    stats: () => getStats(),
+    families: async () => {
+      const { rows } = await pool.query(`SELECT * FROM families`);
+      return rows;
+    },
+
+    stats: async () => {
+      const { rows } = await pool.query(`
+        SELECT
+          (SELECT COUNT(*) FROM people) as total_people,
+          (SELECT COUNT(*) FROM families) as total_families,
+          (SELECT COUNT(*) FROM people WHERE sex = 'M') as male_count,
+          (SELECT COUNT(*) FROM people WHERE sex = 'F') as female_count,
+          (SELECT COUNT(*) FROM people WHERE living = true) as living_count,
+          (SELECT MIN(birth_year) FROM people WHERE birth_year IS NOT NULL) as earliest_birth,
+          (SELECT MAX(birth_year) FROM people WHERE birth_year IS NOT NULL) as latest_birth,
+          (SELECT COUNT(*) FROM people WHERE familysearch_id IS NOT NULL) as with_familysearch_id
+      `);
+      return rows[0];
+    },
 
     researchQueue: async (_: unknown, { limit = 50 }: { limit?: number }) => {
       const { rows } = await pool.query(`
@@ -239,11 +262,26 @@ export const resolvers = {
 
     // Timeline - grouped by year
     timeline: async () => {
-      const data = await getTimeline();
-      return data.map(({ year, events }) => ({
-        year,
-        events: events.map(e => ({ type: e.type, person: e.person }))
-      }));
+      const { rows } = await pool.query(`
+        SELECT * FROM people WHERE birth_year IS NOT NULL OR death_year IS NOT NULL
+      `);
+
+      const events: Map<number, Array<{type: string; person: Person}>> = new Map();
+
+      for (const person of rows) {
+        if (person.birth_year) {
+          if (!events.has(person.birth_year)) events.set(person.birth_year, []);
+          events.get(person.birth_year)!.push({ type: 'birth', person });
+        }
+        if (person.death_year && !person.living) {
+          if (!events.has(person.death_year)) events.set(person.death_year, []);
+          events.get(person.death_year)!.push({ type: 'death', person });
+        }
+      }
+
+      return Array.from(events.entries())
+        .map(([year, evts]) => ({ year, events: evts }))
+        .sort((a, b) => b.year - a.year);
     },
 
     // Admin queries
@@ -303,13 +341,19 @@ export const resolvers = {
     
     updateResearchStatus: async (_: unknown, { personId, status }: { personId: string; status: string }, context: Context) => {
       requireAuth(context, 'editor');
-      await updateResearchStatus(personId, status);
+      await pool.query(
+        `UPDATE people SET research_status = $1, last_researched = NOW() WHERE id = $2`,
+        [status, personId]
+      );
       return getPerson(personId);
     },
-    
+
     updateResearchPriority: async (_: unknown, { personId, priority }: { personId: string; priority: number }, context: Context) => {
       requireAuth(context, 'editor');
-      await updateResearchPriority(personId, priority);
+      await pool.query(
+        `UPDATE people SET research_priority = $1 WHERE id = $2`,
+        [priority, personId]
+      );
       return getPerson(personId);
     },
 

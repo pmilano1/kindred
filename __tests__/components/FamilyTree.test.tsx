@@ -5,8 +5,8 @@
 
 import React from 'react';
 import { render, screen, waitFor } from '@testing-library/react';
-import { MockedProvider } from '@apollo/react-testing';
-import { gql } from '@apollo/client';
+import { gql, ApolloClient, InMemoryCache, ApolloProvider } from '@apollo/client';
+import { MockLink } from '@apollo/client/testing';
 import FamilyTree from '@/components/FamilyTree';
 
 // The query used by FamilyTree component
@@ -70,11 +70,19 @@ const mocks = [
   },
 ];
 
+const createMockClient = (apolloMocks = mocks) => {
+  return new ApolloClient({
+    link: new MockLink(apolloMocks, false),
+    cache: new InMemoryCache(),
+  });
+};
+
 const renderWithApollo = (ui: React.ReactElement, apolloMocks = mocks) => {
+  const client = createMockClient(apolloMocks);
   return render(
-    <MockedProvider mocks={apolloMocks} addTypename={false}>
+    <ApolloProvider client={client}>
       {ui}
-    </MockedProvider>
+    </ApolloProvider>
   );
 };
 

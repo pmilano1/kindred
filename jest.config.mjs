@@ -24,6 +24,37 @@ const customJestConfig = {
     '/node_modules/',
     '/.next/',
   ],
+  // Coverage thresholds - prevent regression
+  // These are set based on current coverage levels
+  // Increase these as more tests are added
+  coverageThreshold: {
+    global: {
+      branches: 1,
+      functions: 0,
+      lines: 1,
+      statements: 1,
+    },
+    // Higher thresholds for well-tested components
+    './components/PersonCard.tsx': {
+      branches: 80,
+      functions: 100,
+      lines: 90,
+      statements: 90,
+    },
+    './components/LoadingSpinner.tsx': {
+      branches: 100,
+      functions: 100,
+      lines: 100,
+      statements: 100,
+    },
+    // Resolver coverage threshold
+    './lib/graphql/resolvers.ts': {
+      branches: 35,
+      functions: 35,
+      lines: 40,
+      statements: 40,
+    },
+  },
 };
 
 export default createJestConfig(customJestConfig);

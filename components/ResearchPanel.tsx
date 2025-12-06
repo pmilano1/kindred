@@ -1,7 +1,9 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { ResearchLog, ResearchActionType, ResearchSource, ResearchConfidence, ResearchStatus } from '@/lib/types';
+import { useState } from 'react';
+import { useQuery, useMutation } from '@apollo/client/react';
+import { GET_PERSON_SOURCES, ADD_SOURCE, UPDATE_RESEARCH_STATUS, UPDATE_RESEARCH_PRIORITY } from '@/lib/graphql/queries';
+import { Source, ResearchStatus, ResearchActionType, ResearchSource, ResearchConfidence } from '@/lib/types';
 
 interface ResearchPanelProps {
   personId: string;
@@ -60,83 +62,93 @@ const STATUS_OPTIONS: { value: ResearchStatus; label: string; color: string; des
 ];
 
 export default function ResearchPanel({ personId, personName, compact = false }: ResearchPanelProps) {
-  const [log, setLog] = useState<ResearchLog[]>([]);
-  const [status, setStatus] = useState<ResearchStatus>('not_started');
-  const [priority, setPriority] = useState(0);
-  const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
 
   // Form state
   const [actionType, setActionType] = useState<ResearchActionType>('note');
   const [content, setContent] = useState('');
   const [sourceChecked, setSourceChecked] = useState<ResearchSource | ''>('');
-  const [confidence, setConfidence] = useState<ResearchConfidence | ''>('');
+  const [confidenceField, setConfidenceField] = useState<ResearchConfidence | ''>('');
   const [externalUrl, setExternalUrl] = useState('');
-  const [submitting, setSubmitting] = useState(false);
 
-  useEffect(() => {
-    fetchResearchData();
-  }, [personId]);
+  // GraphQL query response type
+  interface PersonSourcesData {
+    person: {
+      id: string;
+      name_full: string;
+      research_status: ResearchStatus;
+      research_priority: number;
+      sources: Source[];
+    } | null;
+  }
 
-  const fetchResearchData = async () => {
-    try {
-      const res = await fetch(`/api/research/${personId}`);
-      const data = await res.json();
-      setLog(data.sources || data.log || []);
-      setStatus(data.status || 'not_started');
-      setPriority(data.priority || 0);
-    } catch (error) {
-      console.error('Failed to fetch research data:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
+  // GraphQL query
+  const { data, loading, refetch } = useQuery<PersonSourcesData>(GET_PERSON_SOURCES, {
+    variables: { id: personId },
+    skip: !personId,
+  });
+
+  // GraphQL mutations
+  const [addSource, { loading: submitting }] = useMutation(ADD_SOURCE, {
+    onCompleted: () => {
+      setContent('');
+      setSourceChecked('');
+      setConfidenceField('');
+      setExternalUrl('');
+      setShowForm(false);
+      refetch();
+    },
+  });
+
+  const [updateStatus] = useMutation(UPDATE_RESEARCH_STATUS);
+  const [updatePriority] = useMutation(UPDATE_RESEARCH_PRIORITY);
+
+  // Extract data from query
+  const log: Source[] = data?.person?.sources || [];
+  const status: ResearchStatus = data?.person?.research_status || 'not_started';
+  const priority: number = data?.person?.research_priority || 0;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!content.trim()) return;
 
-    setSubmitting(true);
-    try {
-      await fetch(`/api/research/${personId}`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          action: actionType,
+    await addSource({
+      variables: {
+        personId,
+        input: {
+          action_type: actionType,
           content,
-          sourceType: sourceChecked || undefined,
-          sourceUrl: externalUrl || undefined,
-          confidence: confidence || undefined,
-        }),
-      });
-      setContent('');
-      setSourceChecked('');
-      setConfidence('');
-      setExternalUrl('');
-      setShowForm(false);
-      fetchResearchData();
-    } catch (error) {
-      console.error('Failed to add research note:', error);
-    } finally {
-      setSubmitting(false);
-    }
+          source_checked: sourceChecked || undefined,
+          external_url: externalUrl || undefined,
+          confidence: confidenceField || undefined,
+        },
+      },
+    });
   };
 
   const handleStatusChange = async (newStatus: ResearchStatus) => {
-    setStatus(newStatus);
-    await fetch(`/api/research/${personId}/status`, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ status: newStatus }),
+    await updateStatus({
+      variables: { personId, status: newStatus },
+      optimisticResponse: {
+        updateResearchStatus: {
+          __typename: 'Person',
+          id: personId,
+          research_status: newStatus,
+        },
+      },
     });
   };
 
   const handlePriorityChange = async (newPriority: number) => {
-    setPriority(newPriority);
-    await fetch(`/api/research/${personId}/priority`, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ priority: newPriority }),
+    await updatePriority({
+      variables: { personId, priority: newPriority },
+      optimisticResponse: {
+        updateResearchPriority: {
+          __typename: 'Person',
+          id: personId,
+          research_priority: newPriority,
+        },
+      },
     });
   };
 
@@ -262,8 +274,8 @@ export default function ResearchPanel({ personId, personName, compact = false }:
             <div>
               <label className="block text-xs font-medium mb-1">Confidence</label>
               <select
-                value={confidence}
-                onChange={(e) => setConfidence(e.target.value as ResearchConfidence)}
+                value={confidenceField}
+                onChange={(e) => setConfidenceField(e.target.value as ResearchConfidence)}
                 className="w-full text-sm rounded border-gray-300 p-2"
               >
                 <option value="">-- Select --</option>

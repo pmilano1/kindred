@@ -23,6 +23,9 @@ export interface Person {
   description: string | null;
   living: boolean;
   source_count: number;
+  research_status: string | null;
+  research_priority: number | null;
+  last_researched: string | null;
 }
 
 export interface Residence {

@@ -12,6 +12,8 @@
     "test:ci": "jest --ci --coverage"
   },
   "dependencies": {
+    "@apollo/client": "^4.0.9",
+    "@apollo/client-react-streaming": "^0.14.0",
     "@apollo/server": "^5.2.0",
     "@as-integrations/next": "^4.1.0",
     "@auth/core": "^0.41.0",

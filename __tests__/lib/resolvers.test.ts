@@ -165,5 +165,70 @@ describe('GraphQL Resolvers', () => {
       expect(result.edges.length).toBeGreaterThanOrEqual(0);
     });
   });
+
+  describe('Query.me', () => {
+    it('returns current user when authenticated', async () => {
+      mockedQuery.mockReset(); // Clear any leftover mocks
+      const mockUser = {
+        id: 'user-1',
+        email: 'test@example.com',
+        name: 'Test User',
+        role: 'admin',
+        api_key: 'abc123',
+      };
+      mockedQuery.mockResolvedValueOnce({ rows: [mockUser] });
+
+      const context = { user: { id: 'user-1', email: 'test@example.com', role: 'admin' } };
+      const result = await resolvers.Query.me(null, {}, context);
+
+      expect(result).toEqual(mockUser);
+    });
+
+    it('throws when not authenticated', async () => {
+      const context = {};
+      await expect(resolvers.Query.me(null, {}, context)).rejects.toThrow();
+    });
+  });
+
+  describe('Mutation.generateApiKey', () => {
+    it('generates a new API key for authenticated user', async () => {
+      mockedQuery.mockResolvedValueOnce({ rows: [] }); // UPDATE query
+
+      const context = { user: { id: 'user-1', email: 'test@example.com', role: 'viewer' } };
+      const result = await resolvers.Mutation.generateApiKey(null, {}, context);
+
+      expect(typeof result).toBe('string');
+      expect(result.length).toBe(64); // 32 bytes = 64 hex chars
+      expect(mockedQuery).toHaveBeenCalledWith(
+        expect.stringContaining('UPDATE users SET api_key'),
+        expect.arrayContaining(['user-1'])
+      );
+    });
+
+    it('throws when not authenticated', async () => {
+      const context = {};
+      await expect(resolvers.Mutation.generateApiKey(null, {}, context)).rejects.toThrow();
+    });
+  });
+
+  describe('Mutation.revokeApiKey', () => {
+    it('revokes API key for authenticated user', async () => {
+      mockedQuery.mockResolvedValueOnce({ rows: [] }); // UPDATE query
+
+      const context = { user: { id: 'user-1', email: 'test@example.com', role: 'viewer' } };
+      const result = await resolvers.Mutation.revokeApiKey(null, {}, context);
+
+      expect(result).toBe(true);
+      expect(mockedQuery).toHaveBeenCalledWith(
+        expect.stringContaining('UPDATE users SET api_key = NULL'),
+        ['user-1']
+      );
+    });
+
+    it('throws when not authenticated', async () => {
+      const context = {};
+      await expect(resolvers.Mutation.revokeApiKey(null, {}, context)).rejects.toThrow();
+    });
+  });
 });
 

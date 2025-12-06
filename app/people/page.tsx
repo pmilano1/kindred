@@ -3,6 +3,7 @@
 import { useState, useMemo, useEffect, useCallback } from 'react';
 import { useQuery } from '@apollo/client/react';
 import Hero from '@/components/Hero';
+import LoadingSpinner from '@/components/LoadingSpinner';
 import PersonCard from '@/components/PersonCard';
 import { Person } from '@/lib/types';
 import { GET_PEOPLE_LIST } from '@/lib/graphql/queries';
@@ -80,7 +81,9 @@ export default function PeoplePage() {
         </div>
 
         {loading ? (
-          <div className="text-center py-12 text-gray-500">Loading...</div>
+          <div className="flex justify-center py-12">
+            <LoadingSpinner size="lg" message="Loading people..." />
+          </div>
         ) : (
           <>
             <p className="text-sm text-gray-500 mb-4">

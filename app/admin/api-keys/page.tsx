@@ -5,6 +5,7 @@ import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import { useQuery, useMutation } from '@apollo/client/react';
 import Hero from '@/components/Hero';
+import LoadingSpinner from '@/components/LoadingSpinner';
 import Link from 'next/link';
 import { GET_ME, GENERATE_API_KEY, REVOKE_API_KEY } from '@/lib/graphql/queries';
 
@@ -84,7 +85,9 @@ export default function ApiKeysPage() {
     return (
       <>
         <Hero title="API Keys" subtitle="Manage your API access" />
-        <div className="content-wrapper"><p>Loading...</p></div>
+        <div className="content-wrapper flex justify-center py-12">
+          <LoadingSpinner size="lg" message="Loading API key data..." />
+        </div>
       </>
     );
   }

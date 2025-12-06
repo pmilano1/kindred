@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { useSession } from 'next-auth/react';
 import { useQuery, useMutation } from '@apollo/client/react';
 import Hero from '@/components/Hero';
+import LoadingSpinner from '@/components/LoadingSpinner';
 import { GET_SURNAME_CRESTS, SET_SURNAME_CREST, REMOVE_SURNAME_CREST } from '@/lib/graphql/queries';
 
 interface SurnameCrest {
@@ -100,7 +101,9 @@ export default function CoatsOfArmsPage() {
         )}
 
         {loading ? (
-          <div className="text-center py-12 text-gray-500">Loading...</div>
+          <div className="flex justify-center py-12">
+            <LoadingSpinner size="lg" message="Loading coats of arms..." />
+          </div>
         ) : crests.length === 0 ? (
           <div className="text-center py-12 text-gray-500">No surname crests added yet.</div>
         ) : (

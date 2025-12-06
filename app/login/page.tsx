@@ -3,6 +3,7 @@
 import { signIn } from 'next-auth/react';
 import { useSearchParams } from 'next/navigation';
 import { Suspense } from 'react';
+import LoadingSpinner from '@/components/LoadingSpinner';
 
 function LoginContent() {
   const searchParams = useSearchParams();
@@ -64,7 +65,7 @@ export default function LoginPage() {
   return (
     <Suspense fallback={
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">
-        <div className="text-white">Loading...</div>
+        <LoadingSpinner size="lg" className="text-white" />
       </div>
     }>
       <LoginContent />

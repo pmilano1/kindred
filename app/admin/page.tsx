@@ -5,6 +5,7 @@ import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import { useQuery, useMutation } from '@apollo/client/react';
 import Hero from '@/components/Hero';
+import LoadingSpinner from '@/components/LoadingSpinner';
 import {
   GET_USERS,
   GET_INVITATIONS,
@@ -104,7 +105,14 @@ export default function AdminPage() {
     }
   };
 
-  if (loading) return <><Hero title="Admin Panel" subtitle="Manage users and site settings" /><div className="content-wrapper"><p>Loading...</p></div></>;
+  if (loading) return (
+    <>
+      <Hero title="Admin Panel" subtitle="Manage users and site settings" />
+      <div className="content-wrapper flex justify-center py-12">
+        <LoadingSpinner size="lg" message="Loading admin data..." />
+      </div>
+    </>
+  );
 
   return (
     <>

@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import dynamic from 'next/dynamic';
 import { useQuery } from '@apollo/client/react';
 import Hero from '@/components/Hero';
+import LoadingSpinner from '@/components/LoadingSpinner';
 import { Person } from '@/lib/types';
 import { GET_PEOPLE_LIST } from '@/lib/graphql/queries';
 
@@ -104,7 +105,9 @@ function TreePageContent() {
         </div>
 
         {loading ? (
-          <div className="tree-container flex items-center justify-center"><p className="text-gray-500">Loading...</p></div>
+          <div className="tree-container flex items-center justify-center">
+            <LoadingSpinner size="lg" message="Loading family data..." />
+          </div>
         ) : selected ? (
           <div className="card">
             <div className="text-center p-4 border-b">
@@ -138,7 +141,7 @@ export default function TreePage() {
         <Hero title="Family Tree" subtitle="Interactive visualization of family connections" />
         <div className="content-wrapper">
           <div className="tree-container flex items-center justify-center">
-            <p className="text-gray-500">Loading...</p>
+            <LoadingSpinner size="lg" message="Loading family tree..." />
           </div>
         </div>
       </>

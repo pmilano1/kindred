@@ -511,3 +511,27 @@ export const REMOVE_PERSON_COAT_OF_ARMS = gql`
     removePersonCoatOfArms(personId: $personId)
   }
 `;
+
+// =====================================================
+// SITE SETTINGS
+// =====================================================
+
+export const GET_SITE_SETTINGS = gql`
+  query GetSiteSettings {
+    siteSettings {
+      site_name
+      family_name
+      site_tagline
+      theme_color
+      logo_url
+      require_login
+      show_living_details
+      living_cutoff_years
+      date_format
+      default_tree_generations
+      show_coats_of_arms
+      admin_email
+      footer_text
+    }
+  }
+`;

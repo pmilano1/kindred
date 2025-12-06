@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation';
 import Hero from '@/components/Hero';
 import LoadingSpinner from '@/components/LoadingSpinner';
 import Link from 'next/link';
+import { useSettingsRefetch } from '@/components/SettingsProvider';
 
 interface SettingRow {
   key: string;
@@ -51,6 +52,7 @@ const graphqlFetch = async (query: string, variables?: Record<string, unknown>) 
 export default function SettingsPage() {
   const { data: session, status } = useSession();
   const router = useRouter();
+  const refetchGlobalSettings = useSettingsRefetch();
   const [settings, setSettings] = useState<Record<string, string>>({});
   const [rows, setRows] = useState<SettingRow[]>([]);
   const [loading, setLoading] = useState(true);
@@ -106,6 +108,8 @@ export default function SettingsPage() {
           updateSettings(input: $input) { site_name }
         }
       `, { input: settings });
+      // Refetch global settings to update UI immediately
+      refetchGlobalSettings();
       setMessage({ type: 'success', text: 'Settings saved successfully!' });
     } catch (err) {
       console.error('Failed to save settings:', err);

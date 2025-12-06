@@ -121,6 +121,27 @@ npm test
 npm run build
 ```
 
+## Branch Protection (Enable When Public)
+
+Branch protection requires GitHub Pro or a public repository. Once this repo is public, enable protection on `main`:
+
+```bash
+# Run this after making the repo public
+gh api repos/pmilano1/genealogy-frontend/branches/main/protection \
+  -X PUT \
+  -F required_status_checks='{"strict":true,"contexts":["Lint & Test","Build Check"]}' \
+  -F enforce_admins=false \
+  -F required_pull_request_reviews='{"required_approving_review_count":0}' \
+  -F restrictions=null \
+  -F allow_force_pushes=false \
+  -F allow_deletions=false
+```
+
+This will:
+- Require PRs for all changes to `main`
+- Require CI checks to pass before merge
+- Prevent force pushes and branch deletion
+
 ## Questions?
 
 Open an issue or reach out to the maintainers.

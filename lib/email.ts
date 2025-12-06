@@ -43,8 +43,8 @@ interface SendInviteEmailParams {
 }
 
 export async function sendInviteEmail({ to, inviteUrl, role, inviterName, inviterEmail }: SendInviteEmailParams): Promise<boolean> {
-  const subject = `${inviterName} invited you to Milanese Family Genealogy`;
-  
+  const subject = `${inviterName} invited you to ${APP_NAME}`;
+
   const htmlBody = `
 <!DOCTYPE html>
 <html>
@@ -61,12 +61,12 @@ export async function sendInviteEmail({ to, inviteUrl, role, inviterName, invite
 <body>
   <div class="container">
     <div class="header">
-      <h1>🌳 Milanese Family</h1>
+      <h1>🌳 ${APP_NAME}</h1>
       <p>Genealogy Database</p>
     </div>
     <div class="content">
       <p>Hi there,</p>
-      <p><strong>${inviterName}</strong> has invited you to join the Milanese Family Genealogy database as a <strong>${role}</strong>.</p>
+      <p><strong>${inviterName}</strong> has invited you to join the ${APP_NAME} genealogy database as a <strong>${role}</strong>.</p>
       <p>Click the button below to accept your invitation and create your account:</p>
       <p style="text-align: center;">
         <a href="${inviteUrl}" class="button">Accept Invitation</a>
@@ -76,14 +76,14 @@ export async function sendInviteEmail({ to, inviteUrl, role, inviterName, invite
       <p>Best regards,<br>${inviterName}</p>
     </div>
     <div class="footer">
-      <p>Milanese Family Genealogy • <a href="https://family.milanese.life">family.milanese.life</a></p>
+      <p>${APP_NAME} • <a href="${APP_URL}">${APP_URL.replace('https://', '')}</a></p>
     </div>
   </div>
 </body>
 </html>`;
 
   const textBody = `
-${inviterName} invited you to Milanese Family Genealogy
+${inviterName} invited you to ${APP_NAME}
 
 You've been invited to join as a ${role}.
 
@@ -97,7 +97,7 @@ ${inviterName}
 
   try {
     await ses.send(new SendEmailCommand({
-      Source: `Milanese Family <noreply@milanese.life>`,
+      Source: EMAIL_FROM,
       ReplyToAddresses: [inviterEmail],
       Destination: { ToAddresses: [to] },
       Message: {

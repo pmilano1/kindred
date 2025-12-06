@@ -1,16 +1,18 @@
-# Family Tree - Genealogy Application
+# Kindred
 
-A modern genealogy web application built with Next.js 15, featuring family tree visualization, research tracking, and role-based access control.
+A modern genealogy web application built with Next.js 15, featuring interactive family tree visualization, research tracking, and role-based access control.
 
 ## Features
 
-- 🌳 Interactive family tree visualization
-- 👤 Detailed person profiles with life events
+- 🌳 Interactive family tree visualization with D3.js
+- 👤 Detailed person profiles with life events and timelines
 - 🔍 Search across people, places, and dates
 - 📊 Research queue for tracking genealogy work
+- 🏰 Notable relatives discovery (finds famous ancestors/cousins)
 - 🛡️ Role-based access (admin, editor, viewer)
 - 🎨 Customizable branding and settings
 - 🔐 Google OAuth authentication
+- 📧 Email invitations for family members (AWS SES)
 
 ## Quick Start
 
@@ -23,27 +25,23 @@ A modern genealogy web application built with Next.js 15, featuring family tree 
 ### 1. Clone and Install
 
 ```bash
-git clone https://github.com/pmilano1/genealogy-frontend.git
-cd genealogy-frontend
+git clone https://github.com/pmilano1/kindred.git
+cd kindred
 npm install
 ```
 
 ### 2. Set Up PostgreSQL Database
 
-Create a PostgreSQL database and run the migrations:
+Create a PostgreSQL database:
 
 ```bash
 # Create database
 psql -U postgres -c "CREATE DATABASE genealogy;"
 psql -U postgres -c "CREATE USER genealogy WITH PASSWORD 'your-password';"
 psql -U postgres -c "GRANT ALL PRIVILEGES ON DATABASE genealogy TO genealogy;"
-
-# Run migrations
-psql -U genealogy -d genealogy -f terraform/migrations/001_auth_tables.sql
-psql -U genealogy -d genealogy -f terraform/migrations/002_settings_table.sql
 ```
 
-See `projects/genealogy/scripts/init_database.sql` for the complete schema.
+The application will create the necessary tables on first run. See the `migrations/` directory for schema details.
 
 ### 3. Configure Google OAuth
 
@@ -94,32 +92,21 @@ Open [http://localhost:3000](http://localhost:3000)
 2. Go to Admin → Site Settings
 3. Configure your family name and branding
 
-## Database Migrations
-
-Migrations are in `terraform/migrations/`:
-
-| File | Description |
-|------|-------------|
-| `001_auth_tables.sql` | Users, invitations, audit log |
-| `002_settings_table.sql` | Site settings and configuration |
-
-Run via admin panel or manually:
-```bash
-psql -U genealogy -d genealogy -f terraform/migrations/002_settings_table.sql
-```
-
 ## Project Structure
 
 ```
 ├── app/                    # Next.js App Router pages
 │   ├── admin/              # Admin panel (users, settings)
-│   ├── api/                # API routes (GraphQL, health, admin)
+│   ├── api/                # API routes (GraphQL, auth, health)
 │   ├── person/[id]/        # Person detail pages
-│   ├── tree/               # Family tree view
+│   ├── tree/               # Family tree visualization
 │   └── research/           # Research queue
 ├── components/             # React components
-├── lib/                    # Utilities (auth, db, graphql)
-├── terraform/              # Infrastructure and migrations
+├── lib/                    # Utilities
+│   ├── graphql/            # GraphQL schema, resolvers, dataloaders
+│   ├── auth.ts             # NextAuth configuration
+│   └── pool.ts             # PostgreSQL connection
+├── __tests__/              # Jest tests
 └── public/                 # Static assets
 ```
 

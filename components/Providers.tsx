@@ -38,7 +38,7 @@ function ApolloWrapper({ children }: { children: React.ReactNode }) {
 
 export function Providers({ children }: { children: React.ReactNode }) {
   return (
-    <SessionProvider>
+    <SessionProvider refetchOnWindowFocus={false} refetchInterval={0}>
       <ApolloWrapper>{children}</ApolloWrapper>
     </SessionProvider>
   );

@@ -34,6 +34,7 @@ const TREE_DATA_QUERY = gql`
       children { id }
     }
     person(id: $rootPersonId) {
+      id
       notableRelatives {
         person { id name_full }
         generation

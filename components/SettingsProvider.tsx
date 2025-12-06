@@ -1,6 +1,8 @@
 'use client';
 
-import { createContext, useContext, ReactNode } from 'react';
+import { createContext, useContext, ReactNode, useCallback } from 'react';
+import { useQuery } from '@apollo/client/react';
+import { GET_SITE_SETTINGS } from '@/lib/graphql/queries';
 
 export interface SiteSettings {
   site_name: string;
@@ -34,10 +36,22 @@ const DEFAULT_SETTINGS: SiteSettings = {
   footer_text: null,
 };
 
-const SettingsContext = createContext<SiteSettings>(DEFAULT_SETTINGS);
+interface SettingsContextValue {
+  settings: SiteSettings;
+  refetch: () => void;
+}
 
-export function useSettings() {
-  return useContext(SettingsContext);
+const SettingsContext = createContext<SettingsContextValue>({
+  settings: DEFAULT_SETTINGS,
+  refetch: () => {},
+});
+
+export function useSettings(): SiteSettings {
+  return useContext(SettingsContext).settings;
+}
+
+export function useSettingsRefetch(): () => void {
+  return useContext(SettingsContext).refetch;
 }
 
 interface SettingsProviderProps {
@@ -45,9 +59,25 @@ interface SettingsProviderProps {
   settings?: SiteSettings;
 }
 
-export function SettingsProvider({ children, settings }: SettingsProviderProps) {
+interface SiteSettingsQueryResult {
+  siteSettings: SiteSettings;
+}
+
+export function SettingsProvider({ children, settings: initialSettings }: SettingsProviderProps) {
+  // Fetch settings client-side via GraphQL
+  const { data, refetch } = useQuery<SiteSettingsQueryResult>(GET_SITE_SETTINGS, {
+    fetchPolicy: 'cache-and-network',
+  });
+
+  // Use GraphQL data if available, fall back to SSR initial settings, then defaults
+  const settings = data?.siteSettings || initialSettings || DEFAULT_SETTINGS;
+
+  const handleRefetch = useCallback(() => {
+    refetch();
+  }, [refetch]);
+
   return (
-    <SettingsContext.Provider value={settings || DEFAULT_SETTINGS}>
+    <SettingsContext.Provider value={{ settings, refetch: handleRefetch }}>
       {children}
     </SettingsContext.Provider>
   );

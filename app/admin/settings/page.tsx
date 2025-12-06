@@ -7,6 +7,7 @@ import Hero from '@/components/Hero';
 import LoadingSpinner from '@/components/LoadingSpinner';
 import Link from 'next/link';
 import { useSettingsRefetch } from '@/components/SettingsProvider';
+import { themePresets, applyThemeColors, type ThemePreset } from '@/lib/theme-presets';
 
 interface SettingRow {
   key: string;
@@ -206,21 +207,15 @@ export default function SettingsPage() {
                       </div>
                       <div className="col-span-2">
                         {row.key === 'theme_color' ? (
-                          <div className="flex items-center gap-2">
-                            <input
-                              type="color"
-                              value={settings[row.key] || '#4F46E5'}
-                              onChange={e => updateSetting(row.key, e.target.value)}
-                              className="w-12 h-10 border rounded cursor-pointer"
-                            />
-                            <input
-                              type="text"
-                              value={settings[row.key] || ''}
-                              onChange={e => updateSetting(row.key, e.target.value)}
-                              className="flex-1 border rounded-lg px-3 py-2"
-                              placeholder="#4F46E5"
-                            />
-                          </div>
+                          <ThemeColorPicker
+                            value={settings[row.key] || '#4F46E5'}
+                            onChange={(color) => updateSetting(row.key, color)}
+                            onApplyPreset={(preset) => {
+                              updateSetting('theme_color', preset.colors.primary);
+                              // Apply theme immediately for preview
+                              applyThemeColors(preset.colors);
+                            }}
+                          />
                         ) : row.key === 'date_format' ? (
                           <select
                             value={settings[row.key] || 'MDY'}
@@ -281,3 +276,77 @@ export default function SettingsPage() {
   );
 }
 
+// Theme Color Picker with Presets
+function ThemeColorPicker({
+  value,
+  onChange,
+  onApplyPreset
+}: {
+  value: string;
+  onChange: (color: string) => void;
+  onApplyPreset: (preset: ThemePreset) => void;
+}) {
+  const [showPresets, setShowPresets] = useState(false);
+
+  return (
+    <div className="space-y-3">
+      {/* Custom Color Input */}
+      <div className="flex items-center gap-2">
+        <input
+          type="color"
+          value={value}
+          onChange={e => onChange(e.target.value)}
+          className="w-12 h-10 border rounded cursor-pointer"
+        />
+        <input
+          type="text"
+          value={value}
+          onChange={e => onChange(e.target.value)}
+          className="flex-1 border rounded-lg px-3 py-2"
+          placeholder="#4F46E5"
+        />
+        <button
+          type="button"
+          onClick={() => setShowPresets(!showPresets)}
+          className="px-3 py-2 bg-gray-100 hover:bg-gray-200 rounded-lg text-sm font-medium transition-colors"
+        >
+          {showPresets ? 'Hide Presets' : '🎨 Theme Presets'}
+        </button>
+      </div>
+
+      {/* Theme Presets Grid */}
+      {showPresets && (
+        <div className="border rounded-lg p-4 bg-gray-50">
+          <p className="text-sm text-gray-600 mb-3">
+            Powered by <a href="https://yeun.github.io/open-color/" target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">Open Color</a> - MIT Licensed
+          </p>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+            {themePresets.map(preset => (
+              <button
+                key={preset.id}
+                type="button"
+                onClick={() => {
+                  onApplyPreset(preset);
+                  setShowPresets(false);
+                }}
+                className="p-3 bg-white border rounded-lg hover:border-blue-400 hover:shadow-md transition-all text-left"
+              >
+                <div className="flex gap-1 mb-2">
+                  {preset.preview.map((color, i) => (
+                    <div
+                      key={i}
+                      className="w-6 h-6 rounded-full border border-gray-200"
+                      style={{ backgroundColor: color }}
+                    />
+                  ))}
+                </div>
+                <div className="font-medium text-sm">{preset.name}</div>
+                <div className="text-xs text-gray-500">{preset.description}</div>
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}

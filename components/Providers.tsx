@@ -4,6 +4,7 @@ import { SessionProvider } from 'next-auth/react';
 import { ApolloClient, InMemoryCache, HttpLink } from '@apollo/client/core';
 import { ApolloProvider } from '@apollo/client/react';
 import { useMemo } from 'react';
+import { SettingsProvider, SiteSettings } from './SettingsProvider';
 
 function ApolloWrapper({ children }: { children: React.ReactNode }) {
   const client = useMemo(() => {
@@ -36,10 +37,19 @@ function ApolloWrapper({ children }: { children: React.ReactNode }) {
   return <ApolloProvider client={client}>{children}</ApolloProvider>;
 }
 
-export function Providers({ children }: { children: React.ReactNode }) {
+interface ProvidersProps {
+  children: React.ReactNode;
+  settings?: SiteSettings;
+}
+
+export function Providers({ children, settings }: ProvidersProps) {
   return (
     <SessionProvider refetchOnWindowFocus={false} refetchInterval={0}>
-      <ApolloWrapper>{children}</ApolloWrapper>
+      <ApolloWrapper>
+        <SettingsProvider settings={settings}>
+          {children}
+        </SettingsProvider>
+      </ApolloWrapper>
     </SessionProvider>
   );
 }

@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useSession, signOut } from 'next-auth/react';
+import { useSettings } from './SettingsProvider';
 
 const navItems = [
   { href: '/', label: 'Dashboard', icon: '🏠' },
@@ -17,6 +18,7 @@ const navItems = [
 export default function Sidebar() {
   const pathname = usePathname();
   const { data: session, status } = useSession();
+  const settings = useSettings();
   const isAdmin = session?.user?.role === 'admin';
 
   // Don't show sidebar on login page or when not authenticated
@@ -30,9 +32,9 @@ export default function Sidebar() {
   return (
     <nav className="sidebar">
       <div className="sidebar-header">
-        <div className="logo">🌳</div>
-        <h3 className="text-xl font-semibold">Milanese Family</h3>
-        <p className="text-sm text-gray-400">Genealogy Database</p>
+        <div className="logo">{settings.logo_url ? <img src={settings.logo_url} alt="Logo" className="w-8 h-8" /> : '🌳'}</div>
+        <h3 className="text-xl font-semibold">{settings.family_name}</h3>
+        <p className="text-sm text-gray-400">{settings.site_tagline}</p>
       </div>
       <ul className="nav-links">
         {navItems.map((item) => (

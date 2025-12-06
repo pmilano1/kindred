@@ -20,6 +20,11 @@ import {
 import { sendInviteEmail, verifyEmailForSandbox } from '../email';
 import { Loaders } from './dataloaders';
 
+// Strip accents from a string for accent-insensitive search
+function stripAccents(str: string): string {
+  return str.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+}
+
 interface Context {
   user?: {
     id: string;
@@ -127,41 +132,46 @@ export const resolvers = {
       return rows;
     },
 
-    // Search with pagination
+    // Search with pagination (accent-insensitive)
     search: async (_: unknown, { query, first = 50, after }: { query: string; first?: number; after?: string }) => {
       const limit = Math.min(first, 100);
       const afterId = after ? decodeCursor(after) : null;
 
-      let sql = `SELECT *, COALESCE(notes, description) as description FROM people
-                 WHERE name_full ILIKE $1 OR birth_place ILIKE $1 OR death_place ILIKE $1`;
-      const params: (string | number)[] = [`%${query}%`];
+      // Normalize search query for accent-insensitive matching
+      const normalizedQuery = stripAccents(query).toLowerCase();
 
+      // Fetch all people and filter in JS for accent-insensitive search
+      // This is more reliable than trying to use SQL-level unaccent
+      let sql = `SELECT *, COALESCE(notes, description) as description FROM people ORDER BY name_full`;
+      const { rows: allPeople } = await pool.query(sql);
+
+      // Filter with accent-insensitive matching
+      const matchingPeople = allPeople.filter((p: { name_full: string; birth_place?: string; death_place?: string }) => {
+        const nameMatch = stripAccents(p.name_full || '').toLowerCase().includes(normalizedQuery);
+        const birthMatch = stripAccents(p.birth_place || '').toLowerCase().includes(normalizedQuery);
+        const deathMatch = stripAccents(p.death_place || '').toLowerCase().includes(normalizedQuery);
+        return nameMatch || birthMatch || deathMatch;
+      });
+
+      // Apply cursor-based pagination
+      let startIdx = 0;
       if (afterId) {
-        sql += ` AND id > $2`;
-        params.push(afterId);
+        const afterIdx = matchingPeople.findIndex((p: { id: string }) => p.id === afterId);
+        if (afterIdx >= 0) startIdx = afterIdx + 1;
       }
 
-      sql += ` ORDER BY name_full LIMIT $${params.length + 1}`;
-      params.push(limit + 1);
-
-      const { rows } = await pool.query(sql, params);
-      const hasMore = rows.length > limit;
-      const people = hasMore ? rows.slice(0, limit) : rows;
-
-      // Get total count for search
-      const countResult = await pool.query(
-        `SELECT COUNT(*) FROM people WHERE name_full ILIKE $1 OR birth_place ILIKE $1 OR death_place ILIKE $1`,
-        [`%${query}%`]
-      );
+      const paginatedPeople = matchingPeople.slice(startIdx, startIdx + limit + 1);
+      const hasMore = paginatedPeople.length > limit;
+      const people = hasMore ? paginatedPeople.slice(0, limit) : paginatedPeople;
 
       return {
         edges: people.map((p: { id: string }) => ({ node: p, cursor: encodeCursor(p.id) })),
         pageInfo: {
           hasNextPage: hasMore,
-          hasPreviousPage: !!afterId,
+          hasPreviousPage: startIdx > 0,
           startCursor: people.length ? encodeCursor(people[0].id) : null,
           endCursor: people.length ? encodeCursor(people[people.length - 1].id) : null,
-          totalCount: parseInt(countResult.rows[0].count),
+          totalCount: matchingPeople.length,
         },
       };
     },

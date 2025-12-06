@@ -123,7 +123,7 @@ export default function FamilyTree({ rootPersonId, showAncestors, onPersonClick,
   const [dimensions, setDimensions] = useState({ width: 800, height: 600 });
   const [priorityPopup, setPriorityPopup] = useState<PriorityPopup | null>(null);
   const [crestPopup, setCrestPopup] = useState<CrestPopup | null>(null);
-  const [notablePanelOpen, setNotablePanelOpen] = useState(true);
+  const [notablePanelOpen, setNotablePanelOpen] = useState(false);
 
   // GraphQL data fetching
   interface QueryResult {

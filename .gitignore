@@ -50,3 +50,4 @@ terraform/.terraform.lock.hcl
 deploy-apprunner.sh
 update-vpc.sh
 update-service.json
+terraform/

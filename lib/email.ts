@@ -235,15 +235,10 @@ If you have any questions, please reach out to the site administrator.
 }
 
 /**
- * Send a password reset email
+ * Send password reset email
  */
-interface SendPasswordResetEmailParams {
-  to: string;
-  userName: string;
-  resetUrl: string;
-}
-
-export async function sendPasswordResetEmail({ to, userName, resetUrl }: SendPasswordResetEmailParams): Promise<boolean> {
+export async function sendPasswordResetEmail(to: string, resetToken: string): Promise<boolean> {
+  const resetUrl = `${APP_URL}/reset-password?token=${resetToken}`;
   const subject = `Reset your ${APP_NAME} password`;
 
   const htmlBody = `
@@ -263,19 +258,18 @@ export async function sendPasswordResetEmail({ to, userName, resetUrl }: SendPas
 <body>
   <div class="container">
     <div class="header">
-      <h1>🔐 Password Reset</h1>
+      <h1>🌳 ${APP_NAME}</h1>
+      <p>Password Reset</p>
     </div>
     <div class="content">
-      <p>Hi ${userName},</p>
+      <p>Hi,</p>
       <p>We received a request to reset your password for your ${APP_NAME} account.</p>
-      <p>Click the button below to set a new password:</p>
       <p style="text-align: center;">
         <a href="${resetUrl}" class="button">Reset Password</a>
       </p>
       <p style="font-size: 12px; color: #6b7280;">Or copy this link: ${resetUrl}</p>
       <div class="warning">
-        <strong>⚠️ This link expires in 1 hour.</strong><br>
-        If you didn't request this reset, you can safely ignore this email.
+        <strong>⚠️ Security Notice:</strong> This link expires in 1 hour. If you didn't request this reset, please ignore this email.
       </div>
     </div>
     <div class="footer">
@@ -288,15 +282,13 @@ export async function sendPasswordResetEmail({ to, userName, resetUrl }: SendPas
   const textBody = `
 Reset your ${APP_NAME} password
 
-Hi ${userName},
-
-We received a request to reset your password for your ${APP_NAME} account.
+We received a request to reset your password.
 
 Reset your password: ${resetUrl}
 
 This link expires in 1 hour.
 
-If you didn't request this reset, you can safely ignore this email.
+If you didn't request this reset, please ignore this email.
 `;
 
   try {
@@ -312,11 +304,9 @@ If you didn't request this reset, you can safely ignore this email.
       }
     }));
     console.log(`[Email] Password reset email sent to ${to}`);
-    await logEmail('password_reset', to, subject, true);
     return true;
   } catch (error) {
-    console.error('[Email] Failed to send password reset email:', error);
-    await logEmail('password_reset', to, subject, false, (error as Error).message);
+    console.error('[Email] Failed to send password reset:', error);
     return false;
   }
 }

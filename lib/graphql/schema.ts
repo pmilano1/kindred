@@ -409,6 +409,18 @@ export const typeDefs = `#graphql
 
     # Email preferences mutations (current user)
     updateEmailPreferences(input: EmailPreferencesInput!): EmailPreferences!
+
+    # Local auth mutations (public - no auth required)
+    registerWithInvitation(token: String!, password: String!, name: String): AuthResult!
+    requestPasswordReset(email: String!): Boolean!
+    resetPassword(token: String!, newPassword: String!): AuthResult!
+    changePassword(currentPassword: String!, newPassword: String!): Boolean!
+  }
+
+  type AuthResult {
+    success: Boolean!
+    message: String
+    userId: String
   }
 `;
 

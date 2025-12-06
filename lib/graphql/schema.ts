@@ -206,6 +206,31 @@ export const typeDefs = `#graphql
     migrationNeeded: Boolean!
   }
 
+  type EmailLog {
+    id: ID!
+    email_type: String!
+    recipient: String!
+    subject: String
+    success: Boolean!
+    error_message: String
+    sent_at: String!
+  }
+
+  type EmailPreferences {
+    user_id: ID!
+    research_updates: Boolean!
+    tree_changes: Boolean!
+    weekly_digest: Boolean!
+    birthday_reminders: Boolean!
+  }
+
+  input EmailPreferencesInput {
+    research_updates: Boolean
+    tree_changes: Boolean
+    weekly_digest: Boolean
+    birthday_reminders: Boolean
+  }
+
   input SettingsInput {
     site_name: String
     family_name: String
@@ -302,6 +327,25 @@ export const typeDefs = `#graphql
     siteSettings: SiteSettings!
     settings: [Setting!]!
     migrationStatus: MigrationStatus!
+
+    # Email (admin only)
+    emailLogs(limit: Int, offset: Int): [EmailLog!]!
+    emailStats: EmailStats!
+
+    # Email preferences (current user)
+    myEmailPreferences: EmailPreferences
+  }
+
+  type EmailStats {
+    total_sent: Int!
+    successful: Int!
+    failed: Int!
+    by_type: [EmailTypeStat!]!
+  }
+
+  type EmailTypeStat {
+    email_type: String!
+    count: Int!
   }
 
   input PersonInput {
@@ -362,6 +406,9 @@ export const typeDefs = `#graphql
     # API Key mutations (user can manage their own key)
     generateApiKey: String!
     revokeApiKey: Boolean!
+
+    # Email preferences mutations (current user)
+    updateEmailPreferences(input: EmailPreferencesInput!): EmailPreferences!
   }
 `;
 

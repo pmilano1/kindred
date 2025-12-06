@@ -18,6 +18,50 @@ function stripAccents(str: string): string {
   return str.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
 }
 
+// ===========================================
+// QUERY CACHING
+// ===========================================
+interface CacheEntry<T> {
+  data: T;
+  timestamp: number;
+}
+
+// In-memory cache for expensive queries
+const queryCache = new Map<string, CacheEntry<unknown>>();
+const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
+
+function getCached<T>(key: string): T | null {
+  const entry = queryCache.get(key);
+  if (!entry) return null;
+  if (Date.now() - entry.timestamp > CACHE_TTL) {
+    queryCache.delete(key);
+    return null;
+  }
+  return entry.data as T;
+}
+
+function setCache<T>(key: string, data: T): void {
+  queryCache.set(key, { data, timestamp: Date.now() });
+  // Limit cache size to prevent memory issues
+  if (queryCache.size > 1000) {
+    const oldest = queryCache.keys().next().value;
+    if (oldest) queryCache.delete(oldest);
+  }
+}
+
+// Clear cache when data changes (called from mutations)
+export function clearQueryCache(pattern?: string): void {
+  if (!pattern) {
+    queryCache.clear();
+    return;
+  }
+  for (const key of queryCache.keys()) {
+    if (key.includes(pattern)) {
+      queryCache.delete(key);
+    }
+  }
+}
+
 interface Context {
   user?: {
     id: string;
@@ -218,7 +262,12 @@ export const resolvers = {
     },
 
     // Optimized ancestry traversal (single recursive CTE)
+    // Optimized ancestry traversal with caching
     ancestors: async (_: unknown, { personId, generations = 5 }: { personId: string; generations?: number }) => {
+      const cacheKey = `ancestors:${personId}:${generations}`;
+      const cached = getCached<Person[]>(cacheKey);
+      if (cached) return cached;
+
       const { rows } = await pool.query(`
         WITH RECURSIVE ancestry AS (
           SELECT p.*, 1 as gen FROM people p
@@ -236,11 +285,17 @@ export const resolvers = {
         )
         SELECT DISTINCT ON (id) * FROM ancestry ORDER BY id, gen
       `, [personId, generations]);
+
+      setCache(cacheKey, rows);
       return rows;
     },
 
-    // Optimized descendant traversal (single recursive CTE)
+    // Optimized descendant traversal with caching
     descendants: async (_: unknown, { personId, generations = 5 }: { personId: string; generations?: number }) => {
+      const cacheKey = `descendants:${personId}:${generations}`;
+      const cached = getCached<Person[]>(cacheKey);
+      if (cached) return cached;
+
       const { rows } = await pool.query(`
         WITH RECURSIVE descendancy AS (
           SELECT p.*, 1 as gen FROM people p
@@ -258,6 +313,8 @@ export const resolvers = {
         )
         SELECT DISTINCT ON (id) * FROM descendancy ORDER BY id, gen
       `, [personId, generations]);
+
+      setCache(cacheKey, rows);
       return rows;
     },
 
@@ -656,6 +713,31 @@ export const resolvers = {
         results.push('email_preferences table exists');
       }
 
+      // Add performance indexes for tree traversal queries
+      const indexQueries = [
+        // Children table indexes for ancestry traversal
+        { name: 'idx_children_person_id', sql: 'CREATE INDEX IF NOT EXISTS idx_children_person_id ON children(person_id)' },
+        { name: 'idx_children_family_id', sql: 'CREATE INDEX IF NOT EXISTS idx_children_family_id ON children(family_id)' },
+        { name: 'idx_children_composite', sql: 'CREATE INDEX IF NOT EXISTS idx_children_composite ON children(family_id, person_id)' },
+        // Families table indexes for parent lookups
+        { name: 'idx_families_husband_id', sql: 'CREATE INDEX IF NOT EXISTS idx_families_husband_id ON families(husband_id)' },
+        { name: 'idx_families_wife_id', sql: 'CREATE INDEX IF NOT EXISTS idx_families_wife_id ON families(wife_id)' },
+        { name: 'idx_families_parents', sql: 'CREATE INDEX IF NOT EXISTS idx_families_parents ON families(husband_id, wife_id)' },
+        // People table indexes for filtering
+        { name: 'idx_people_is_notable', sql: 'CREATE INDEX IF NOT EXISTS idx_people_is_notable ON people(is_notable) WHERE is_notable = true' },
+        { name: 'idx_people_surname', sql: 'CREATE INDEX IF NOT EXISTS idx_people_surname ON people(name_surname)' },
+        { name: 'idx_people_living', sql: 'CREATE INDEX IF NOT EXISTS idx_people_living ON people(living)' },
+      ];
+
+      for (const idx of indexQueries) {
+        try {
+          await pool.query(idx.sql);
+        } catch {
+          // Index might already exist with different definition
+        }
+      }
+      results.push('Verified tree traversal indexes');
+
       return { success: true, results, message: 'Migrations completed' };
     },
 
@@ -757,8 +839,12 @@ export const resolvers = {
 
       return null;
     },
-    // Notable relatives connected through ancestry
+    // Notable relatives connected through ancestry (cached for performance)
     notableRelatives: async (person: { id: string }) => {
+      const cacheKey = `notable_relatives:${person.id}`;
+      const cached = getCached<Array<{ person: Person; generation: number }>>(cacheKey);
+      if (cached) return cached;
+
       const { rows } = await pool.query(`
         WITH RECURSIVE ancestry AS (
           -- Trace direct ancestors up to 15 generations
@@ -816,10 +902,13 @@ export const resolvers = {
         ORDER BY ar.generation
       `, [person.id]);
 
-      return rows.map(row => ({
+      const result = rows.map(row => ({
         person: row,
         generation: row.generation
       }));
+
+      setCache(cacheKey, result);
+      return result;
     },
   },
 

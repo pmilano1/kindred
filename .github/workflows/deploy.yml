@@ -160,26 +160,33 @@ jobs:
               }' \
               --tags Key=Project,Value=genealogy Key=Environment,Value=production
           else
-            echo "Waiting for any in-progress deployments to complete..."
-            for i in {1..60}; do
+            echo "Waiting for service to be ready and starting deployment..."
+            MAX_ATTEMPTS=60
+            DEPLOYED=false
+
+            for i in $(seq 1 $MAX_ATTEMPTS); do
               STATUS=$(aws apprunner list-services --query "ServiceSummaryList[?ServiceName=='genealogy-frontend'].Status" --output text)
+              echo "Attempt $i/$MAX_ATTEMPTS - Service status: $STATUS"
+
               if [ "$STATUS" = "RUNNING" ]; then
-                echo "Service is ready, starting deployment..."
-                break
+                echo "Service is RUNNING, attempting deployment..."
+                if aws apprunner start-deployment --service-arn "$SERVICE_ARN" 2>&1; then
+                  echo "Deployment started successfully!"
+                  DEPLOYED=true
+                  break
+                else
+                  echo "Deployment failed, service may have changed state. Retrying..."
+                fi
               fi
-              echo "Service status: $STATUS - waiting 10s (attempt $i/60)..."
+
+              echo "Waiting 10s before next attempt..."
               sleep 10
             done
 
-            # Final check
-            STATUS=$(aws apprunner list-services --query "ServiceSummaryList[?ServiceName=='genealogy-frontend'].Status" --output text)
-            if [ "$STATUS" != "RUNNING" ]; then
-              echo "Error: Service still not ready after 10 minutes. Status: $STATUS"
+            if [ "$DEPLOYED" != "true" ]; then
+              echo "Error: Could not start deployment after $MAX_ATTEMPTS attempts"
               exit 1
             fi
-
-            echo "Updating existing App Runner service..."
-            aws apprunner start-deployment --service-arn "$SERVICE_ARN"
           fi
 
       - name: Cleanup old ECR images

@@ -11,6 +11,7 @@ import {
 } from '../users';
 import { sendInviteEmail, verifyEmailForSandbox } from '../email';
 import { Loaders } from './dataloaders';
+import { getSettings, clearSettingsCache, SiteSettings } from '../settings';
 
 // Strip accents from a string for accent-insensitive search
 function stripAccents(str: string): string {
@@ -148,7 +149,7 @@ export const resolvers = {
 
       // Fetch all people and filter in JS for accent-insensitive search
       // This is more reliable than trying to use SQL-level unaccent
-      let sql = `SELECT *, COALESCE(notes, description) as description FROM people ORDER BY name_full`;
+      const sql = `SELECT *, COALESCE(notes, description) as description FROM people ORDER BY name_full`;
       const { rows: allPeople } = await pool.query(sql);
 
       // Filter with accent-insensitive matching
@@ -308,6 +309,44 @@ export const resolvers = {
       );
       return rows[0] || null;
     },
+
+    // Settings queries
+    siteSettings: async (): Promise<SiteSettings> => {
+      return getSettings();
+    },
+
+    settings: async (_: unknown, __: unknown, context: Context) => {
+      requireAuth(context, 'admin');
+      try {
+        const { rows } = await pool.query(
+          'SELECT key, value, description, category, updated_at FROM settings ORDER BY category, key'
+        );
+        return rows;
+      } catch (error) {
+        // Table might not exist
+        if ((error as { code?: string }).code === '42P01') {
+          return [];
+        }
+        throw error;
+      }
+    },
+
+    migrationStatus: async (_: unknown, __: unknown, context: Context) => {
+      requireAuth(context, 'admin');
+      const { rows } = await pool.query(`
+        SELECT table_name FROM information_schema.tables
+        WHERE table_schema = 'public'
+        ORDER BY table_name
+      `);
+      const requiredTables = ['people', 'families', 'children', 'users', 'settings'];
+      const existingTables = rows.map((r: { table_name: string }) => r.table_name);
+      const missingTables = requiredTables.filter(t => !existingTables.includes(t));
+      return {
+        tables: existingTables,
+        missingTables,
+        migrationNeeded: missingTables.length > 0
+      };
+    },
   },
 
   Mutation: {
@@ -458,6 +497,68 @@ export const resolvers = {
       requireAuth(context, 'editor');
       await pool.query(`DELETE FROM facts WHERE person_id = $1 AND fact_type = 'coat_of_arms'`, [personId]);
       return true;
+    },
+
+    // Settings mutations
+    updateSettings: async (_: unknown, { input }: { input: Record<string, string | null> }, context: Context) => {
+      requireAuth(context, 'admin');
+      const entries = Object.entries(input).filter(([, v]) => v !== undefined);
+      for (const [key, value] of entries) {
+        await pool.query(
+          `INSERT INTO settings (key, value, updated_at)
+           VALUES ($1, $2, NOW())
+           ON CONFLICT (key) DO UPDATE SET value = $2, updated_at = NOW()`,
+          [key, value]
+        );
+      }
+      clearSettingsCache();
+      return getSettings();
+    },
+
+    runMigrations: async (_: unknown, __: unknown, context: Context) => {
+      requireAuth(context, 'admin');
+      const results: string[] = [];
+
+      // Check/create settings table
+      const settingsCheck = await pool.query(`
+        SELECT EXISTS (SELECT FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'settings')
+      `);
+
+      if (!settingsCheck.rows[0].exists) {
+        await pool.query(`
+          CREATE TABLE settings (
+            key VARCHAR(100) PRIMARY KEY,
+            value TEXT,
+            description VARCHAR(500),
+            category VARCHAR(50) DEFAULT 'general',
+            updated_at TIMESTAMP DEFAULT NOW()
+          )
+        `);
+        results.push('Created settings table');
+
+        await pool.query(`
+          INSERT INTO settings (key, value, description, category) VALUES
+            ('site_name', 'Family Tree', 'Site name', 'branding'),
+            ('family_name', 'Family', 'Family name', 'branding'),
+            ('site_tagline', 'Preserving our heritage', 'Tagline', 'branding'),
+            ('theme_color', '#4F46E5', 'Theme color', 'branding'),
+            ('logo_url', NULL, 'Logo URL', 'branding'),
+            ('require_login', 'true', 'Require login', 'privacy'),
+            ('show_living_details', 'false', 'Show living details', 'privacy'),
+            ('living_cutoff_years', '100', 'Living cutoff years', 'privacy'),
+            ('date_format', 'MDY', 'Date format', 'display'),
+            ('default_tree_generations', '4', 'Default generations', 'display'),
+            ('show_coats_of_arms', 'true', 'Show coats of arms', 'display'),
+            ('admin_email', NULL, 'Admin email', 'contact'),
+            ('footer_text', NULL, 'Footer text', 'contact')
+          ON CONFLICT DO NOTHING
+        `);
+        results.push('Inserted default settings');
+      } else {
+        results.push('Settings table exists');
+      }
+
+      return { success: true, results, message: 'Migrations completed' };
     },
   },
 

@@ -230,5 +230,288 @@ describe('GraphQL Resolvers', () => {
       await expect(resolvers.Mutation.revokeApiKey(null, {}, context)).rejects.toThrow();
     });
   });
+
+  describe('Query.people (cursor pagination)', () => {
+    it('returns paginated people with cursor info', async () => {
+      mockedQuery.mockReset();
+      const mockPeople = [
+        { id: 'p1', name_full: 'Person 1' },
+        { id: 'p2', name_full: 'Person 2' },
+      ];
+      // First call: count query
+      mockedQuery.mockResolvedValueOnce({ rows: [{ count: '100' }] });
+      // Second call: data query
+      mockedQuery.mockResolvedValueOnce({ rows: mockPeople });
+
+      const result = await resolvers.Query.people(null, { first: 10 });
+
+      expect(result.edges).toHaveLength(2);
+      expect(result.pageInfo.totalCount).toBe(100);
+      expect(result.edges[0].node.name_full).toBe('Person 1');
+      expect(result.edges[0].cursor).toBeDefined();
+    });
+
+    it('handles after cursor for pagination', async () => {
+      mockedQuery.mockReset();
+      mockedQuery.mockResolvedValueOnce({ rows: [{ count: '100' }] });
+      mockedQuery.mockResolvedValueOnce({ rows: [{ id: 'p3', name_full: 'Person 3' }] });
+
+      const afterCursor = Buffer.from('p2').toString('base64');
+      const result = await resolvers.Query.people(null, { first: 10, after: afterCursor });
+
+      expect(mockedQuery).toHaveBeenCalledWith(
+        expect.stringContaining('WHERE id >'),
+        expect.arrayContaining(['p2'])
+      );
+      expect(result.pageInfo.hasPreviousPage).toBe(true);
+    });
+  });
+
+  describe('Query.recentPeople', () => {
+    it('returns recent people ordered by birth year desc', async () => {
+      mockedQuery.mockReset();
+      const mockPeople = [
+        { id: 'p1', name_full: 'Recent Person', birth_year: 2000 },
+        { id: 'p2', name_full: 'Older Person', birth_year: 1990 },
+      ];
+      mockedQuery.mockResolvedValueOnce({ rows: mockPeople });
+
+      const result = await resolvers.Query.recentPeople(null, { limit: 10 });
+
+      expect(result).toEqual(mockPeople);
+      expect(mockedQuery).toHaveBeenCalledWith(
+        expect.stringContaining('ORDER BY birth_year DESC'),
+        [10]
+      );
+    });
+
+    it('enforces maximum limit of 50', async () => {
+      mockedQuery.mockReset();
+      mockedQuery.mockResolvedValueOnce({ rows: [] });
+
+      await resolvers.Query.recentPeople(null, { limit: 100 });
+
+      expect(mockedQuery).toHaveBeenCalledWith(expect.any(String), [50]);
+    });
+  });
+
+  describe('Query.families', () => {
+    it('returns all families', async () => {
+      mockedQuery.mockReset();
+      const mockFamilies = [
+        { id: 'f1', husband_id: 'p1', wife_id: 'p2' },
+        { id: 'f2', husband_id: 'p3', wife_id: 'p4' },
+      ];
+      mockedQuery.mockResolvedValueOnce({ rows: mockFamilies });
+
+      const result = await resolvers.Query.families();
+
+      expect(result).toEqual(mockFamilies);
+      expect(mockedQuery).toHaveBeenCalledWith('SELECT * FROM families');
+    });
+  });
+
+  describe('Query.researchQueue', () => {
+    it('returns people needing research', async () => {
+      mockedQuery.mockReset();
+      const mockQueue = [
+        { id: 'p1', name_full: 'Needs Research', research_status: 'brick_wall' },
+        { id: 'p2', name_full: 'In Progress', research_status: 'in_progress' },
+      ];
+      mockedQuery.mockResolvedValueOnce({ rows: mockQueue });
+
+      const result = await resolvers.Query.researchQueue(null, { limit: 50 });
+
+      expect(result).toEqual(mockQueue);
+      expect(mockedQuery).toHaveBeenCalledWith(
+        expect.stringContaining("research_status != 'verified'"),
+        [50]
+      );
+    });
+
+    it('enforces maximum limit of 100', async () => {
+      mockedQuery.mockReset();
+      mockedQuery.mockResolvedValueOnce({ rows: [] });
+
+      await resolvers.Query.researchQueue(null, { limit: 200 });
+
+      expect(mockedQuery).toHaveBeenCalledWith(expect.any(String), [100]);
+    });
+  });
+
+  describe('Query.ancestors', () => {
+    it('returns ancestors using recursive CTE', async () => {
+      mockedQuery.mockReset();
+      const mockAncestors = [
+        { id: 'a1', name_full: 'Grandfather', gen: 1 },
+        { id: 'a2', name_full: 'Grandmother', gen: 1 },
+      ];
+      mockedQuery.mockResolvedValueOnce({ rows: mockAncestors });
+
+      const result = await resolvers.Query.ancestors(null, { personId: 'p1', generations: 5 });
+
+      expect(result).toEqual(mockAncestors);
+      expect(mockedQuery).toHaveBeenCalledWith(
+        expect.stringContaining('WITH RECURSIVE ancestry'),
+        ['p1', 5]
+      );
+    });
+  });
+
+  describe('Query.descendants', () => {
+    it('returns descendants using recursive CTE', async () => {
+      mockedQuery.mockReset();
+      const mockDescendants = [
+        { id: 'd1', name_full: 'Child', gen: 1 },
+        { id: 'd2', name_full: 'Grandchild', gen: 2 },
+      ];
+      mockedQuery.mockResolvedValueOnce({ rows: mockDescendants });
+
+      const result = await resolvers.Query.descendants(null, { personId: 'p1', generations: 5 });
+
+      expect(result).toEqual(mockDescendants);
+      expect(mockedQuery).toHaveBeenCalledWith(
+        expect.stringContaining('WITH RECURSIVE descendancy'),
+        ['p1', 5]
+      );
+    });
+  });
+
+  describe('Query.timeline', () => {
+    it('returns events grouped by year', async () => {
+      mockedQuery.mockReset();
+      const mockPeople = [
+        { id: 'p1', name_full: 'Person 1', birth_year: 1950, death_year: 2020, living: false },
+        { id: 'p2', name_full: 'Person 2', birth_year: 1950 },
+      ];
+      mockedQuery.mockResolvedValueOnce({ rows: mockPeople });
+
+      const result = await resolvers.Query.timeline();
+
+      // Should have 1950 (2 births) and 2020 (1 death)
+      const year1950 = result.find((y: { year: number }) => y.year === 1950);
+      const year2020 = result.find((y: { year: number }) => y.year === 2020);
+
+      expect(year1950).toBeDefined();
+      expect(year1950.events).toHaveLength(2);
+      expect(year2020).toBeDefined();
+      expect(year2020.events).toHaveLength(1);
+      expect(year2020.events[0].type).toBe('death');
+    });
+  });
+
+  describe('Query.surnameCrests', () => {
+    it('returns all surname crests ordered by surname', async () => {
+      mockedQuery.mockReset();
+      const mockCrests = [
+        { surname: 'Beauharnais', coat_of_arms: 'https://example.com/crest.png' },
+        { surname: 'Milanese', coat_of_arms: 'https://example.com/crest2.png' },
+      ];
+      mockedQuery.mockResolvedValueOnce({ rows: mockCrests });
+
+      const result = await resolvers.Query.surnameCrests();
+
+      expect(result).toEqual(mockCrests);
+      expect(mockedQuery).toHaveBeenCalledWith(
+        expect.stringContaining('ORDER BY surname')
+      );
+    });
+  });
+
+  describe('Query.surnameCrest', () => {
+    it('returns crest for specific surname (case insensitive)', async () => {
+      mockedQuery.mockReset();
+      const mockCrest = { surname: 'Milanese', coat_of_arms: 'https://example.com/crest.png' };
+      mockedQuery.mockResolvedValueOnce({ rows: [mockCrest] });
+
+      const result = await resolvers.Query.surnameCrest(null, { surname: 'milanese' });
+
+      expect(result).toEqual(mockCrest);
+      expect(mockedQuery).toHaveBeenCalledWith(
+        expect.stringContaining('LOWER(surname) = LOWER'),
+        ['milanese']
+      );
+    });
+
+    it('returns null for non-existent surname', async () => {
+      mockedQuery.mockReset();
+      mockedQuery.mockResolvedValueOnce({ rows: [] });
+
+      const result = await resolvers.Query.surnameCrest(null, { surname: 'Unknown' });
+
+      expect(result).toBeNull();
+    });
+  });
+
+  describe('Mutation.updatePerson', () => {
+    it('updates person fields', async () => {
+      mockedQuery.mockReset();
+      const mockUpdatedPerson = { id: 'p1', name_full: 'Updated Name', birth_year: 1960 };
+      mockedQuery.mockResolvedValueOnce({ rows: [] }); // UPDATE
+      mockedQuery.mockResolvedValueOnce({ rows: [mockUpdatedPerson] }); // SELECT
+
+      const context = { user: { id: 'user-1', email: 'test@example.com', role: 'editor' } };
+      const result = await resolvers.Mutation.updatePerson(
+        null,
+        { id: 'p1', input: { name_full: 'Updated Name', birth_year: 1960 } },
+        context
+      );
+
+      expect(result).toEqual(mockUpdatedPerson);
+      expect(mockedQuery).toHaveBeenCalledWith(
+        expect.stringContaining('UPDATE people SET'),
+        expect.arrayContaining(['p1'])
+      );
+    });
+
+    it('throws when not editor or admin', async () => {
+      const context = { user: { id: 'user-1', email: 'test@example.com', role: 'viewer' } };
+      await expect(
+        resolvers.Mutation.updatePerson(null, { id: 'p1', input: { name_full: 'Test' } }, context)
+      ).rejects.toThrow('Editor access required');
+    });
+  });
+
+  describe('Mutation.updateResearchStatus', () => {
+    it('updates research status and last_researched timestamp', async () => {
+      mockedQuery.mockReset();
+      const mockPerson = { id: 'p1', research_status: 'verified' };
+      mockedQuery.mockResolvedValueOnce({ rows: [] }); // UPDATE
+      mockedQuery.mockResolvedValueOnce({ rows: [mockPerson] }); // SELECT
+
+      const context = { user: { id: 'user-1', email: 'test@example.com', role: 'editor' } };
+      const result = await resolvers.Mutation.updateResearchStatus(
+        null,
+        { personId: 'p1', status: 'verified' },
+        context
+      );
+
+      expect(mockedQuery).toHaveBeenCalledWith(
+        expect.stringContaining('research_status = $1'),
+        ['verified', 'p1']
+      );
+    });
+  });
+
+  describe('Mutation.setSurnameCrest', () => {
+    it('inserts or updates surname crest', async () => {
+      mockedQuery.mockReset();
+      const mockCrest = { surname: 'Milanese', coat_of_arms: 'https://new-crest.png' };
+      mockedQuery.mockResolvedValueOnce({ rows: [mockCrest] });
+
+      const context = { user: { id: 'user-1', email: 'test@example.com', role: 'editor' } };
+      const result = await resolvers.Mutation.setSurnameCrest(
+        null,
+        { surname: 'Milanese', coatOfArms: 'https://new-crest.png', description: 'Italian noble family' },
+        context
+      );
+
+      expect(result).toEqual(mockCrest);
+      expect(mockedQuery).toHaveBeenCalledWith(
+        expect.stringContaining('ON CONFLICT (surname) DO UPDATE'),
+        expect.arrayContaining(['Milanese', 'https://new-crest.png'])
+      );
+    });
+  });
 });
 

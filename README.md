@@ -1,5 +1,8 @@
 # Kindred
 
+[![CI](https://github.com/pmilano1/kindred/actions/workflows/ci.yml/badge.svg)](https://github.com/pmilano1/kindred/actions/workflows/ci.yml)
+[![Tests](https://img.shields.io/badge/tests-132%20passing-brightgreen)](https://github.com/pmilano1/kindred)
+
 A modern genealogy web application built with Next.js 15, featuring interactive family tree visualization, research tracking, and role-based access control.
 
 ## Features

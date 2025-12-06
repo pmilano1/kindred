@@ -1,4 +1,5 @@
 @import "tailwindcss";
+@import "https://unpkg.com/open-props";
 
 :root {
   --primary-color: #2c5530;

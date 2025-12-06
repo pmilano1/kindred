@@ -7,7 +7,7 @@ import Hero from '@/components/Hero';
 import LoadingSpinner from '@/components/LoadingSpinner';
 import Link from 'next/link';
 import { useSettingsRefetch } from '@/components/SettingsProvider';
-import { themePresets, applyThemeColors, type ThemePreset } from '@/lib/theme-presets';
+import { themePresets, applyThemePreset, type ThemePreset } from '@/lib/theme-presets';
 
 interface SettingRow {
   key: string;
@@ -211,9 +211,9 @@ export default function SettingsPage() {
                             value={settings[row.key] || '#4F46E5'}
                             onChange={(color) => updateSetting(row.key, color)}
                             onApplyPreset={(preset) => {
-                              updateSetting('theme_color', preset.colors.primary);
+                              updateSetting('theme_color', preset.cssVars.primary);
                               // Apply theme immediately for preview
-                              applyThemeColors(preset.colors);
+                              applyThemePreset(preset);
                             }}
                           />
                         ) : row.key === 'date_format' ? (

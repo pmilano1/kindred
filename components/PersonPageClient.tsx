@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import Image from 'next/image';
 import Link from 'next/link';
 import { useQuery, useMutation } from '@apollo/client/react';
 import { useSession } from 'next-auth/react';
@@ -350,11 +351,15 @@ export default function PersonPageClient({ personId }: Props) {
             <div className="flex flex-wrap gap-4 justify-center">
               {person.facts.filter(f => f.fact_type === 'coat_of_arms').map((fact) => (
                 <a key={fact.id} href={fact.fact_value || '#'} target="_blank" rel="noopener noreferrer" className="block">
-                  <img
-                    src={fact.fact_value || ''}
-                    alt="Family Coat of Arms"
-                    className="max-w-[200px] max-h-[250px] rounded-lg shadow-lg border-4 border-amber-200 hover:border-amber-400 transition-all hover:scale-105"
-                  />
+                  <div className="relative w-[200px] h-[250px]">
+                    <Image
+                      src={fact.fact_value || ''}
+                      alt="Family Coat of Arms"
+                      fill
+                      className="object-contain rounded-lg shadow-lg border-4 border-amber-200 hover:border-amber-400 transition-all hover:scale-105"
+                      unoptimized
+                    />
+                  </div>
                 </a>
               ))}
             </div>

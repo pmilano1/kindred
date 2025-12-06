@@ -1,5 +1,6 @@
 'use client';
 
+import Image from 'next/image';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useSession, signOut } from 'next-auth/react';
@@ -32,7 +33,9 @@ export default function Sidebar() {
   return (
     <nav className="sidebar">
       <div className="sidebar-header">
-        <div className="logo">{settings.logo_url ? <img src={settings.logo_url} alt="Logo" className="w-8 h-8" /> : '🌳'}</div>
+        <div className="logo">{settings.logo_url ? (
+          <Image src={settings.logo_url} alt="Logo" width={32} height={32} className="w-8 h-8 object-contain" unoptimized />
+        ) : '🌳'}</div>
         <h3 className="text-xl font-semibold">{settings.family_name}</h3>
         <p className="text-sm text-gray-400">{settings.site_tagline}</p>
       </div>

@@ -719,5 +719,25 @@ export const resolvers = {
       return childIds.length ? (await ctx.loaders.personLoader.loadMany(childIds)).filter(Boolean) : [];
     },
   },
+
+  // User type resolver to properly format dates
+  User: {
+    created_at: (user: { created_at: Date | string | null }) =>
+      user.created_at ? new Date(user.created_at).toISOString() : null,
+    last_login: (user: { last_login: Date | string | null }) =>
+      user.last_login ? new Date(user.last_login).toISOString() : null,
+    last_accessed: (user: { last_accessed: Date | string | null }) =>
+      user.last_accessed ? new Date(user.last_accessed).toISOString() : null,
+  },
+
+  // Invitation type resolver to properly format dates
+  Invitation: {
+    created_at: (inv: { created_at: Date | string | null }) =>
+      inv.created_at ? new Date(inv.created_at).toISOString() : null,
+    expires_at: (inv: { expires_at: Date | string | null }) =>
+      inv.expires_at ? new Date(inv.expires_at).toISOString() : null,
+    accepted_at: (inv: { accepted_at: Date | string | null }) =>
+      inv.accepted_at ? new Date(inv.accepted_at).toISOString() : null,
+  },
 };
 

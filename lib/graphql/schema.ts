@@ -165,6 +165,62 @@ export const typeDefs = `#graphql
   }
 
   # ===========================================
+  # SETTINGS
+  # ===========================================
+
+  type Setting {
+    key: String!
+    value: String
+    description: String
+    category: String!
+    updated_at: String
+  }
+
+  type SiteSettings {
+    site_name: String!
+    family_name: String!
+    site_tagline: String!
+    theme_color: String!
+    logo_url: String
+    require_login: Boolean!
+    show_living_details: Boolean!
+    living_cutoff_years: Int!
+    date_format: String!
+    default_tree_generations: Int!
+    show_coats_of_arms: Boolean!
+    admin_email: String
+    footer_text: String
+  }
+
+  type MigrationResult {
+    success: Boolean!
+    results: [String!]!
+    message: String
+  }
+
+  type MigrationStatus {
+    tables: [String!]!
+    missingTables: [String!]!
+    migrationNeeded: Boolean!
+  }
+
+  input SettingsInput {
+    site_name: String
+    family_name: String
+    site_tagline: String
+    theme_color: String
+    logo_url: String
+    require_login: String
+    show_living_details: String
+    living_cutoff_years: String
+    date_format: String
+    default_tree_generations: String
+    show_coats_of_arms: String
+    admin_email: String
+    footer_text: String
+  }
+
+  # ===========================================
   # PAGINATION (Relay-style cursors)
   # ===========================================
 
@@ -236,6 +292,11 @@ export const typeDefs = `#graphql
     # Admin (requires admin role)
     users: [User!]!
     invitations: [Invitation!]!
+
+    # Settings (public settings for site display, admin for all)
+    siteSettings: SiteSettings!
+    settings: [Setting!]!
+    migrationStatus: MigrationStatus!
   }
 
   input PersonInput {
@@ -288,6 +349,10 @@ export const typeDefs = `#graphql
     deleteInvitation(id: ID!): Boolean
     updateUserRole(userId: ID!, role: String!): User
     deleteUser(userId: ID!): Boolean
+
+    # Settings mutations (requires admin role)
+    updateSettings(input: SettingsInput!): SiteSettings!
+    runMigrations: MigrationResult!
   }
 `;
 

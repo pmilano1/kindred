@@ -104,12 +104,20 @@ export default function AdminPage() {
     }
   };
 
-  if (loading) return <><Hero title="User Management" subtitle="Manage users and invitations" /><div className="content-wrapper"><p>Loading...</p></div></>;
+  if (loading) return <><Hero title="Admin Panel" subtitle="Manage users and site settings" /><div className="content-wrapper"><p>Loading...</p></div></>;
 
   return (
     <>
-      <Hero title="User Management" subtitle="Manage users and invitations" />
+      <Hero title="Admin Panel" subtitle="Manage users and site settings" />
       <div className="content-wrapper">
+
+        {/* Admin Navigation */}
+        <div className="flex gap-4 mb-8">
+          <span className="bg-blue-600 text-white px-4 py-2 rounded-lg">Users</span>
+          <a href="/admin/settings" className="bg-gray-200 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-300">
+            Site Settings
+          </a>
+        </div>
 
         {/* Invite Section */}
         <div className="bg-white rounded-xl shadow-sm border p-6 mb-8">

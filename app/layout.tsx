@@ -33,12 +33,27 @@ export default async function RootLayout({
     console.error('Failed to load settings for layout:', error);
   }
 
+  // Generate darker shade for gradients
+  const generateDarkerColor = (hex: string): string => {
+    const r = parseInt(hex.slice(1, 3), 16);
+    const g = parseInt(hex.slice(3, 5), 16);
+    const b = parseInt(hex.slice(5, 7), 16);
+    const darken = (c: number) => Math.max(0, Math.floor(c * 0.7));
+    return `#${darken(r).toString(16).padStart(2, '0')}${darken(g).toString(16).padStart(2, '0')}${darken(b).toString(16).padStart(2, '0')}`;
+  };
+
+  const themeColor = settings?.theme_color || '#2c5530';
+  const themeDark = generateDarkerColor(themeColor);
+
   return (
     <html lang="en">
       <head>
-        {settings?.theme_color && (
-          <style>{`:root { --theme-color: ${settings.theme_color}; }`}</style>
-        )}
+        <style>{`
+          :root {
+            --primary-color: ${themeColor};
+            --primary-dark: ${themeDark};
+          }
+        `}</style>
       </head>
       <body>
         <Providers settings={settings}>

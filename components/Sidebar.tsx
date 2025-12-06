@@ -24,34 +24,8 @@ export default function Sidebar() {
     return null;
   }
 
-  // Show skeleton sidebar while loading to prevent layout shift
-  if (status === 'loading') {
-    return (
-      <nav className="sidebar">
-        <div className="sidebar-header">
-          <div className="logo">🌳</div>
-          <h3 className="text-xl font-semibold">Milanese Family</h3>
-          <p className="text-sm text-gray-400">Genealogy Database</p>
-        </div>
-        <ul className="nav-links">
-          {navItems.map((item) => (
-            <li key={item.href}>
-              <span className="nav-link opacity-50">
-                <span className="mr-3">{item.icon}</span>
-                {item.label}
-              </span>
-            </li>
-          ))}
-        </ul>
-        <div className="p-6 border-t border-white/10">
-          <div className="animate-pulse">
-            <div className="h-4 bg-gray-700 rounded w-24 mb-2"></div>
-            <div className="h-3 bg-gray-700 rounded w-32"></div>
-          </div>
-        </div>
-      </nav>
-    );
-  }
+  // Always render consistent structure - just show loading state for user info
+  const isLoading = status === 'loading';
 
   return (
     <nav className="sidebar">
@@ -72,11 +46,11 @@ export default function Sidebar() {
             </Link>
           </li>
         ))}
-        {isAdmin && (
+        {(isAdmin || isLoading) && (
           <li>
             <Link
               href="/admin"
-              className={`nav-link ${pathname === '/admin' ? 'active' : ''}`}
+              className={`nav-link ${pathname === '/admin' ? 'active' : ''} ${isLoading ? 'opacity-50' : ''}`}
             >
               <span className="mr-3">⚙️</span>
               Admin
@@ -85,7 +59,12 @@ export default function Sidebar() {
         )}
       </ul>
       <div className="p-6 border-t border-white/10">
-        {session?.user && (
+        {isLoading ? (
+          <div className="animate-pulse">
+            <div className="h-4 bg-gray-700 rounded w-24 mb-2"></div>
+            <div className="h-3 bg-gray-700 rounded w-32"></div>
+          </div>
+        ) : session?.user && (
           <div>
             <p className="text-sm text-gray-300 truncate">{session.user.name}</p>
             <p className="text-xs text-gray-500 truncate">{session.user.email}</p>

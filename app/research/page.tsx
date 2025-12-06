@@ -1,7 +1,6 @@
 import Hero from '@/components/Hero';
 import ResearchQueueClient from '@/components/ResearchQueueClient';
-import { query } from '@/lib/graphql/server';
-import { GET_RESEARCH_QUEUE } from '@/lib/graphql/queries';
+import { pool } from '@/lib/db';
 
 export const dynamic = 'force-dynamic';
 
@@ -16,8 +15,28 @@ interface ResearchPerson {
   last_researched?: string | null;
 }
 
+async function getResearchQueue(): Promise<ResearchPerson[]> {
+  try {
+    const { rows } = await pool.query(`
+      SELECT id, name_full, birth_year, death_year, research_status, research_priority, last_researched
+      FROM people
+      WHERE research_status != 'verified' OR research_status IS NULL
+      ORDER BY
+        research_priority DESC NULLS LAST,
+        (research_status = 'brick_wall') DESC,
+        (research_status = 'in_progress') DESC,
+        last_researched NULLS FIRST
+      LIMIT 100
+    `);
+    return rows;
+  } catch (error) {
+    console.error('[Research] Failed to fetch queue:', error);
+    return [];
+  }
+}
+
 export default async function ResearchQueuePage() {
-  const { researchQueue } = await query<{ researchQueue: ResearchPerson[] }>(GET_RESEARCH_QUEUE, { limit: 100 });
+  const researchQueue = await getResearchQueue();
 
   return (
     <>

@@ -1,20 +1,28 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect, useCallback } from 'react';
 import { useQuery } from '@apollo/client/react';
 import Hero from '@/components/Hero';
 import PersonCard from '@/components/PersonCard';
 import { Person } from '@/lib/types';
 import { GET_PEOPLE_LIST } from '@/lib/graphql/queries';
 
+const PAGE_SIZE = 50;
+
 export default function PeoplePage() {
   const { data, loading } = useQuery<{ peopleList: Person[] }>(GET_PEOPLE_LIST, {
-    variables: { limit: 1000 },
+    variables: { limit: 10000 },
   });
 
   const people = data?.peopleList || [];
   const [search, setSearch] = useState('');
   const [filter, setFilter] = useState<'all' | 'living' | 'male' | 'female'>('all');
+  const [displayCount, setDisplayCount] = useState(PAGE_SIZE);
+
+  // Reset display count when filters change
+  useEffect(() => {
+    setDisplayCount(PAGE_SIZE);
+  }, [search, filter]);
 
   const filteredPeople = useMemo(() => {
     let result = people;
@@ -34,6 +42,17 @@ export default function PeoplePage() {
 
     return result;
   }, [search, filter, people]);
+
+  const displayedPeople = useMemo(() =>
+    filteredPeople.slice(0, displayCount),
+    [filteredPeople, displayCount]
+  );
+
+  const hasMore = displayCount < filteredPeople.length;
+
+  const loadMore = useCallback(() => {
+    setDisplayCount(prev => Math.min(prev + PAGE_SIZE, filteredPeople.length));
+  }, [filteredPeople.length]);
 
   return (
     <>
@@ -64,13 +83,24 @@ export default function PeoplePage() {
         ) : (
           <>
             <p className="text-sm text-gray-500 mb-4">
-              Showing {filteredPeople.length} of {people.length} people
+              Showing {displayedPeople.length} of {filteredPeople.length} people
+              {filteredPeople.length !== people.length && ` (filtered from ${people.length})`}
             </p>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {filteredPeople.map((person) => (
+              {displayedPeople.map((person) => (
                 <PersonCard key={person.id} person={person} showDetails />
               ))}
             </div>
+            {hasMore && (
+              <div className="text-center mt-8">
+                <button
+                  onClick={loadMore}
+                  className="btn-primary px-6 py-3"
+                >
+                  Load More ({filteredPeople.length - displayCount} remaining)
+                </button>
+              </div>
+            )}
           </>
         )}
       </div>

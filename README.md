@@ -133,6 +133,10 @@ See `CONTRIBUTING.md` for the full workflow.
 | `GOOGLE_CLIENT_SECRET` | Google OAuth client secret |
 | `AUTH_TRUST_HOST` | Set to `true` for proxied environments |
 
+## Data Management
+
+> 📝 **Note:** Kindred currently manages genealogy records through the GraphQL API. This is great for bulk imports, scripting, and integration with other tools. A full-featured UI for adding and editing people, families, and events is on the roadmap—stay tuned!
+
 ## Contributing
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for development workflow and guidelines.

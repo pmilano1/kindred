@@ -357,6 +357,49 @@ export const resolvers = {
         migrationNeeded: missingTables.length > 0
       };
     },
+
+    // Email queries (admin only)
+    emailLogs: async (_: unknown, { limit = 50, offset = 0 }: { limit?: number; offset?: number }, context: Context) => {
+      requireAuth(context, 'admin');
+      const { rows } = await pool.query(
+        'SELECT id, email_type, recipient, subject, success, error_message, sent_at FROM email_log ORDER BY sent_at DESC LIMIT $1 OFFSET $2',
+        [limit, offset]
+      );
+      return rows;
+    },
+
+    emailStats: async (_: unknown, __: unknown, context: Context) => {
+      requireAuth(context, 'admin');
+      const totals = await pool.query(`
+        SELECT
+          COUNT(*) as total_sent,
+          COUNT(*) FILTER (WHERE success = true) as successful,
+          COUNT(*) FILTER (WHERE success = false) as failed
+        FROM email_log
+      `);
+      const byType = await pool.query(`
+        SELECT email_type, COUNT(*) as count
+        FROM email_log
+        GROUP BY email_type
+        ORDER BY count DESC
+      `);
+      return {
+        total_sent: parseInt(totals.rows[0].total_sent) || 0,
+        successful: parseInt(totals.rows[0].successful) || 0,
+        failed: parseInt(totals.rows[0].failed) || 0,
+        by_type: byType.rows
+      };
+    },
+
+    // Email preferences (current user)
+    myEmailPreferences: async (_: unknown, __: unknown, context: Context) => {
+      const user = requireAuth(context);
+      const { rows } = await pool.query(
+        'SELECT user_id, research_updates, tree_changes, weekly_digest, birthday_reminders FROM email_preferences WHERE user_id = $1',
+        [user.id]
+      );
+      return rows[0] || null;
+    },
   },
 
   Mutation: {
@@ -568,6 +611,51 @@ export const resolvers = {
         results.push('Settings table exists');
       }
 
+      // Check/create email_log table
+      const emailLogCheck = await pool.query(`
+        SELECT EXISTS (SELECT FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'email_log')
+      `);
+
+      if (!emailLogCheck.rows[0].exists) {
+        await pool.query(`
+          CREATE TABLE email_log (
+            id SERIAL PRIMARY KEY,
+            email_type VARCHAR(50) NOT NULL,
+            recipient VARCHAR(255) NOT NULL,
+            subject VARCHAR(500),
+            success BOOLEAN DEFAULT false,
+            error_message TEXT,
+            sent_at TIMESTAMP DEFAULT NOW()
+          )
+        `);
+        await pool.query('CREATE INDEX idx_email_log_recipient ON email_log(recipient)');
+        await pool.query('CREATE INDEX idx_email_log_sent_at ON email_log(sent_at)');
+        results.push('Created email_log table');
+      } else {
+        results.push('email_log table exists');
+      }
+
+      // Check/create email_preferences table
+      const emailPrefsCheck = await pool.query(`
+        SELECT EXISTS (SELECT FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'email_preferences')
+      `);
+
+      if (!emailPrefsCheck.rows[0].exists) {
+        await pool.query(`
+          CREATE TABLE email_preferences (
+            user_id VARCHAR(50) PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+            research_updates BOOLEAN DEFAULT true,
+            tree_changes BOOLEAN DEFAULT false,
+            weekly_digest BOOLEAN DEFAULT false,
+            birthday_reminders BOOLEAN DEFAULT false,
+            updated_at TIMESTAMP DEFAULT NOW()
+          )
+        `);
+        results.push('Created email_preferences table');
+      } else {
+        results.push('email_preferences table exists');
+      }
+
       return { success: true, results, message: 'Migrations completed' };
     },
 
@@ -589,6 +677,32 @@ export const resolvers = {
       await pool.query('UPDATE users SET api_key = NULL WHERE id = $1', [user.id]);
       await logAudit(user.id, 'revoke_api_key', { userId: user.id });
       return true;
+    },
+
+    // Email preferences mutation
+    updateEmailPreferences: async (_: unknown, { input }: { input: { research_updates?: boolean; tree_changes?: boolean; weekly_digest?: boolean; birthday_reminders?: boolean } }, context: Context) => {
+      const user = requireAuth(context);
+
+      // Upsert preferences
+      const { rows } = await pool.query(`
+        INSERT INTO email_preferences (user_id, research_updates, tree_changes, weekly_digest, birthday_reminders, updated_at)
+        VALUES ($1, $2, $3, $4, $5, NOW())
+        ON CONFLICT (user_id) DO UPDATE SET
+          research_updates = COALESCE($2, email_preferences.research_updates),
+          tree_changes = COALESCE($3, email_preferences.tree_changes),
+          weekly_digest = COALESCE($4, email_preferences.weekly_digest),
+          birthday_reminders = COALESCE($5, email_preferences.birthday_reminders),
+          updated_at = NOW()
+        RETURNING user_id, research_updates, tree_changes, weekly_digest, birthday_reminders
+      `, [
+        user.id,
+        input.research_updates ?? true,
+        input.tree_changes ?? false,
+        input.weekly_digest ?? false,
+        input.birthday_reminders ?? false
+      ]);
+
+      return rows[0];
     },
   },
 

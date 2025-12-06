@@ -1,4 +1,5 @@
 import { SESClient, SendEmailCommand, VerifyEmailIdentityCommand, GetIdentityVerificationAttributesCommand } from '@aws-sdk/client-ses';
+import { pool } from './pool';
 
 const ses = new SESClient({ region: process.env.AWS_REGION || 'us-east-1' });
 
@@ -6,6 +7,30 @@ const ses = new SESClient({ region: process.env.AWS_REGION || 'us-east-1' });
 const APP_NAME = process.env.APP_NAME || 'Kindred';
 const APP_URL = process.env.NEXTAUTH_URL || 'http://localhost:3000';
 const EMAIL_FROM = process.env.EMAIL_FROM || `${APP_NAME} <noreply@example.com>`;
+
+// Email types for logging
+export type EmailType = 'invite' | 'welcome' | 'password_reset' | 'verification' | 'notification';
+
+/**
+ * Log an email send attempt to the database
+ */
+async function logEmail(
+  emailType: EmailType,
+  recipient: string,
+  subject: string,
+  success: boolean,
+  errorMessage?: string
+): Promise<void> {
+  try {
+    await pool.query(
+      `INSERT INTO email_log (email_type, recipient, subject, success, error_message, sent_at)
+       VALUES ($1, $2, $3, $4, $5, NOW())`,
+      [emailType, recipient, subject, success, errorMessage || null]
+    );
+  } catch (error) {
+    console.error('[Email] Failed to log email:', error);
+  }
+}
 
 /**
  * Verify an email address in SES (for sandbox mode).
@@ -109,9 +134,189 @@ ${inviterName}
       }
     }));
     console.log(`[Email] Invite sent to ${to} from ${inviterEmail}`);
+    await logEmail('invite', to, subject, true);
     return true;
   } catch (error) {
     console.error('[Email] Failed to send invite:', error);
+    await logEmail('invite', to, subject, false, (error as Error).message);
+    return false;
+  }
+}
+
+/**
+ * Send a welcome email to a new user after they accept an invitation
+ */
+interface SendWelcomeEmailParams {
+  to: string;
+  userName: string;
+}
+
+export async function sendWelcomeEmail({ to, userName }: SendWelcomeEmailParams): Promise<boolean> {
+  const subject = `Welcome to ${APP_NAME}!`;
+
+  const htmlBody = `
+<!DOCTYPE html>
+<html>
+<head>
+  <style>
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; line-height: 1.6; color: #333; }
+    .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+    .header { background: linear-gradient(135deg, #1e3d22 0%, #0f1f11 100%); color: white; padding: 30px; text-align: center; border-radius: 8px 8px 0 0; }
+    .content { background: #f9fafb; padding: 30px; border: 1px solid #e5e7eb; }
+    .button { display: inline-block; background: #2c5530; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; margin: 20px 0; }
+    .footer { text-align: center; padding: 20px; color: #6b7280; font-size: 12px; }
+    .feature { margin: 15px 0; padding-left: 25px; position: relative; }
+    .feature::before { content: "✓"; position: absolute; left: 0; color: #2c5530; font-weight: bold; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h1>🌳 Welcome to ${APP_NAME}!</h1>
+    </div>
+    <div class="content">
+      <p>Hi ${userName},</p>
+      <p>Your account has been created successfully. You now have access to explore and contribute to the family tree.</p>
+      <h3>Getting Started</h3>
+      <div class="feature">Browse the family tree and discover your ancestors</div>
+      <div class="feature">View detailed person profiles with sources and media</div>
+      <div class="feature">Search for specific family members</div>
+      <div class="feature">Explore coats of arms and family crests</div>
+      <p style="text-align: center;">
+        <a href="${APP_URL}" class="button">Start Exploring</a>
+      </p>
+      <p>If you have any questions, please reach out to the site administrator.</p>
+    </div>
+    <div class="footer">
+      <p>${APP_NAME} • <a href="${APP_URL}">${APP_URL.replace('https://', '')}</a></p>
+    </div>
+  </div>
+</body>
+</html>`;
+
+  const textBody = `
+Welcome to ${APP_NAME}!
+
+Hi ${userName},
+
+Your account has been created successfully. You now have access to explore and contribute to the family tree.
+
+Getting Started:
+- Browse the family tree and discover your ancestors
+- View detailed person profiles with sources and media
+- Search for specific family members
+- Explore coats of arms and family crests
+
+Visit: ${APP_URL}
+
+If you have any questions, please reach out to the site administrator.
+`;
+
+  try {
+    await ses.send(new SendEmailCommand({
+      Source: EMAIL_FROM,
+      Destination: { ToAddresses: [to] },
+      Message: {
+        Subject: { Data: subject },
+        Body: {
+          Html: { Data: htmlBody },
+          Text: { Data: textBody }
+        }
+      }
+    }));
+    console.log(`[Email] Welcome email sent to ${to}`);
+    await logEmail('welcome', to, subject, true);
+    return true;
+  } catch (error) {
+    console.error('[Email] Failed to send welcome email:', error);
+    await logEmail('welcome', to, subject, false, (error as Error).message);
+    return false;
+  }
+}
+
+/**
+ * Send a password reset email
+ */
+interface SendPasswordResetEmailParams {
+  to: string;
+  userName: string;
+  resetUrl: string;
+}
+
+export async function sendPasswordResetEmail({ to, userName, resetUrl }: SendPasswordResetEmailParams): Promise<boolean> {
+  const subject = `Reset your ${APP_NAME} password`;
+
+  const htmlBody = `
+<!DOCTYPE html>
+<html>
+<head>
+  <style>
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; line-height: 1.6; color: #333; }
+    .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+    .header { background: linear-gradient(135deg, #1e3d22 0%, #0f1f11 100%); color: white; padding: 30px; text-align: center; border-radius: 8px 8px 0 0; }
+    .content { background: #f9fafb; padding: 30px; border: 1px solid #e5e7eb; }
+    .button { display: inline-block; background: #2c5530; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; margin: 20px 0; }
+    .footer { text-align: center; padding: 20px; color: #6b7280; font-size: 12px; }
+    .warning { background: #fef3c7; border: 1px solid #f59e0b; padding: 12px; border-radius: 6px; margin: 15px 0; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h1>🔐 Password Reset</h1>
+    </div>
+    <div class="content">
+      <p>Hi ${userName},</p>
+      <p>We received a request to reset your password for your ${APP_NAME} account.</p>
+      <p>Click the button below to set a new password:</p>
+      <p style="text-align: center;">
+        <a href="${resetUrl}" class="button">Reset Password</a>
+      </p>
+      <p style="font-size: 12px; color: #6b7280;">Or copy this link: ${resetUrl}</p>
+      <div class="warning">
+        <strong>⚠️ This link expires in 1 hour.</strong><br>
+        If you didn't request this reset, you can safely ignore this email.
+      </div>
+    </div>
+    <div class="footer">
+      <p>${APP_NAME} • <a href="${APP_URL}">${APP_URL.replace('https://', '')}</a></p>
+    </div>
+  </div>
+</body>
+</html>`;
+
+  const textBody = `
+Reset your ${APP_NAME} password
+
+Hi ${userName},
+
+We received a request to reset your password for your ${APP_NAME} account.
+
+Reset your password: ${resetUrl}
+
+This link expires in 1 hour.
+
+If you didn't request this reset, you can safely ignore this email.
+`;
+
+  try {
+    await ses.send(new SendEmailCommand({
+      Source: EMAIL_FROM,
+      Destination: { ToAddresses: [to] },
+      Message: {
+        Subject: { Data: subject },
+        Body: {
+          Html: { Data: htmlBody },
+          Text: { Data: textBody }
+        }
+      }
+    }));
+    console.log(`[Email] Password reset email sent to ${to}`);
+    await logEmail('password_reset', to, subject, true);
+    return true;
+  } catch (error) {
+    console.error('[Email] Failed to send password reset email:', error);
+    await logEmail('password_reset', to, subject, false, (error as Error).message);
     return false;
   }
 }

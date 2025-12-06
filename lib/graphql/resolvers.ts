@@ -629,11 +629,16 @@ export const resolvers = {
           WHERE a.generation < 15 AND NOT parent.id = ANY(a.path)
         ),
         ancestor_siblings AS (
-          -- Find siblings of each ancestor
+          -- Find siblings (full and half) of each ancestor
+          -- Half-siblings share a parent but may be in different families
           SELECT DISTINCT sibling.id, sibling.name_full, a.generation
           FROM ancestry a
           JOIN children c1 ON c1.person_id = a.id
-          JOIN children c2 ON c2.family_id = c1.family_id AND c2.person_id != a.id
+          JOIN families f1 ON c1.family_id = f1.id
+          -- Find other families where the same parent appears
+          JOIN families f2 ON (f2.husband_id = f1.husband_id OR f2.wife_id = f1.wife_id
+                               OR f2.husband_id = f1.wife_id OR f2.wife_id = f1.husband_id)
+          JOIN children c2 ON c2.family_id = f2.id AND c2.person_id != a.id
           JOIN people sibling ON sibling.id = c2.person_id
         ),
         sibling_descendants AS (

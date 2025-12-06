@@ -1,7 +1,8 @@
 {
-  "name": "frontend",
+  "name": "kindred",
   "version": "0.1.0",
-  "private": true,
+  "description": "A modern family tree and genealogy application",
+  "private": false,
   "scripts": {
     "dev": "next dev",
     "build": "next build",

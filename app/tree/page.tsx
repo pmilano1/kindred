@@ -40,12 +40,13 @@ function TreePageContent() {
     if (urlPerson && people.find((p: Person) => p.id === urlPerson)) {
       setSelectedPerson(urlPerson);
     } else if (!selectedPerson) {
-      const peter = people.find((p: Person) => p.name_full?.toLowerCase().includes('peter milanese'));
-      if (peter) {
-        setSelectedPerson(peter.id);
-        updateUrl(peter.id, urlView !== 'descendants');
+      // Find a recent person as the default starting point
+      const defaultPerson = people.find((p: Person) => p.birth_year && p.birth_year > 1950);
+      if (defaultPerson) {
+        setSelectedPerson(defaultPerson.id);
+        updateUrl(defaultPerson.id, urlView !== 'descendants');
       } else {
-        const recent = people.find((p: Person) => p.birth_year && p.birth_year > 1970);
+        const recent = people.find((p: Person) => p.birth_year && p.birth_year > 1900);
         if (recent) {
           setSelectedPerson(recent.id);
           updateUrl(recent.id, urlView !== 'descendants');

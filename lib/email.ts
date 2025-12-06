@@ -2,6 +2,11 @@ import { SESClient, SendEmailCommand, VerifyEmailIdentityCommand, GetIdentityVer
 
 const ses = new SESClient({ region: process.env.AWS_REGION || 'us-east-1' });
 
+// Configurable app name and URLs - set via environment variables
+const APP_NAME = process.env.APP_NAME || 'Kindred';
+const APP_URL = process.env.NEXTAUTH_URL || 'http://localhost:3000';
+const EMAIL_FROM = process.env.EMAIL_FROM || `${APP_NAME} <noreply@example.com>`;
+
 /**
  * Verify an email address in SES (for sandbox mode).
  * This sends a verification email to the recipient.

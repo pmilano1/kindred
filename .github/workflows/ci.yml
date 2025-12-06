@@ -1,0 +1,107 @@
+name: CI - Pull Request Checks
+
+on:
+  pull_request:
+    branches: [main, develop]
+  push:
+    branches: [develop, 'feature/**', 'fix/**']
+
+jobs:
+  lint-and-test:
+    runs-on: ubuntu-latest
+    name: Lint & Test
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run linter
+        run: npm run lint
+
+      - name: Run tests
+        run: npm test -- --passWithNoTests --coverage
+
+      - name: Upload coverage report
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: coverage-report
+          path: coverage/
+          retention-days: 7
+
+  build:
+    runs-on: ubuntu-latest
+    name: Build Check
+    needs: lint-and-test
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build application
+        run: npm run build
+
+  docker-build:
+    runs-on: ubuntu-latest
+    name: Docker Build Check
+    needs: build
+    if: github.event_name == 'pull_request' && github.base_ref == 'main'
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Build Docker image (test only)
+        run: |
+          docker build \
+            --build-arg NEXTAUTH_URL="http://localhost:3000" \
+            -t genealogy-frontend:pr-${{ github.event.pull_request.number }} \
+            .
+
+      - name: Validate Docker image
+        run: |
+          echo "Starting container for health check validation..."
+          CONTAINER_ID=$(docker run -d -p 3000:3000 \
+            -e DATABASE_URL="postgresql://test:test@localhost:5432/test" \
+            -e NEXTAUTH_URL="http://localhost:3000" \
+            -e NEXTAUTH_SECRET="test-secret-for-validation" \
+            genealogy-frontend:pr-${{ github.event.pull_request.number }})
+
+          echo "Waiting for container to start..."
+          sleep 10
+
+          if ! docker ps -q --filter "id=$CONTAINER_ID" | grep -q .; then
+            echo "Container exited unexpectedly!"
+            docker logs $CONTAINER_ID
+            exit 1
+          fi
+
+          HEALTH_STATUS=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:3000/api/health || echo "000")
+          docker stop $CONTAINER_ID > /dev/null
+          docker rm $CONTAINER_ID > /dev/null
+
+          if [ "$HEALTH_STATUS" = "000" ]; then
+            echo "Health check failed - container not responding"
+            exit 1
+          fi
+
+          echo "Docker image validation passed (status: $HEALTH_STATUS)"
+

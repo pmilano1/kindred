@@ -14,10 +14,12 @@ export default function PersonSplitLayout({ personId, personName, children }: Pe
   const [collapsed, setCollapsed] = useState(false);
 
   // Remember collapsed state
+  /* eslint-disable react-hooks/set-state-in-effect */
   useEffect(() => {
     const saved = localStorage.getItem('researchPanelCollapsed');
     if (saved) setCollapsed(saved === 'true');
   }, []);
+  /* eslint-enable react-hooks/set-state-in-effect */
 
   const toggleCollapsed = () => {
     const newState = !collapsed;

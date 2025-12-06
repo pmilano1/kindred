@@ -149,7 +149,7 @@ export const resolvers = {
 
       // Fetch all people and filter in JS for accent-insensitive search
       // This is more reliable than trying to use SQL-level unaccent
-      let sql = `SELECT *, COALESCE(notes, description) as description FROM people ORDER BY name_full`;
+      const sql = `SELECT *, COALESCE(notes, description) as description FROM people ORDER BY name_full`;
       const { rows: allPeople } = await pool.query(sql);
 
       // Filter with accent-insensitive matching

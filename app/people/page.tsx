@@ -19,8 +19,9 @@ export default function PeoplePage() {
   const [filter, setFilter] = useState<'all' | 'living' | 'male' | 'female'>('all');
   const [displayCount, setDisplayCount] = useState(PAGE_SIZE);
 
-  // Reset display count when filters change
+  // Reset display count when filters change - valid synchronization pattern
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setDisplayCount(PAGE_SIZE);
   }, [search, filter]);
 

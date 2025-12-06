@@ -14,10 +14,12 @@ export default function PersonPageLayout({ personId, personName, children }: Per
   const [isCollapsed, setIsCollapsed] = useState(false);
 
   // Persist collapsed state in localStorage
+  /* eslint-disable react-hooks/set-state-in-effect */
   useEffect(() => {
     const saved = localStorage.getItem('researchPanelCollapsed');
     if (saved) setIsCollapsed(saved === 'true');
   }, []);
+  /* eslint-enable react-hooks/set-state-in-effect */
 
   const toggleCollapsed = () => {
     const newState = !isCollapsed;

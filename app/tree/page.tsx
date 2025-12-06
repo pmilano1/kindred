@@ -29,6 +29,7 @@ function TreePageContent() {
   }, [router]);
 
   // Read initial state from URL params and set default person
+  /* eslint-disable react-hooks/set-state-in-effect */
   useEffect(() => {
     if (people.length === 0) return;
 
@@ -57,6 +58,7 @@ function TreePageContent() {
       setShowAncestors(false);
     }
   }, [people, searchParams, updateUrl, selectedPerson]);
+  /* eslint-enable react-hooks/set-state-in-effect */
 
   // Handle person selection change
   const handlePersonChange = (personId: string) => {

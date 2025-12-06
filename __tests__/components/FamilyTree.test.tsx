@@ -5,8 +5,8 @@
 
 import React from 'react';
 import { render, screen, waitFor } from '@testing-library/react';
-import { MockedProvider } from '@apollo/client/testing';
-import { gql } from '@apollo/client/core';
+import { MockedProvider } from '@apollo/react-testing';
+import { gql } from '@apollo/client';
 import FamilyTree from '@/components/FamilyTree';
 
 // The query used by FamilyTree component

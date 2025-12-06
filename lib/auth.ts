@@ -1,15 +1,89 @@
 import NextAuth from 'next-auth';
+import CredentialsProvider from 'next-auth/providers/credentials';
+import GoogleProvider from 'next-auth/providers/google';
+import bcrypt from 'bcryptjs';
 import { pool } from './pool';
-import authConfig from '../auth.config';
 
 // Full auth config with database callbacks
 // Only used server-side (not in proxy/middleware)
 export const { handlers, signIn, signOut, auth } = NextAuth({
-  ...authConfig,
+  providers: [
+    GoogleProvider({
+      clientId: process.env.GOOGLE_CLIENT_ID!,
+      clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
+      authorization: {
+        params: {
+          prompt: 'select_account',
+        },
+      },
+    }),
+    CredentialsProvider({
+      id: 'credentials',
+      name: 'Email & Password',
+      credentials: {
+        email: { label: 'Email', type: 'email' },
+        password: { label: 'Password', type: 'password' },
+      },
+      async authorize(credentials) {
+        if (!credentials?.email || !credentials?.password) {
+          return null;
+        }
+
+        const email = credentials.email as string;
+        const password = credentials.password as string;
+
+        // Find user with password
+        const result = await pool.query(
+          'SELECT id, email, name, image, role, password_hash FROM users WHERE email = $1 AND auth_provider = $2',
+          [email, 'local']
+        );
+
+        if (result.rows.length === 0) {
+          return null;
+        }
+
+        const user = result.rows[0];
+
+        // Verify password
+        if (!user.password_hash) {
+          return null;
+        }
+
+        const isValid = await bcrypt.compare(password, user.password_hash);
+        if (!isValid) {
+          // Increment failed attempts
+          await pool.query(
+            'UPDATE users SET failed_login_attempts = COALESCE(failed_login_attempts, 0) + 1 WHERE id = $1',
+            [user.id]
+          );
+          return null;
+        }
+
+        // Reset failed attempts and update last login
+        await pool.query(
+          'UPDATE users SET failed_login_attempts = 0, last_login = NOW() WHERE id = $1',
+          [user.id]
+        );
+
+        return {
+          id: user.id,
+          email: user.email,
+          name: user.name,
+          image: user.image,
+        };
+      },
+    }),
+  ],
   callbacks: {
     async signIn({ user, account }) {
       if (!user.email) return false;
 
+      // For credentials provider, the authorize function handles everything
+      if (account?.provider === 'credentials') {
+        return true;
+      }
+
+      // OAuth flow (Google)
       // Check if user exists or has an invitation
       const existingUser = await pool.query(
         'SELECT id, role FROM users WHERE email = $1',
@@ -27,7 +101,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
 
       // Check for pending invitation
       const invitation = await pool.query(
-        `SELECT id, role FROM invitations 
+        `SELECT id, role FROM invitations
          WHERE email = $1 AND accepted_at IS NULL AND expires_at > NOW()`,
         [user.email]
       );
@@ -36,8 +110,8 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         // Accept invitation and create user
         const inv = invitation.rows[0];
         await pool.query(
-          `INSERT INTO users (email, name, image, role, invited_at, last_login)
-           VALUES ($1, $2, $3, $4, NOW(), NOW())`,
+          `INSERT INTO users (email, name, image, role, auth_provider, invited_at, last_login)
+           VALUES ($1, $2, $3, $4, 'google', NOW(), NOW())`,
           [user.email, user.name, user.image, inv.role]
         );
         await pool.query(

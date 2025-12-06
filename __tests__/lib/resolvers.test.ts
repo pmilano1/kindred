@@ -574,5 +574,178 @@ describe('GraphQL Resolvers', () => {
       expect(secondCallCount).toBe(firstCallCount);
     });
   });
+
+  describe('Mutation.registerWithInvitation', () => {
+    it('returns error for invalid invitation token', async () => {
+      mockedQuery.mockResolvedValueOnce({ rows: [] }); // No valid invitation
+
+      const result = await resolvers.Mutation.registerWithInvitation(
+        null,
+        { token: 'invalid-token', password: 'Password123!' }
+      );
+
+      expect(result.success).toBe(false);
+      expect(result.message).toBe('Invalid or expired invitation');
+    });
+
+    it('returns error if user already exists', async () => {
+      // Valid invitation
+      mockedQuery.mockResolvedValueOnce({
+        rows: [{ id: 'inv-1', email: 'test@example.com', role: 'viewer' }]
+      });
+      // User already exists
+      mockedQuery.mockResolvedValueOnce({ rows: [{ id: 'existing-user' }] });
+
+      const result = await resolvers.Mutation.registerWithInvitation(
+        null,
+        { token: 'valid-token', password: 'Password123!' }
+      );
+
+      expect(result.success).toBe(false);
+      expect(result.message).toBe('User already exists');
+    });
+
+    it('creates user successfully with valid invitation', async () => {
+      // Valid invitation
+      mockedQuery.mockResolvedValueOnce({
+        rows: [{ id: 'inv-1', email: 'newuser@example.com', role: 'viewer' }]
+      });
+      // No existing user
+      mockedQuery.mockResolvedValueOnce({ rows: [] });
+      // Create user
+      mockedQuery.mockResolvedValueOnce({ rows: [] });
+      // Mark invitation as accepted
+      mockedQuery.mockResolvedValueOnce({ rows: [] });
+
+      const result = await resolvers.Mutation.registerWithInvitation(
+        null,
+        { token: 'valid-token', password: 'Password123!', name: 'New User' }
+      );
+
+      expect(result.success).toBe(true);
+      expect(result.message).toBe('Account created successfully');
+      expect(result.userId).toBeDefined();
+    });
+  });
+
+  describe('Mutation.requestPasswordReset', () => {
+    it('returns true even if user does not exist (no enumeration)', async () => {
+      mockedQuery.mockResolvedValueOnce({ rows: [] }); // No user found
+
+      const result = await resolvers.Mutation.requestPasswordReset(
+        null,
+        { email: 'nonexistent@example.com' }
+      );
+
+      expect(result).toBe(true);
+    });
+
+    it('creates reset token for valid local user', async () => {
+      // User exists
+      mockedQuery.mockResolvedValueOnce({ rows: [{ id: 'user-1' }] });
+      // Insert token
+      mockedQuery.mockResolvedValueOnce({ rows: [] });
+
+      const result = await resolvers.Mutation.requestPasswordReset(
+        null,
+        { email: 'user@example.com' }
+      );
+
+      expect(result).toBe(true);
+      expect(mockedQuery).toHaveBeenCalledTimes(2);
+    });
+  });
+
+  describe('Mutation.resetPassword', () => {
+    it('returns error for invalid/expired token', async () => {
+      mockedQuery.mockResolvedValueOnce({ rows: [] }); // No valid token
+
+      const result = await resolvers.Mutation.resetPassword(
+        null,
+        { token: 'invalid-token', newPassword: 'NewPassword123!' }
+      );
+
+      expect(result.success).toBe(false);
+      expect(result.message).toBe('Invalid or expired reset token');
+    });
+
+    it('resets password successfully with valid token', async () => {
+      // Valid token
+      mockedQuery.mockResolvedValueOnce({ rows: [{ user_id: 'user-1' }] });
+      // Update password
+      mockedQuery.mockResolvedValueOnce({ rows: [] });
+      // Mark token used
+      mockedQuery.mockResolvedValueOnce({ rows: [] });
+
+      const result = await resolvers.Mutation.resetPassword(
+        null,
+        { token: 'valid-token', newPassword: 'NewPassword123!' }
+      );
+
+      expect(result.success).toBe(true);
+      expect(result.message).toBe('Password reset successfully');
+      expect(result.userId).toBe('user-1');
+    });
+  });
+
+  describe('Mutation.changePassword', () => {
+    const mockContext = {
+      user: { id: 'user-1', email: 'user@test.com', role: 'admin' }
+    };
+
+    it('throws error for non-local auth users', async () => {
+      mockedQuery.mockResolvedValueOnce({ rows: [] }); // No local auth user
+
+      await expect(
+        resolvers.Mutation.changePassword(
+          null,
+          { currentPassword: 'old', newPassword: 'new' },
+          mockContext
+        )
+      ).rejects.toThrow('Password change not available for this account');
+    });
+
+    it('throws error for incorrect current password', async () => {
+      // User with password hash (bcrypt hash of 'correctpassword')
+      mockedQuery.mockResolvedValueOnce({
+        rows: [{ password_hash: '$2a$12$invalidhash' }]
+      });
+
+      await expect(
+        resolvers.Mutation.changePassword(
+          null,
+          { currentPassword: 'wrongpassword', newPassword: 'NewPassword123!' },
+          mockContext
+        )
+      ).rejects.toThrow('Current password is incorrect');
+    });
+  });
+
+  describe('Mutation.updateEmailPreferences', () => {
+    const mockContext = {
+      user: { id: 'user-1', email: 'user@test.com', role: 'admin' }
+    };
+
+    it('updates email preferences for authenticated user', async () => {
+      const mockPrefs = {
+        user_id: 'user-1',
+        research_updates: true,
+        tree_changes: false,
+        weekly_digest: true,
+        birthday_reminders: false
+      };
+      mockedQuery.mockResolvedValueOnce({ rows: [mockPrefs] });
+
+      const result = await resolvers.Mutation.updateEmailPreferences(
+        null,
+        { input: { research_updates: true, weekly_digest: true } },
+        mockContext
+      );
+
+      expect(result.user_id).toBe('user-1');
+      expect(result.research_updates).toBe(true);
+      expect(result.weekly_digest).toBe(true);
+    });
+  });
 });
 

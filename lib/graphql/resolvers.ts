@@ -738,6 +738,49 @@ export const resolvers = {
       }
       results.push('Verified tree traversal indexes');
 
+      // Add local auth columns to users table
+      const authColumnsCheck = await pool.query(`
+        SELECT column_name FROM information_schema.columns
+        WHERE table_name = 'users' AND column_name = 'password_hash'
+      `);
+
+      if (authColumnsCheck.rows.length === 0) {
+        await pool.query(`
+          ALTER TABLE users
+          ADD COLUMN IF NOT EXISTS password_hash VARCHAR(255),
+          ADD COLUMN IF NOT EXISTS auth_provider VARCHAR(20) DEFAULT 'google',
+          ADD COLUMN IF NOT EXISTS failed_login_attempts INTEGER DEFAULT 0,
+          ADD COLUMN IF NOT EXISTS locked_until TIMESTAMP,
+          ADD COLUMN IF NOT EXISTS password_reset_token VARCHAR(255),
+          ADD COLUMN IF NOT EXISTS password_reset_expires TIMESTAMP
+        `);
+        results.push('Added local auth columns to users table');
+      } else {
+        results.push('Local auth columns exist');
+      }
+
+      // Create password_reset_tokens table for secure reset flow
+      const resetTokensCheck = await pool.query(`
+        SELECT EXISTS (SELECT FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'password_reset_tokens')
+      `);
+
+      if (!resetTokensCheck.rows[0].exists) {
+        await pool.query(`
+          CREATE TABLE password_reset_tokens (
+            id SERIAL PRIMARY KEY,
+            user_id VARCHAR(50) REFERENCES users(id) ON DELETE CASCADE,
+            token VARCHAR(255) UNIQUE NOT NULL,
+            expires_at TIMESTAMP NOT NULL,
+            used_at TIMESTAMP,
+            created_at TIMESTAMP DEFAULT NOW()
+          )
+        `);
+        await pool.query('CREATE INDEX idx_reset_tokens_token ON password_reset_tokens(token)');
+        results.push('Created password_reset_tokens table');
+      } else {
+        results.push('password_reset_tokens table exists');
+      }
+
       return { success: true, results, message: 'Migrations completed' };
     },
 
@@ -785,6 +828,143 @@ export const resolvers = {
       ]);
 
       return rows[0];
+    },
+
+    // Local auth mutations
+    registerWithInvitation: async (_: unknown, { token, password, name }: { token: string; password: string; name?: string }) => {
+      const bcrypt = await import('bcryptjs');
+      const crypto = await import('crypto');
+
+      // Find valid invitation
+      const invResult = await pool.query(
+        `SELECT id, email, role FROM invitations
+         WHERE token = $1 AND accepted_at IS NULL AND expires_at > NOW()`,
+        [token]
+      );
+
+      if (invResult.rows.length === 0) {
+        return { success: false, message: 'Invalid or expired invitation' };
+      }
+
+      const invitation = invResult.rows[0];
+
+      // Check if user already exists
+      const existingUser = await pool.query('SELECT id FROM users WHERE email = $1', [invitation.email]);
+      if (existingUser.rows.length > 0) {
+        return { success: false, message: 'User already exists' };
+      }
+
+      // Hash password
+      const passwordHash = await bcrypt.hash(password, 12);
+      const userId = crypto.randomBytes(8).toString('hex');
+
+      // Create user
+      await pool.query(
+        `INSERT INTO users (id, email, name, role, password_hash, auth_provider, invited_at, last_login)
+         VALUES ($1, $2, $3, $4, $5, 'local', NOW(), NOW())`,
+        [userId, invitation.email, name || invitation.email.split('@')[0], invitation.role, passwordHash]
+      );
+
+      // Mark invitation as accepted
+      await pool.query('UPDATE invitations SET accepted_at = NOW() WHERE id = $1', [invitation.id]);
+
+      return { success: true, message: 'Account created successfully', userId };
+    },
+
+    requestPasswordReset: async (_: unknown, { email }: { email: string }) => {
+      const crypto = await import('crypto');
+
+      // Find user with local auth
+      const userResult = await pool.query(
+        'SELECT id FROM users WHERE email = $1 AND auth_provider = $2',
+        [email, 'local']
+      );
+
+      // Always return true to prevent email enumeration
+      if (userResult.rows.length === 0) {
+        return true;
+      }
+
+      const user = userResult.rows[0];
+
+      // Generate reset token
+      const resetToken = crypto.randomBytes(32).toString('hex');
+      const expiresAt = new Date(Date.now() + 60 * 60 * 1000); // 1 hour
+
+      // Store token
+      await pool.query(
+        `INSERT INTO password_reset_tokens (user_id, token, expires_at)
+         VALUES ($1, $2, $3)`,
+        [user.id, resetToken, expiresAt]
+      );
+
+      // Send email (import dynamically to avoid circular deps)
+      try {
+        const { sendPasswordResetEmail } = await import('../email');
+        await sendPasswordResetEmail(email, resetToken);
+      } catch (error) {
+        console.error('[Auth] Failed to send password reset email:', error);
+      }
+
+      return true;
+    },
+
+    resetPassword: async (_: unknown, { token, newPassword }: { token: string; newPassword: string }) => {
+      const bcrypt = await import('bcryptjs');
+
+      // Find valid token
+      const tokenResult = await pool.query(
+        `SELECT user_id FROM password_reset_tokens
+         WHERE token = $1 AND expires_at > NOW() AND used_at IS NULL`,
+        [token]
+      );
+
+      if (tokenResult.rows.length === 0) {
+        return { success: false, message: 'Invalid or expired reset token' };
+      }
+
+      const userId = tokenResult.rows[0].user_id;
+
+      // Hash new password
+      const passwordHash = await bcrypt.hash(newPassword, 12);
+
+      // Update password
+      await pool.query(
+        'UPDATE users SET password_hash = $1, failed_login_attempts = 0, locked_until = NULL WHERE id = $2',
+        [passwordHash, userId]
+      );
+
+      // Mark token as used
+      await pool.query('UPDATE password_reset_tokens SET used_at = NOW() WHERE token = $1', [token]);
+
+      return { success: true, message: 'Password reset successfully', userId };
+    },
+
+    changePassword: async (_: unknown, { currentPassword, newPassword }: { currentPassword: string; newPassword: string }, context: Context) => {
+      const user = requireAuth(context);
+      const bcrypt = await import('bcryptjs');
+
+      // Get current password hash
+      const userResult = await pool.query(
+        'SELECT password_hash FROM users WHERE id = $1 AND auth_provider = $2',
+        [user.id, 'local']
+      );
+
+      if (userResult.rows.length === 0 || !userResult.rows[0].password_hash) {
+        throw new Error('Password change not available for this account');
+      }
+
+      // Verify current password
+      const isValid = await bcrypt.compare(currentPassword, userResult.rows[0].password_hash);
+      if (!isValid) {
+        throw new Error('Current password is incorrect');
+      }
+
+      // Hash and update new password
+      const passwordHash = await bcrypt.hash(newPassword, 12);
+      await pool.query('UPDATE users SET password_hash = $1 WHERE id = $2', [passwordHash, user.id]);
+
+      return true;
     },
   },
 

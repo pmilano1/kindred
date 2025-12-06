@@ -4,6 +4,7 @@ import { useEffect, useState, useCallback } from 'react';
 import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import Hero from '@/components/Hero';
+import LoadingSpinner from '@/components/LoadingSpinner';
 import Link from 'next/link';
 
 interface SettingRow {
@@ -142,7 +143,9 @@ export default function SettingsPage() {
     return (
       <>
         <Hero title="Site Settings" subtitle="Configure your genealogy site" />
-        <div className="content-wrapper"><p>Loading...</p></div>
+        <div className="content-wrapper flex justify-center py-12">
+          <LoadingSpinner size="lg" message="Loading settings..." />
+        </div>
       </>
     );
   }

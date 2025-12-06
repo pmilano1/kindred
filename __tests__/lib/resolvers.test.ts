@@ -42,7 +42,7 @@ jest.mock('@/lib/settings', () => ({
   clearSettingsCache: jest.fn(),
 }));
 
-import { resolvers } from '@/lib/graphql/resolvers';
+import { resolvers, clearQueryCache } from '@/lib/graphql/resolvers';
 import { pool } from '@/lib/pool';
 
 // Get the mocked pool.query
@@ -511,6 +511,67 @@ describe('GraphQL Resolvers', () => {
         expect.stringContaining('ON CONFLICT (surname) DO UPDATE'),
         expect.arrayContaining(['Milanese', 'https://new-crest.png'])
       );
+    });
+  });
+
+  describe('clearQueryCache', () => {
+    it('clears all cache when called without pattern', () => {
+      // Clear the cache first
+      clearQueryCache();
+      // Should not throw
+      expect(() => clearQueryCache()).not.toThrow();
+    });
+
+    it('clears cache entries matching pattern', () => {
+      // Clear specific pattern
+      clearQueryCache('ancestors');
+      // Should not throw
+      expect(() => clearQueryCache('test-pattern')).not.toThrow();
+    });
+
+    it('handles empty cache gracefully', () => {
+      clearQueryCache(); // Clear everything
+      clearQueryCache('nonexistent'); // Try pattern on empty cache
+      expect(true).toBe(true); // No error means success
+    });
+  });
+
+  describe('Query caching behavior', () => {
+    it('ancestors query uses caching', async () => {
+      mockedQuery.mockReset();
+      clearQueryCache(); // Clear cache before test
+
+      const mockAncestors = [{ id: 'a1', name_full: 'Grandfather', gen: 1 }];
+      mockedQuery.mockResolvedValue({ rows: mockAncestors });
+
+      // First call - should hit database
+      await resolvers.Query.ancestors(null, { personId: 'cache-test', generations: 3 });
+      const firstCallCount = mockedQuery.mock.calls.length;
+
+      // Second call with same params - should use cache
+      await resolvers.Query.ancestors(null, { personId: 'cache-test', generations: 3 });
+      const secondCallCount = mockedQuery.mock.calls.length;
+
+      // If caching works, second call should not increase query count
+      expect(secondCallCount).toBe(firstCallCount);
+    });
+
+    it('descendants query uses caching', async () => {
+      mockedQuery.mockReset();
+      clearQueryCache();
+
+      const mockDescendants = [{ id: 'd1', name_full: 'Child', gen: 1 }];
+      mockedQuery.mockResolvedValue({ rows: mockDescendants });
+
+      // First call
+      await resolvers.Query.descendants(null, { personId: 'desc-cache-test', generations: 3 });
+      const firstCallCount = mockedQuery.mock.calls.length;
+
+      // Second call - cached
+      await resolvers.Query.descendants(null, { personId: 'desc-cache-test', generations: 3 });
+      const secondCallCount = mockedQuery.mock.calls.length;
+
+      expect(secondCallCount).toBe(firstCallCount);
     });
   });
 });

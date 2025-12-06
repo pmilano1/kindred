@@ -15,8 +15,8 @@ function getPool(): Pool {
         ssl: { rejectUnauthorized: false }
       });
     } else {
-      // Local Docker - no SSL
-      const host = process.env.DB_HOST || 'shared-data_postgres';
+      // Local development - no SSL
+      const host = process.env.DB_HOST || 'localhost';
       console.log('[DB] Connecting to', host);
       _pool = new Pool({
         host,

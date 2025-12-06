@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState, useCallback, useMemo } from 'react';
+import Image from 'next/image';
 import { useQuery, useMutation } from '@apollo/client/react';
 import { gql } from '@apollo/client/core';
 import * as d3 from 'd3';
@@ -1368,11 +1369,15 @@ export default function FamilyTree({ rootPersonId, showAncestors, onPersonClick,
           style={{ left: crestPopup.x, top: crestPopup.y }}
         >
           <div className="bg-white rounded-lg shadow-xl border-2 border-amber-400 p-2">
-            <img
-              src={crestPopup.url}
-              alt="Coat of Arms"
-              className="w-36 h-36 object-contain"
-            />
+            <div className="relative w-36 h-36">
+              <Image
+                src={crestPopup.url}
+                alt="Coat of Arms"
+                fill
+                className="object-contain"
+                unoptimized
+              />
+            </div>
           </div>
         </div>
       )}

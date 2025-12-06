@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import Image from 'next/image';
 import { useSession } from 'next-auth/react';
 import { useQuery, useMutation } from '@apollo/client/react';
 import Hero from '@/components/Hero';
@@ -95,7 +96,11 @@ export default function CoatsOfArmsPage() {
               <label className="block text-sm font-medium mb-1">Upload Image</label>
               <input type="file" accept="image/*" onChange={handleFileChange} className="w-full" required />
             </div>
-            {imageData && <img src={imageData} alt="Preview" className="w-32 h-32 object-contain border rounded" />}
+            {imageData && (
+              <div className="relative w-32 h-32 border rounded">
+                <Image src={imageData} alt="Preview" fill className="object-contain" unoptimized />
+              </div>
+            )}
             <button type="submit" className="tree-btn">Add Surname Crest</button>
           </form>
         )}
@@ -110,8 +115,10 @@ export default function CoatsOfArmsPage() {
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {crests.map((crest) => (
               <div key={crest.id} className="card p-4 text-center">
-                <img src={crest.coat_of_arms} alt={`${crest.surname} coat of arms`}
-                  className="w-32 h-32 object-contain mx-auto mb-4" />
+                <div className="relative w-32 h-32 mx-auto mb-4">
+                  <Image src={crest.coat_of_arms} alt={`${crest.surname} coat of arms`}
+                    fill className="object-contain" unoptimized />
+                </div>
                 <h3 className="text-xl font-bold">{crest.surname}</h3>
                 {crest.origin && <p className="text-sm text-gray-500">{crest.origin}</p>}
                 {crest.motto && <p className="text-sm italic text-gray-600 mt-1">&ldquo;{crest.motto}&rdquo;</p>}

@@ -24,14 +24,14 @@ body {
 .sidebar {
   position: fixed; left: 0; top: 0;
   width: var(--sidebar-width); height: 100vh;
-  background: linear-gradient(180deg, #1e3d22 0%, #0f1f11 100%);
+  background: linear-gradient(180deg, var(--primary-dark) 0%, color-mix(in srgb, var(--primary-dark) 50%, black) 100%);
   color: white; display: flex; flex-direction: column;
   padding: 2rem 0; z-index: 1000;
 }
 
 .sidebar-header { text-align: center; padding: 0 1.5rem 2rem; border-bottom: 1px solid rgba(255,255,255,0.1); }
 .logo { width: 80px; height: 80px; margin: 0 auto 1rem;
-  background: linear-gradient(135deg, rgba(44,85,48,0.3), rgba(139,92,246,0.2));
+  background: linear-gradient(135deg, color-mix(in srgb, var(--primary-color) 30%, transparent), color-mix(in srgb, var(--accent-color) 20%, transparent));
   border-radius: 50%; display: flex; align-items: center; justify-content: center;
   font-size: 2.5rem; }
 
@@ -39,7 +39,7 @@ body {
 .nav-links li { margin: 0.5rem 0; }
 .nav-link { display: block; padding: 0.75rem 1.5rem; color: rgba(255,255,255,0.7);
   text-decoration: none; border-left: 3px solid transparent; transition: all 0.3s; }
-.nav-link:hover, .nav-link.active { color: white; background: rgba(44,85,48,0.3); border-left-color: var(--primary-color); }
+.nav-link:hover, .nav-link.active { color: white; background: color-mix(in srgb, var(--primary-color) 30%, transparent); border-left-color: var(--primary-color); }
 
 /* Main Content */
 .main-content { margin-left: var(--sidebar-width); height: 100vh; display: flex; flex-direction: column; overflow: hidden; }
@@ -48,8 +48,8 @@ body {
 /* Hero */
 .hero-banner {
   min-height: 15vh; display: flex; align-items: center; justify-content: center;
-  background: linear-gradient(135deg, #1e3d22 0%, #0f1f11 100%);
-  border-bottom: 2px solid rgba(44,85,48,0.4); flex-shrink: 0;
+  background: linear-gradient(135deg, var(--primary-dark) 0%, color-mix(in srgb, var(--primary-dark) 50%, black) 100%);
+  border-bottom: 2px solid color-mix(in srgb, var(--primary-color) 40%, transparent); flex-shrink: 0;
 }
 .banner-title { font-size: 2.5rem; font-weight: 800; color: white; margin: 0; }
 .gradient-text { background: linear-gradient(135deg, #4ade80, #22c55e); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
@@ -81,7 +81,7 @@ body {
 .data-table { width: 100%; border-collapse: collapse; background: white; border-radius: 12px; overflow: hidden; }
 .data-table th { text-align: left; padding: 1rem; background: var(--bg-light); font-weight: 600; border-bottom: 2px solid #e5e7eb; }
 .data-table td { padding: 1rem; border-bottom: 1px solid #e5e7eb; }
-.data-table tr:hover { background: rgba(44,85,48,0.02); }
+.data-table tr:hover { background: color-mix(in srgb, var(--primary-color) 2%, transparent); }
 
 /* Timeline */
 .timeline { position: relative; padding-left: 2rem; }

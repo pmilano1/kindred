@@ -617,6 +617,7 @@ export const resolvers = {
     notableRelatives: async (person: { id: string }) => {
       const { rows } = await pool.query(`
         WITH RECURSIVE ancestry AS (
+          -- Trace direct ancestors up to 15 generations
           SELECT p.id, p.name_full, 0 as generation, ARRAY[p.id]::text[] as path
           FROM people p WHERE p.id = $1
           UNION ALL
@@ -628,40 +629,35 @@ export const resolvers = {
           WHERE a.generation < 15 AND NOT parent.id = ANY(a.path)
         ),
         ancestor_siblings AS (
+          -- Find siblings of each ancestor
           SELECT DISTINCT sibling.id, sibling.name_full, a.generation
           FROM ancestry a
           JOIN children c1 ON c1.person_id = a.id
           JOIN children c2 ON c2.family_id = c1.family_id AND c2.person_id != a.id
           JOIN people sibling ON sibling.id = c2.person_id
         ),
-        sibling_children AS (
-          SELECT s.id, s.name_full, s.generation, 'sibling' as rel_type FROM ancestor_siblings s
-          UNION ALL
-          SELECT child.id, child.name_full, s.generation, 'child' as rel_type
+        sibling_descendants AS (
+          -- Recursively find all descendants of ancestor siblings (up to 6 generations down)
+          SELECT s.id, s.name_full, s.generation as ancestor_gen, 0 as desc_gen, ARRAY[s.id]::text[] as path
           FROM ancestor_siblings s
-          JOIN families f ON (f.husband_id = s.id OR f.wife_id = s.id)
+          UNION ALL
+          SELECT child.id, child.name_full, sd.ancestor_gen, sd.desc_gen + 1, sd.path || child.id::text
+          FROM sibling_descendants sd
+          JOIN families f ON (f.husband_id = sd.id OR f.wife_id = sd.id)
           JOIN children c ON c.family_id = f.id
           JOIN people child ON child.id = c.person_id
-        ),
-        sibling_grandchildren AS (
-          SELECT sc.id, sc.name_full, sc.generation, sc.rel_type FROM sibling_children sc
-          UNION ALL
-          SELECT gc.id, gc.name_full, sc.generation, 'grandchild' as rel_type
-          FROM sibling_children sc
-          JOIN families f ON (f.husband_id = sc.id OR f.wife_id = sc.id)
-          JOIN children c ON c.family_id = f.id
-          JOIN people gc ON gc.id = c.person_id
-          WHERE sc.rel_type = 'child'
+          WHERE sd.desc_gen < 6 AND NOT child.id = ANY(sd.path)
         ),
         all_relatives AS (
-          SELECT sg.id, sg.name_full, sg.generation FROM sibling_grandchildren sg
+          -- Combine: ancestors, sibling descendants, and their spouses
+          SELECT sd.id, sd.name_full, sd.ancestor_gen as generation FROM sibling_descendants sd
           UNION
           SELECT a.id, a.name_full, a.generation FROM ancestry a
           UNION
-          SELECT spouse.id, spouse.name_full, sg.generation
-          FROM sibling_grandchildren sg
-          JOIN families f ON (f.husband_id = sg.id OR f.wife_id = sg.id)
-          JOIN people spouse ON (spouse.id = f.husband_id OR spouse.id = f.wife_id) AND spouse.id != sg.id
+          SELECT spouse.id, spouse.name_full, sd.ancestor_gen
+          FROM sibling_descendants sd
+          JOIN families f ON (f.husband_id = sd.id OR f.wife_id = sd.id)
+          JOIN people spouse ON (spouse.id = f.husband_id OR spouse.id = f.wife_id) AND spouse.id != sd.id
         )
         SELECT DISTINCT ar.id, ar.name_full, ar.generation,
                p.*, COALESCE(p.notes, p.description) as description

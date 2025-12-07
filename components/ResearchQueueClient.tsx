@@ -1,9 +1,8 @@
 'use client';
 
 import Link from 'next/link';
-import { useState } from 'react';
-import { useMutation } from '@apollo/client/react';
-import { UPDATE_RESEARCH_PRIORITY, UPDATE_RESEARCH_STATUS } from '@/lib/graphql/queries';
+import { useQuery, useMutation } from '@apollo/client/react';
+import { GET_RESEARCH_QUEUE, UPDATE_RESEARCH_PRIORITY, UPDATE_RESEARCH_STATUS } from '@/lib/graphql/queries';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui';
 
 const STATUS_LABELS: Record<string, { label: string; color: string }> = {
@@ -26,30 +25,43 @@ interface ResearchPerson {
   last_researched?: string | null;
 }
 
-interface Props {
-  initialQueue: ResearchPerson[];
-}
-
-export default function ResearchQueueClient({ initialQueue }: Props) {
-  const [queue, setQueue] = useState(initialQueue);
+export default function ResearchQueueClient() {
+  const { data, loading, error } = useQuery<{ researchQueue: ResearchPerson[] }>(GET_RESEARCH_QUEUE, {
+    variables: { limit: 100 },
+  });
   const [updatePriority] = useMutation(UPDATE_RESEARCH_PRIORITY);
   const [updateStatus] = useMutation(UPDATE_RESEARCH_STATUS);
 
-  const handlePriorityChange = async (personId: string, priority: number) => {
-    // Update without reordering - keeps the person in place while editing
-    setQueue(prev => prev.map(p =>
-      p.id === personId ? { ...p, research_priority: priority } : p
-    ));
+  const queue = data?.researchQueue || [];
 
-    await updatePriority({ variables: { personId, priority } });
+  if (loading) {
+    return (
+      <div className="max-w-6xl mx-auto">
+        <div className="card p-6 text-center text-gray-500">Loading research queue...</div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="max-w-6xl mx-auto">
+        <div className="card p-6 text-center text-red-500">Error loading research queue: {error.message}</div>
+      </div>
+    );
+  }
+
+  const handlePriorityChange = async (personId: string, priority: number) => {
+    await updatePriority({
+      variables: { personId, priority },
+      refetchQueries: [{ query: GET_RESEARCH_QUEUE, variables: { limit: 100 } }],
+    });
   };
 
   const handleStatusChange = async (personId: string, status: string) => {
-    setQueue(prev => prev.map(p => 
-      p.id === personId ? { ...p, research_status: status } : p
-    ));
-    
-    await updateStatus({ variables: { personId, status } });
+    await updateStatus({
+      variables: { personId, status },
+      refetchQueries: [{ query: GET_RESEARCH_QUEUE, variables: { limit: 100 } }],
+    });
   };
 
   return (

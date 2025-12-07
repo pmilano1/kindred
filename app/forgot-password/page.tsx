@@ -2,7 +2,6 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
-import LoadingSpinner from '@/components/LoadingSpinner';
 import { Button } from '@/components/ui';
 
 export default function ForgotPasswordPage() {

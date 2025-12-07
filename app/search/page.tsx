@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, Suspense } from 'react';
+import { useState, useEffect, useRef, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { useLazyQuery } from '@apollo/client/react';
 import { Search as SearchIcon } from 'lucide-react';
@@ -20,16 +20,17 @@ function SearchContent() {
   const searchParams = useSearchParams();
   const initialQuery = searchParams.get('q') || '';
   const [query, setQuery] = useState(initialQuery);
-  const [searched, setSearched] = useState(false);
+  const [searched, setSearched] = useState(!!initialQuery);
   const [executeSearch, { data, loading }] = useLazyQuery<SearchResult>(SEARCH_PEOPLE);
+  const hasAutoSearched = useRef(false);
 
   const results = data?.search?.edges?.map(e => e.node) || [];
 
   // Auto-search if query param provided
   useEffect(() => {
-    if (initialQuery) {
+    if (initialQuery && !hasAutoSearched.current) {
+      hasAutoSearched.current = true;
       executeSearch({ variables: { query: initialQuery, first: 100 } });
-      setSearched(true);
     }
   }, [initialQuery, executeSearch]);
 

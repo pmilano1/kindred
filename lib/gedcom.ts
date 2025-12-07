@@ -224,10 +224,8 @@ export function parseGedcom(content: string): GedcomParseResult {
   let currentPerson: Partial<ParsedPerson> | null = null;
   let currentFamily: Partial<ParsedFamily> | null = null;
   let currentEvent: { type: string; date?: string; place?: string } | null = null;
-  let lineNum = 0;
 
   for (const line of lines) {
-    lineNum++;
     const parsed = parseLine(line);
     if (!parsed) continue;
 

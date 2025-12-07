@@ -7,7 +7,7 @@ import type { Person } from '@/lib/types';
 
 export const dynamic = 'force-dynamic';
 
-interface ResearchPerson extends Pick<Person, 'id' | 'name_full' | 'birth_year' | 'death_year' | 'research_status' | 'research_priority' | 'last_researched'> {}
+type ResearchPerson = Pick<Person, 'id' | 'name_full' | 'birth_year' | 'death_year' | 'research_status' | 'research_priority' | 'last_researched'>;
 
 export default async function ResearchQueuePage() {
   let researchQueue: ResearchPerson[] = [];

@@ -4,7 +4,7 @@ import { useState, useEffect, ReactNode } from 'react';
 import Link from 'next/link';
 import ResearchPanel from './ResearchPanel';
 import { Button } from '@/components/ui';
-import { ChevronLeft, ChevronRight, BookOpen } from 'lucide-react';
+import { ChevronRight, BookOpen } from 'lucide-react';
 
 interface PersonSplitLayoutProps {
   personId: string;

@@ -1,6 +1,6 @@
 'use client';
 
-import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import { createContext, useContext, useState, useSyncExternalStore, ReactNode } from 'react';
 
 interface SidebarContextType {
   isCollapsed: boolean;
@@ -10,18 +10,25 @@ interface SidebarContextType {
 
 const SidebarContext = createContext<SidebarContextType | undefined>(undefined);
 
-export function SidebarProvider({ children }: { children: ReactNode }) {
-  const [isCollapsed, setIsCollapsed] = useState(false);
-  const [isInitialized, setIsInitialized] = useState(false);
+// LocalStorage subscription for sidebar state
+const STORAGE_KEY = 'sidebar-collapsed';
 
-  // Initialize from localStorage on mount
-  useEffect(() => {
-    const stored = localStorage.getItem('sidebar-collapsed');
-    if (stored !== null) {
-      setIsCollapsed(stored === 'true');
-    }
-    setIsInitialized(true);
-  }, []);
+function getSnapshot(): boolean {
+  return localStorage.getItem(STORAGE_KEY) === 'true';
+}
+
+function getServerSnapshot(): boolean {
+  return false;
+}
+
+function subscribe(callback: () => void): () => void {
+  window.addEventListener('storage', callback);
+  return () => window.removeEventListener('storage', callback);
+}
+
+export function SidebarProvider({ children }: { children: ReactNode }) {
+  const storedCollapsed = useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot);
+  const [isCollapsed, setIsCollapsed] = useState(storedCollapsed);
 
   const toggleCollapse = () => {
     const newState = !isCollapsed;
@@ -33,11 +40,6 @@ export function SidebarProvider({ children }: { children: ReactNode }) {
     setIsCollapsed(collapsed);
     localStorage.setItem('sidebar-collapsed', String(collapsed));
   };
-
-  // Don't render children until initialized to prevent hydration mismatch
-  if (!isInitialized) {
-    return null;
-  }
 
   return (
     <SidebarContext.Provider value={{ isCollapsed, toggleCollapse, setCollapsed }}>

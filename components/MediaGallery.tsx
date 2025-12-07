@@ -2,7 +2,8 @@
 
 import { useState, useRef } from 'react';
 import { useMutation } from '@apollo/client/react';
-import { Image, FileText, Upload, Trash2, X } from 'lucide-react';
+import NextImage from 'next/image';
+import { Image as ImageIcon, FileText, Upload, Trash2, X } from 'lucide-react';
 import { Button } from '@/components/ui';
 import { UPLOAD_MEDIA, DELETE_MEDIA } from '@/lib/graphql/queries';
 
@@ -86,7 +87,7 @@ export default function MediaGallery({ personId, media, canEdit, onMediaChange }
   };
 
   const getMediaIcon = (mimeType: string) => {
-    if (mimeType.startsWith('image/')) return <Image className="w-8 h-8" />;
+    if (mimeType.startsWith('image/')) return <ImageIcon className="w-8 h-8" />;
     return <FileText className="w-8 h-8" />;
   };
 
@@ -129,10 +130,13 @@ export default function MediaGallery({ personId, media, canEdit, onMediaChange }
               onClick={() => setSelectedMedia(item)}
             >
               {item.mime_type.startsWith('image/') ? (
-                <img
+                <NextImage
                   src={getMediaUrl(item)}
                   alt={item.caption || item.original_filename}
+                  width={200}
+                  height={128}
                   className="w-full h-32 object-cover"
+                  unoptimized
                 />
               ) : (
                 <div className="w-full h-32 flex items-center justify-center bg-gray-100">
@@ -160,9 +164,16 @@ export default function MediaGallery({ personId, media, canEdit, onMediaChange }
               <X className="w-8 h-8" />
             </Button>
             {selectedMedia.mime_type.startsWith('image/') ? (
-              <img src={getMediaUrl(selectedMedia)} alt={selectedMedia.caption || ''} className="max-h-[80vh] rounded-lg" />
+              <NextImage
+                src={getMediaUrl(selectedMedia)}
+                alt={selectedMedia.caption || selectedMedia.original_filename}
+                width={800}
+                height={600}
+                className="max-h-[80vh] w-auto rounded-lg"
+                unoptimized
+              />
             ) : (
-              <iframe src={getMediaUrl(selectedMedia)} className="w-[80vw] h-[80vh] bg-white rounded-lg" />
+              <iframe src={getMediaUrl(selectedMedia)} title={selectedMedia.original_filename} className="w-[80vw] h-[80vh] bg-white rounded-lg" />
             )}
             <div className="mt-2 text-white text-center">
               <p>{selectedMedia.caption || selectedMedia.original_filename}</p>

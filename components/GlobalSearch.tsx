@@ -17,27 +17,28 @@ interface SearchResult {
 export default function GlobalSearch() {
   const router = useRouter();
   const [query, setQuery] = useState('');
-  const [isOpen, setIsOpen] = useState(false);
+  const [isFocused, setIsFocused] = useState(false);
   const [executeSearch, { data, loading }] = useLazyQuery<SearchResult>(SEARCH_PEOPLE);
   const inputRef = useRef<HTMLInputElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
   const results = data?.search?.edges?.map(e => e.node) || [];
 
+  // Search when query changes
   useEffect(() => {
     if (query.length >= 2) {
       executeSearch({ variables: { query, first: 8 } });
-      setIsOpen(true);
-    } else {
-      setIsOpen(false);
     }
   }, [query, executeSearch]);
+
+  // Dropdown open state derived from query length and focus
+  const isOpen = query.length >= 2 && isFocused;
 
   // Close on click outside
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
       if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
-        setIsOpen(false);
+        setIsFocused(false);
       }
     };
     document.addEventListener('mousedown', handleClickOutside);
@@ -46,14 +47,14 @@ export default function GlobalSearch() {
 
   const handleSelect = (personId: string) => {
     setQuery('');
-    setIsOpen(false);
+    setIsFocused(false);
     router.push(`/person/${personId}`);
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Escape') {
       setQuery('');
-      setIsOpen(false);
+      inputRef.current?.blur();
     }
   };
 
@@ -66,6 +67,7 @@ export default function GlobalSearch() {
           type="text"
           value={query}
           onChange={(e) => setQuery(e.target.value)}
+          onFocus={() => setIsFocused(true)}
           onKeyDown={handleKeyDown}
           placeholder="Search people..."
           className="bg-transparent text-white placeholder-white/50 px-3 py-2 w-48 focus:w-64 transition-all outline-none text-sm"

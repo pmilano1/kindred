@@ -204,7 +204,7 @@ export default function CreatePersonModal({ isOpen, onClose, onSuccess }: Create
           {/* Actions */}
           <div className="flex justify-end gap-3 pt-4 border-t">
             <Button type="button" variant="secondary" onClick={() => { resetForm(); onClose(); }}>Cancel</Button>
-            <Button type="submit" loading={loading} className="bg-green-600 hover:bg-green-700">Create Person</Button>
+            <Button type="submit" variant="primary" loading={loading}>Create Person</Button>
           </div>
         </form>
       </div>

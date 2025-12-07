@@ -109,8 +109,8 @@ function AcceptInviteContent() {
                 className="bg-white/10 border-white/20 text-white placeholder-slate-400 focus:ring-green-500"
                 placeholder="••••••••" required minLength={8} />
             </div>
-            <Button type="submit" loading={isLoading}
-              className="w-full bg-green-600 hover:bg-green-700 disabled:bg-green-800 text-white font-semibold py-3">
+            <Button type="submit" variant="primary" loading={isLoading}
+              className="w-full font-semibold py-3">
               Create Account
             </Button>
             <div className="flex items-center my-4">

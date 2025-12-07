@@ -124,7 +124,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
       // No user and no invitation - deny access
       return false;
     },
-    async session({ session, token }) {
+    async session({ session }) {
       if (session.user?.email) {
         const userResult = await pool.query(
           'SELECT id, role FROM users WHERE email = $1',

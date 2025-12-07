@@ -22,7 +22,7 @@ export default function PeoplePage() {
     variables: { limit: 10000 },
   });
 
-  const people = data?.peopleList || [];
+  const people = useMemo(() => data?.peopleList || [], [data?.peopleList]);
   const [search, setSearch] = useState('');
   const [filter, setFilter] = useState<'all' | 'living' | 'male' | 'female'>('all');
   const [displayCount, setDisplayCount] = useState(PAGE_SIZE);

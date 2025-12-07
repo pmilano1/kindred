@@ -3,9 +3,6 @@
  * Tests core business logic with mocked database
  */
 
-// Create mock function before jest.mock calls
-const mockQuery = jest.fn();
-
 // Mock the database pool - use factory function
 jest.mock('@/lib/pool', () => {
   return {
@@ -18,6 +15,7 @@ jest.mock('@/lib/pool', () => {
 // Mock email functions
 jest.mock('@/lib/email', () => ({
   sendInviteEmail: jest.fn().mockResolvedValue(true),
+  sendPasswordResetEmail: jest.fn().mockResolvedValue(true),
   verifyEmailForSandbox: jest.fn().mockResolvedValue(true),
 }));
 
@@ -480,7 +478,7 @@ describe('GraphQL Resolvers', () => {
       mockedQuery.mockResolvedValueOnce({ rows: [mockPerson] }); // SELECT
 
       const context = { user: { id: 'user-1', email: 'test@example.com', role: 'editor' } };
-      const result = await resolvers.Mutation.updateResearchStatus(
+      await resolvers.Mutation.updateResearchStatus(
         null,
         { personId: 'p1', status: 'verified' },
         context

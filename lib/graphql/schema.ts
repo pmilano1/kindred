@@ -473,12 +473,22 @@ export const typeDefs = `#graphql
     requestPasswordReset(email: String!): Boolean!
     resetPassword(token: String!, newPassword: String!): AuthResult!
     changePassword(currentPassword: String!, newPassword: String!): Boolean!
+
+    # GEDCOM import (requires admin role)
+    importGedcom(content: String!): GedcomImportResult!
   }
 
   type AuthResult {
     success: Boolean!
     message: String
     userId: String
+  }
+
+  type GedcomImportResult {
+    peopleImported: Int!
+    familiesImported: Int!
+    errors: [String!]!
+    warnings: [String!]!
   }
 `;
 

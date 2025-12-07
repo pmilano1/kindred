@@ -13,7 +13,7 @@ import {
 import { sendInviteEmail, verifyEmailForSandbox } from '../email';
 import { Loaders } from './dataloaders';
 import { getSettings, clearSettingsCache, SiteSettings } from '../settings';
-import { generateGedcom, GedcomPerson, GedcomFamily, GedcomSource } from '../gedcom';
+import { generateGedcom, GedcomPerson, GedcomFamily, GedcomSource, parseGedcom, ParsedPerson, ParsedFamily } from '../gedcom';
 
 // Strip accents from a string for accent-insensitive search
 function stripAccents(str: string): string {
@@ -1275,6 +1275,65 @@ export const resolvers = {
       await pool.query('UPDATE users SET password_hash = $1 WHERE id = $2', [passwordHash, user.id]);
 
       return true;
+    },
+
+    // GEDCOM import
+    importGedcom: async (_: unknown, { content }: { content: string }, context: Context) => {
+      requireAuth(context, 'admin');
+
+      const result = parseGedcom(content);
+      const errors: string[] = [...result.errors];
+      const warnings: string[] = [...result.warnings];
+
+      // Map GEDCOM xrefs to new database IDs
+      const xrefToId = new Map<string, string>();
+
+      // Import people
+      let peopleImported = 0;
+      for (const person of result.people) {
+        try {
+          const id = crypto.randomBytes(9).toString('base64').replace(/[+/=]/g, '').substring(0, 12);
+          xrefToId.set(person.xref, id);
+
+          await pool.query(`
+            INSERT INTO people (id, name_full, name_given, name_surname, sex, birth_date, birth_place, death_date, death_place, burial_date, burial_place, christening_date, christening_place)
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
+          `, [id, person.name_full, person.name_given, person.name_surname, person.sex, person.birth_date, person.birth_place, person.death_date, person.death_place, person.burial_date, person.burial_place, person.christening_date, person.christening_place]);
+          peopleImported++;
+        } catch (err) {
+          errors.push(`Failed to import person ${person.name_full}: ${(err as Error).message}`);
+        }
+      }
+
+      // Import families
+      let familiesImported = 0;
+      for (const family of result.families) {
+        try {
+          const id = crypto.randomBytes(9).toString('base64').replace(/[+/=]/g, '').substring(0, 12);
+          const husbandId = family.husband_xref ? xrefToId.get(family.husband_xref) : null;
+          const wifeId = family.wife_xref ? xrefToId.get(family.wife_xref) : null;
+
+          await pool.query(`
+            INSERT INTO families (id, husband_id, wife_id, marriage_date, marriage_place)
+            VALUES ($1, $2, $3, $4, $5)
+          `, [id, husbandId, wifeId, family.marriage_date, family.marriage_place]);
+
+          // Add children
+          for (const childXref of family.children_xrefs) {
+            const childId = xrefToId.get(childXref);
+            if (childId) {
+              await pool.query('INSERT INTO children (family_id, person_id) VALUES ($1, $2)', [id, childId]);
+            } else {
+              warnings.push(`Child ${childXref} not found for family`);
+            }
+          }
+          familiesImported++;
+        } catch (err) {
+          errors.push(`Failed to import family: ${(err as Error).message}`);
+        }
+      }
+
+      return { peopleImported, familiesImported, errors, warnings };
     },
   },
 

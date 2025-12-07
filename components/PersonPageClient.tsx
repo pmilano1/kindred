@@ -9,6 +9,7 @@ import { GET_PERSON, UPDATE_NOTABLE_STATUS } from '@/lib/graphql/queries';
 import ResearchPanel from '@/components/ResearchPanel';
 import TreeLink from '@/components/TreeLink';
 import Hero from '@/components/Hero';
+import EditPersonModal from '@/components/EditPersonModal';
 import { Person, Family, LifeEvent, Fact } from '@/lib/types';
 
 interface PersonData {
@@ -39,6 +40,7 @@ export default function PersonPageClient({ personId }: Props) {
   const [updateNotable] = useMutation(UPDATE_NOTABLE_STATUS);
   const [notableEditing, setNotableEditing] = useState(false);
   const [notableDesc, setNotableDesc] = useState('');
+  const [showEditModal, setShowEditModal] = useState(false);
 
   const canEdit = session?.user?.role === 'admin' || session?.user?.role === 'editor';
 
@@ -156,17 +158,26 @@ export default function PersonPageClient({ personId }: Props) {
             </span>
             {person.living && <span className="badge badge-living">Living</span>}
             {canEdit && (
-              <button
-                onClick={handleToggleNotable}
-                className={`badge cursor-pointer transition-colors ${
-                  person.is_notable
-                    ? 'bg-amber-100 text-amber-800 border border-amber-300 hover:bg-amber-200'
-                    : 'bg-gray-100 text-gray-600 border border-gray-300 hover:bg-gray-200'
-                }`}
-                title={person.is_notable ? 'Click to remove notable status' : 'Click to mark as notable'}
-              >
-                {person.is_notable ? '⭐ Notable' : '☆ Mark Notable'}
-              </button>
+              <>
+                <button
+                  onClick={handleToggleNotable}
+                  className={`badge cursor-pointer transition-colors ${
+                    person.is_notable
+                      ? 'bg-amber-100 text-amber-800 border border-amber-300 hover:bg-amber-200'
+                      : 'bg-gray-100 text-gray-600 border border-gray-300 hover:bg-gray-200'
+                  }`}
+                  title={person.is_notable ? 'Click to remove notable status' : 'Click to mark as notable'}
+                >
+                  {person.is_notable ? '⭐ Notable' : '☆ Mark Notable'}
+                </button>
+                <button
+                  onClick={() => setShowEditModal(true)}
+                  className="badge cursor-pointer transition-colors bg-blue-100 text-blue-800 border border-blue-300 hover:bg-blue-200"
+                  title="Edit person details"
+                >
+                  ✏️ Edit
+                </button>
+              </>
             )}
           </div>
 
@@ -392,6 +403,13 @@ export default function PersonPageClient({ personId }: Props) {
         </div>
         </div>
       </div>
+
+      {/* Edit Person Modal */}
+      <EditPersonModal
+        person={person}
+        isOpen={showEditModal}
+        onClose={() => setShowEditModal(false)}
+      />
     </>
   );
 }

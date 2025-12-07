@@ -4,8 +4,8 @@ import { useState, useEffect, useCallback, useMemo, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import dynamic from 'next/dynamic';
 import { useQuery } from '@apollo/client/react';
-import { TreeDeciduous } from 'lucide-react';
-import { PageHeader } from '@/components/ui';
+import { TreeDeciduous, ArrowUp, ArrowDown } from 'lucide-react';
+import { PageHeader, Button } from '@/components/ui';
 import LoadingSpinner from '@/components/LoadingSpinner';
 import { Person } from '@/lib/types';
 import { GET_PEOPLE_LIST } from '@/lib/graphql/queries';
@@ -105,8 +105,20 @@ function TreePageContent() {
               ))}
             </optgroup>
           </select>
-          <button className={`tree-btn ${showAncestors ? 'active' : ''}`} onClick={() => handleViewChange(true)}>⬆️ Ancestors</button>
-          <button className={`tree-btn ${!showAncestors ? 'active' : ''}`} onClick={() => handleViewChange(false)}>⬇️ Descendants</button>
+          <Button
+            variant={showAncestors ? 'primary' : 'secondary'}
+            onClick={() => handleViewChange(true)}
+            icon={ArrowUp}
+          >
+            Ancestors
+          </Button>
+          <Button
+            variant={!showAncestors ? 'primary' : 'secondary'}
+            onClick={() => handleViewChange(false)}
+            icon={ArrowDown}
+          >
+            Descendants
+          </Button>
         </div>
 
         {loading ? (

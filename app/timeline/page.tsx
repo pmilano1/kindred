@@ -4,7 +4,7 @@ import { useState, useMemo } from 'react';
 import Link from 'next/link';
 import { useQuery } from '@apollo/client/react';
 import { Calendar } from 'lucide-react';
-import { PageHeader } from '@/components/ui';
+import { PageHeader, Button } from '@/components/ui';
 import { Person } from '@/lib/types';
 import { GET_TIMELINE } from '@/lib/graphql/queries';
 
@@ -43,13 +43,13 @@ export default function TimelinePage() {
       <div className="content-wrapper">
         <div className="flex gap-2 mb-6">
           {(['all', 'births', 'deaths'] as const).map(f => (
-            <button
+            <Button
               key={f}
               onClick={() => setFilter(f)}
-              className={`tree-btn ${filter === f ? '' : 'opacity-60'}`}
+              variant={filter === f ? 'primary' : 'secondary'}
             >
               {f === 'all' ? 'All Events' : f === 'births' ? '🎂 Births' : '✝️ Deaths'}
-            </button>
+            </Button>
           ))}
         </div>
 

@@ -5,7 +5,9 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { useQuery, useMutation } from '@apollo/client/react';
 import { useSession } from 'next-auth/react';
+import { ArrowLeft } from 'lucide-react';
 import { GET_PERSON, UPDATE_NOTABLE_STATUS } from '@/lib/graphql/queries';
+import { ButtonLink } from '@/components/ui';
 import ResearchPanel from '@/components/ResearchPanel';
 import TreeLink from '@/components/TreeLink';
 import Hero from '@/components/Hero';
@@ -338,9 +340,9 @@ export default function PersonPageClient({ personId }: Props) {
         {/* Sources & Research */}
         <SourcesEditor personId={personId} sources={person.sources || []} canEdit={canEdit} />
 
-        <Link href="/people" className="inline-block tree-btn">
-          ← Back to People
-        </Link>
+        <ButtonLink href="/people" variant="secondary" icon={ArrowLeft}>
+          Back to People
+        </ButtonLink>
       </div>
 
         {/* Sidebar with Research Panel */}

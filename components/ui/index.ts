@@ -1,6 +1,9 @@
 export { default as Button } from './Button';
 export type { ButtonVariant, ButtonSize } from './Button';
 
+export { default as ButtonLink } from './ButtonLink';
+export type { ButtonLinkVariant, ButtonLinkSize } from './ButtonLink';
+
 export { default as Badge } from './Badge';
 export type { BadgeVariant } from './Badge';
 

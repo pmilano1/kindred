@@ -2,7 +2,9 @@
 
 import { useState } from 'react';
 import { useQuery, useMutation } from '@apollo/client/react';
+import { Plus, X, Save } from 'lucide-react';
 import { GET_PERSON_SOURCES, ADD_SOURCE, UPDATE_RESEARCH_STATUS, UPDATE_RESEARCH_PRIORITY } from '@/lib/graphql/queries';
+import { Button } from '@/components/ui';
 import { Source, ResearchStatus, ResearchActionType, ResearchSource, ResearchConfidence } from '@/lib/types';
 
 interface ResearchPanelProps {
@@ -165,22 +167,26 @@ export default function ResearchPanel({ personId, compact = false }: ResearchPan
       {!compact && (
         <div className="flex justify-between items-center mb-4">
           <h3 className="text-lg font-semibold">📚 Research Notes</h3>
-          <button
+          <Button
             onClick={() => setShowForm(!showForm)}
-            className="tree-btn text-sm"
+            variant={showForm ? 'ghost' : 'secondary'}
+            size="sm"
+            icon={showForm ? <X className="w-4 h-4" /> : <Plus className="w-4 h-4" />}
           >
-            {showForm ? 'Cancel' : '+ Add Note'}
-          </button>
+            {showForm ? 'Cancel' : 'Add Note'}
+          </Button>
         </div>
       )}
       {compact && (
         <div className="flex justify-end mb-2">
-          <button
+          <Button
             onClick={() => setShowForm(!showForm)}
-            className="tree-btn text-xs py-1 px-2"
+            variant={showForm ? 'ghost' : 'secondary'}
+            size="sm"
+            icon={showForm ? <X className="w-4 h-4" /> : <Plus className="w-4 h-4" />}
           >
-            {showForm ? 'Cancel' : '+ Add'}
-          </button>
+            {showForm ? 'Cancel' : 'Add'}
+          </Button>
         </div>
       )}
 
@@ -295,13 +301,15 @@ export default function ResearchPanel({ personId, compact = false }: ResearchPan
               />
             </div>
           </div>
-          <button
+          <Button
             type="submit"
             disabled={submitting || !content.trim()}
-            className="tree-btn w-full"
+            loading={submitting}
+            icon={<Save className="w-4 h-4" />}
+            className="w-full"
           >
-            {submitting ? 'Saving...' : 'Save Note'}
-          </button>
+            Save Note
+          </Button>
         </form>
       )}
 

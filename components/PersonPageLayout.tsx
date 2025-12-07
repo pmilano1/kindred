@@ -1,7 +1,8 @@
 'use client';
 
 import { useState, useEffect, ReactNode } from 'react';
-import Link from 'next/link';
+import { TreeDeciduous, Users } from 'lucide-react';
+import { ButtonLink } from '@/components/ui';
 import ResearchPanel from './ResearchPanel';
 
 interface PersonPageLayoutProps {
@@ -37,18 +38,22 @@ export default function PersonPageLayout({ personId, personName, children }: Per
       >
         {/* Tree View Links */}
         <div className="flex gap-2 mb-4">
-          <Link 
+          <ButtonLink
             href={`/tree?person=${personId}&view=ancestors`}
-            className="tree-btn text-sm flex items-center gap-1"
+            variant="secondary"
+            size="sm"
+            icon={TreeDeciduous}
           >
-            🌳 Ancestors
-          </Link>
-          <Link 
+            Ancestors
+          </ButtonLink>
+          <ButtonLink
             href={`/tree?person=${personId}&view=descendants`}
-            className="tree-btn text-sm flex items-center gap-1"
+            variant="secondary"
+            size="sm"
+            icon={Users}
           >
-            👨‍👩‍👧‍👦 Descendants
-          </Link>
+            Descendants
+          </ButtonLink>
         </div>
 
         {children}

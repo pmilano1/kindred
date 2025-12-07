@@ -747,5 +747,109 @@ describe('GraphQL Resolvers', () => {
       expect(result.weekly_digest).toBe(true);
     });
   });
+
+  describe('Mutation.createLocalUser', () => {
+    const adminContext = {
+      user: { id: 'admin-1', email: 'admin@test.com', role: 'admin' }
+    };
+    const editorContext = {
+      user: { id: 'editor-1', email: 'editor@test.com', role: 'editor' }
+    };
+
+    it('creates a new local user when admin', async () => {
+      mockedQuery.mockReset();
+      // No existing user
+      mockedQuery.mockResolvedValueOnce({ rows: [] });
+      // Insert user
+      mockedQuery.mockResolvedValueOnce({
+        rows: [{ id: 'new-user-id', email: 'newuser@test.com', name: 'New User', role: 'viewer', created_at: new Date() }]
+      });
+
+      const result = await resolvers.Mutation.createLocalUser(
+        null,
+        { email: 'newuser@test.com', name: 'New User', role: 'viewer', password: 'SecurePass123!' },
+        adminContext
+      );
+
+      expect(result.email).toBe('newuser@test.com');
+      expect(result.name).toBe('New User');
+      expect(result.role).toBe('viewer');
+      expect(mockedQuery).toHaveBeenCalledWith(
+        expect.stringContaining('INSERT INTO users'),
+        expect.any(Array)
+      );
+    });
+
+    it('throws when user already exists', async () => {
+      mockedQuery.mockReset();
+      // Existing user found
+      mockedQuery.mockResolvedValueOnce({ rows: [{ id: 'existing-id' }] });
+
+      await expect(
+        resolvers.Mutation.createLocalUser(
+          null,
+          { email: 'existing@test.com', name: 'Existing', role: 'viewer', password: 'Pass123!' },
+          adminContext
+        )
+      ).rejects.toThrow('User with this email already exists');
+    });
+
+    it('throws when role is invalid', async () => {
+      mockedQuery.mockReset();
+      // No existing user
+      mockedQuery.mockResolvedValueOnce({ rows: [] });
+
+      await expect(
+        resolvers.Mutation.createLocalUser(
+          null,
+          { email: 'new@test.com', name: 'New', role: 'superadmin', password: 'Pass123!' },
+          adminContext
+        )
+      ).rejects.toThrow('Invalid role');
+    });
+
+    it('throws when not admin', async () => {
+      await expect(
+        resolvers.Mutation.createLocalUser(
+          null,
+          { email: 'new@test.com', name: 'New', role: 'viewer', password: 'Pass123!' },
+          editorContext
+        )
+      ).rejects.toThrow('Admin access required');
+    });
+
+    it('throws when not authenticated', async () => {
+      await expect(
+        resolvers.Mutation.createLocalUser(
+          null,
+          { email: 'new@test.com', name: 'New', role: 'viewer', password: 'Pass123!' },
+          {}
+        )
+      ).rejects.toThrow('Authentication required');
+    });
+
+    it('creates user with requirePasswordChange flag', async () => {
+      mockedQuery.mockReset();
+      // No existing user
+      mockedQuery.mockResolvedValueOnce({ rows: [] });
+      // Insert user
+      mockedQuery.mockResolvedValueOnce({
+        rows: [{ id: 'new-id', email: 'temp@test.com', name: 'Temp User', role: 'viewer', created_at: new Date() }]
+      });
+
+      const result = await resolvers.Mutation.createLocalUser(
+        null,
+        { email: 'temp@test.com', name: 'Temp User', role: 'viewer', password: 'TempPass!', requirePasswordChange: true },
+        adminContext
+      );
+
+      expect(result.email).toBe('temp@test.com');
+      // Verify the INSERT was called with requirePasswordChange = true
+      expect(mockedQuery).toHaveBeenCalledWith(
+        expect.stringContaining('require_password_change'),
+        expect.arrayContaining([true])
+      );
+    });
+  });
 });
 

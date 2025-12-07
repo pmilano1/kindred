@@ -5,13 +5,14 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { useQuery, useMutation } from '@apollo/client/react';
 import { useSession } from 'next-auth/react';
-import { ArrowLeft, Star, Pencil } from 'lucide-react';
+import { ArrowLeft, Star, Pencil, Trash2 } from 'lucide-react';
 import { GET_PERSON, UPDATE_NOTABLE_STATUS } from '@/lib/graphql/queries';
 import { Button, ButtonLink, Textarea } from '@/components/ui';
 import ResearchPanel from '@/components/ResearchPanel';
 import TreeLink from '@/components/TreeLink';
 import Hero from '@/components/Hero';
 import EditPersonModal from '@/components/EditPersonModal';
+import DeletePersonDialog from '@/components/DeletePersonDialog';
 import LifeEventsEditor from '@/components/LifeEventsEditor';
 import FactsEditor from '@/components/FactsEditor';
 import FamilyEditor from '@/components/FamilyEditor';
@@ -48,8 +49,10 @@ export default function PersonPageClient({ personId }: Props) {
   const [notableEditing, setNotableEditing] = useState(false);
   const [notableDesc, setNotableDesc] = useState('');
   const [showEditModal, setShowEditModal] = useState(false);
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
 
   const canEdit = session?.user?.role === 'admin' || session?.user?.role === 'editor';
+  const isAdmin = session?.user?.role === 'admin';
 
   const handleToggleNotable = async () => {
     const person = data?.person;
@@ -178,6 +181,18 @@ export default function PersonPageClient({ personId }: Props) {
                 >
                   Edit
                 </Button>
+                {isAdmin && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setShowDeleteDialog(true)}
+                    className="bg-red-100 text-red-800 border border-red-300 hover:bg-red-200"
+                    title="Delete person (admin only)"
+                    icon={<Trash2 className="w-3 h-3" />}
+                  >
+                    Delete
+                  </Button>
+                )}
               </>
             )}
           </div>
@@ -352,6 +367,15 @@ export default function PersonPageClient({ personId }: Props) {
         isOpen={showEditModal}
         onClose={() => setShowEditModal(false)}
       />
+
+      {/* Delete Person Dialog (admin only) */}
+      {isAdmin && (
+        <DeletePersonDialog
+          person={person}
+          isOpen={showDeleteDialog}
+          onClose={() => setShowDeleteDialog(false)}
+        />
+      )}
     </>
   );
 }

@@ -72,7 +72,7 @@ export default function LifeEventsEditor({ personId, lifeEvents, canEdit }: Prop
   };
 
   return (
-    <div className="card p-6 mb-6">
+    <div className="card p-6 h-fit">
       <div className="flex justify-between items-center mb-4">
         <h3 className="section-title">📅 Life Events</h3>
         {canEdit && !showForm && (

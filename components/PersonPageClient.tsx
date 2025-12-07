@@ -277,7 +277,45 @@ export default function PersonPageClient({ personId }: Props) {
           )}
         </div>
 
-        {/* Spouse & Children - Editable */}
+        {/* Two-column grid for family sections on large screens */}
+        <div className="grid grid-cols-1 xl:grid-cols-2 gap-6 mb-6">
+          {/* Parents */}
+          {person.parents.length > 0 && (
+            <div className="card p-6">
+              <h3 className="section-title">Parents</h3>
+              <div className="grid gap-4">
+                {person.parents.map(parent => (
+                  <div key={parent.id} className={`p-4 rounded-lg border-l-4 ${parent.sex === 'F' ? 'border-l-pink-400 bg-pink-50' : 'border-l-blue-400 bg-blue-50'} hover:shadow-md transition flex justify-between items-start`}>
+                    <Link href={`/person/${parent.id}`} className="flex-1">
+                      <p className="font-semibold">{parent.name_full}</p>
+                      <p className="text-sm text-gray-500">{parent.birth_year || '?'} – {parent.death_year || (parent.living ? 'Living' : '?')}</p>
+                    </Link>
+                    <TreeLink personId={parent.id} />
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Siblings */}
+          {person.siblings.length > 0 && (
+            <div className="card p-6">
+              <h3 className="section-title">Siblings ({person.siblings.length})</h3>
+              <div className="grid gap-2">
+                {person.siblings.map(sibling => (
+                  <div key={sibling.id} className={`p-3 rounded border-l-4 ${sibling.sex === 'F' ? 'border-l-pink-300 bg-pink-50/50' : 'border-l-blue-300 bg-blue-50/50'} hover:shadow-sm transition text-sm flex justify-between items-center`}>
+                    <Link href={`/person/${sibling.id}`} className="flex-1">
+                      {sibling.name_full} {sibling.birth_year ? `(b. ${sibling.birth_year})` : ''}
+                    </Link>
+                    <TreeLink personId={sibling.id} className="text-sm" />
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Spouse & Children - Full width */}
         <FamilyEditor
           personId={personId}
           personSex={person.sex || 'M'}
@@ -285,45 +323,20 @@ export default function PersonPageClient({ personId }: Props) {
           canEdit={canEdit}
         />
 
-        {/* Parents */}
-        {person.parents.length > 0 && (
-          <div className="card p-6 mb-6">
-            <h3 className="section-title">Parents</h3>
-            <div className="grid md:grid-cols-2 gap-4">
-              {person.parents.map(parent => (
-                <div key={parent.id} className={`p-4 rounded-lg border-l-4 ${parent.sex === 'F' ? 'border-l-pink-400 bg-pink-50' : 'border-l-blue-400 bg-blue-50'} hover:shadow-md transition flex justify-between items-start`}>
-                  <Link href={`/person/${parent.id}`} className="flex-1">
-                    <p className="font-semibold">{parent.name_full}</p>
-                    <p className="text-sm text-gray-500">{parent.birth_year || '?'} – {parent.death_year || (parent.living ? 'Living' : '?')}</p>
-                  </Link>
-                  <TreeLink personId={parent.id} />
-                </div>
-              ))}
-            </div>
+        {/* Two-column grid for events and facts on large screens */}
+        <div className="grid grid-cols-1 xl:grid-cols-2 gap-6 mb-6">
+          {/* Life Events (residences, occupations, other events) */}
+          <div className="xl:col-span-1">
+            <LifeEventsEditor personId={personId} lifeEvents={person.lifeEvents} canEdit={canEdit} />
           </div>
-        )}
 
-        {/* Siblings */}
-        {person.siblings.length > 0 && (
-          <div className="card p-6 mb-6">
-            <h3 className="section-title">Siblings ({person.siblings.length})</h3>
-            <div className="grid md:grid-cols-2 gap-2">
-              {person.siblings.map(sibling => (
-                <div key={sibling.id} className={`p-3 rounded border-l-4 ${sibling.sex === 'F' ? 'border-l-pink-300 bg-pink-50/50' : 'border-l-blue-300 bg-blue-50/50'} hover:shadow-sm transition text-sm flex justify-between items-center`}>
-                  <Link href={`/person/${sibling.id}`} className="flex-1">
-                    {sibling.name_full} {sibling.birth_year ? `(b. ${sibling.birth_year})` : ''}
-                  </Link>
-                  <TreeLink personId={sibling.id} className="text-sm" />
-                </div>
-              ))}
-            </div>
+          {/* Facts */}
+          <div className="xl:col-span-1">
+            <FactsEditor personId={personId} facts={person.facts} canEdit={canEdit} />
           </div>
-        )}
+        </div>
 
-        {/* Life Events (residences, occupations, other events) */}
-        <LifeEventsEditor personId={personId} lifeEvents={person.lifeEvents} canEdit={canEdit} />
-
-        {/* Coat of Arms */}
+        {/* Coat of Arms - Full width */}
         {person.facts.filter(f => f.fact_type === 'coat_of_arms').length > 0 && (
           <div className="card p-6 mb-6 bg-gradient-to-r from-amber-50 to-yellow-50 border-2 border-amber-300">
             <h3 className="section-title">🛡️ Coat of Arms</h3>
@@ -345,13 +358,10 @@ export default function PersonPageClient({ personId }: Props) {
           </div>
         )}
 
-        {/* Facts */}
-        <FactsEditor personId={personId} facts={person.facts} canEdit={canEdit} />
-
-        {/* Media Gallery */}
+        {/* Media Gallery - Full width */}
         <MediaGallery personId={personId} media={person.media || []} canEdit={canEdit} />
 
-        {/* Sources & Research */}
+        {/* Sources & Research - Full width */}
         <SourcesEditor personId={personId} sources={person.sources || []} canEdit={canEdit} />
 
         <ButtonLink href="/people" variant="secondary" icon={ArrowLeft}>

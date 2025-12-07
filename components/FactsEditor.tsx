@@ -66,7 +66,7 @@ export default function FactsEditor({ personId, facts, canEdit }: Props) {
   };
 
   return (
-    <div className="card p-6 mb-6">
+    <div className="card p-6 h-fit">
       <div className="flex justify-between items-center mb-4">
         <h3 className="section-title">📋 Additional Information</h3>
         {canEdit && !showForm && (

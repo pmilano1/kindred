@@ -35,11 +35,11 @@ export default function ResearchQueueClient({ initialQueue }: Props) {
   const [updateStatus] = useMutation(UPDATE_RESEARCH_STATUS);
 
   const handlePriorityChange = async (personId: string, priority: number) => {
-    // Optimistic update
-    setQueue(prev => prev.map(p => 
+    // Update without reordering - keeps the person in place while editing
+    setQueue(prev => prev.map(p =>
       p.id === personId ? { ...p, research_priority: priority } : p
-    ).sort((a, b) => (b.research_priority || 0) - (a.research_priority || 0)));
-    
+    ));
+
     await updatePriority({ variables: { personId, priority } });
   };
 

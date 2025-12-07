@@ -62,7 +62,7 @@ jobs:
   docker-build:
     runs-on: ubuntu-latest
     name: Docker Build Check
-    needs: build
+    needs: lint-and-test  # Run in parallel with build job
     if: github.event_name == 'pull_request' && github.base_ref == 'main'
 
     steps:

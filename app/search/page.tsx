@@ -1,6 +1,7 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect, Suspense } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { useLazyQuery } from '@apollo/client/react';
 import { Search as SearchIcon } from 'lucide-react';
 import { PageHeader, Button } from '@/components/ui';
@@ -15,12 +16,22 @@ interface SearchResult {
   };
 }
 
-export default function SearchPage() {
-  const [query, setQuery] = useState('');
+function SearchContent() {
+  const searchParams = useSearchParams();
+  const initialQuery = searchParams.get('q') || '';
+  const [query, setQuery] = useState(initialQuery);
   const [searched, setSearched] = useState(false);
   const [executeSearch, { data, loading }] = useLazyQuery<SearchResult>(SEARCH_PEOPLE);
 
   const results = data?.search?.edges?.map(e => e.node) || [];
+
+  // Auto-search if query param provided
+  useEffect(() => {
+    if (initialQuery) {
+      executeSearch({ variables: { query: initialQuery, first: 100 } });
+      setSearched(true);
+    }
+  }, [initialQuery, executeSearch]);
 
   const handleSearch = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -82,3 +93,14 @@ export default function SearchPage() {
   );
 }
 
+export default function SearchPage() {
+  return (
+    <Suspense fallback={
+      <div className="flex items-center justify-center py-12">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900"></div>
+      </div>
+    }>
+      <SearchContent />
+    </Suspense>
+  );
+}

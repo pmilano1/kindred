@@ -3,6 +3,7 @@
 import { ReactNode } from 'react';
 import { useSettings } from '../SettingsProvider';
 import { LucideIcon } from 'lucide-react';
+import GlobalSearch from '../GlobalSearch';
 
 export interface PageHeaderProps {
   /** Page title - falls back to family name from settings */
@@ -15,6 +16,8 @@ export interface PageHeaderProps {
   actions?: ReactNode;
   /** Whether to show breadcrumbs (future feature) */
   showBreadcrumbs?: boolean;
+  /** Whether to show search bar (default: true) */
+  showSearch?: boolean;
   /** Additional stats to display */
   stats?: Array<{
     label: string;
@@ -23,12 +26,13 @@ export interface PageHeaderProps {
   }>;
 }
 
-export function PageHeader({ 
-  title, 
-  subtitle, 
+export function PageHeader({
+  title,
+  subtitle,
   icon: Icon,
   actions,
   stats,
+  showSearch = true,
 }: PageHeaderProps) {
   const settings = useSettings();
 
@@ -51,12 +55,11 @@ export function PageHeader({
             )}
           </div>
         </div>
-        
-        {actions && (
-          <div className="page-header-actions">
-            {actions}
-          </div>
-        )}
+
+        <div className="page-header-actions flex items-center gap-4">
+          {showSearch && <GlobalSearch />}
+          {actions}
+        </div>
       </div>
 
       {stats && stats.length > 0 && (

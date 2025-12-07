@@ -13,7 +13,6 @@ import {
   ClipboardList,
   Calendar,
   Shield,
-  Search,
   Settings,
   LogOut,
   ChevronLeft,
@@ -36,7 +35,6 @@ const navItems: NavItem[] = [
   { href: '/timeline', label: 'Timeline', icon: Calendar, group: 'main' },
   { href: '/research', label: 'Research Queue', icon: ClipboardList, group: 'research' },
   { href: '/coats-of-arms', label: 'Coats of Arms', icon: Shield, group: 'research' },
-  { href: '/search', label: 'Search', icon: Search, group: 'research' },
 ];
 
 interface TooltipProps {

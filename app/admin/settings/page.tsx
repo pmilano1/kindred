@@ -4,7 +4,7 @@ import { useEffect, useState, useCallback } from 'react';
 import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import { Save, Play, Download, Upload } from 'lucide-react';
-import { PageHeader, Button } from '@/components/ui';
+import { PageHeader, Button, Input, Label, Textarea, Checkbox, Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui';
 import LoadingSpinner from '@/components/LoadingSpinner';
 import Link from 'next/link';
 import { useSettingsRefetch } from '@/components/SettingsProvider';
@@ -286,38 +286,38 @@ export default function SettingsPage() {
                             }}
                           />
                         ) : row.key === 'date_format' ? (
-                          <select
-                            value={settings[row.key] || 'MDY'}
-                            onChange={e => updateSetting(row.key, e.target.value)}
-                            className="border rounded-lg px-3 py-2"
-                          >
-                            <option value="MDY">MM/DD/YYYY (US)</option>
-                            <option value="DMY">DD/MM/YYYY (EU)</option>
-                            <option value="ISO">YYYY-MM-DD (ISO)</option>
-                          </select>
+                          <Select value={settings[row.key] || 'MDY'} onValueChange={(v) => updateSetting(row.key, v)}>
+                            <SelectTrigger className="w-48">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="MDY">MM/DD/YYYY (US)</SelectItem>
+                              <SelectItem value="DMY">DD/MM/YYYY (EU)</SelectItem>
+                              <SelectItem value="ISO">YYYY-MM-DD (ISO)</SelectItem>
+                            </SelectContent>
+                          </Select>
                         ) : ['require_login', 'show_living_details', 'show_coats_of_arms'].includes(row.key) ? (
-                          <select
-                            value={settings[row.key] || 'false'}
-                            onChange={e => updateSetting(row.key, e.target.value)}
-                            className="border rounded-lg px-3 py-2"
-                          >
-                            <option value="true">Yes</option>
-                            <option value="false">No</option>
-                          </select>
+                          <Select value={settings[row.key] || 'false'} onValueChange={(v) => updateSetting(row.key, v)}>
+                            <SelectTrigger className="w-32">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="true">Yes</SelectItem>
+                              <SelectItem value="false">No</SelectItem>
+                            </SelectContent>
+                          </Select>
                         ) : row.key === 'footer_text' ? (
-                          <textarea
+                          <Textarea
                             value={settings[row.key] || ''}
                             onChange={e => updateSetting(row.key, e.target.value)}
-                            className="w-full border rounded-lg px-3 py-2"
                             rows={2}
                             placeholder="Optional footer message"
                           />
                         ) : (
-                          <input
+                          <Input
                             type={['living_cutoff_years', 'default_tree_generations'].includes(row.key) ? 'number' : 'text'}
                             value={settings[row.key] || ''}
                             onChange={e => updateSetting(row.key, e.target.value)}
-                            className="w-full border rounded-lg px-3 py-2"
                             placeholder={row.key.includes('url') ? 'https://...' : ''}
                           />
                         )}
@@ -347,24 +347,22 @@ export default function SettingsPage() {
                 Export your family tree data in GEDCOM format for backup or import into other genealogy software.
               </p>
               <div className="flex flex-wrap gap-4 mb-4">
-                <label className="flex items-center gap-2">
-                  <input
-                    type="checkbox"
+                <div className="flex items-center gap-2">
+                  <Checkbox
+                    id="export-living"
                     checked={exportIncludeLiving}
-                    onChange={e => setExportIncludeLiving(e.target.checked)}
-                    className="rounded"
+                    onCheckedChange={(checked) => setExportIncludeLiving(checked === true)}
                   />
-                  <span className="text-sm">Include living people</span>
-                </label>
-                <label className="flex items-center gap-2">
-                  <input
-                    type="checkbox"
+                  <Label htmlFor="export-living" className="text-sm cursor-pointer">Include living people</Label>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Checkbox
+                    id="export-sources"
                     checked={exportIncludeSources}
-                    onChange={e => setExportIncludeSources(e.target.checked)}
-                    className="rounded"
+                    onCheckedChange={(checked) => setExportIncludeSources(checked === true)}
                   />
-                  <span className="text-sm">Include sources</span>
-                </label>
+                  <Label htmlFor="export-sources" className="text-sm cursor-pointer">Include sources</Label>
+                </div>
               </div>
               <Button
                 onClick={handleExportGedcom}

@@ -7,9 +7,9 @@ on:
     branches: [develop]
 
 jobs:
-  lint-and-test:
+  lint:
     runs-on: ubuntu-latest
-    name: Lint & Test
+    name: Lint
 
     steps:
       - name: Checkout
@@ -27,6 +27,23 @@ jobs:
       - name: Run linter
         run: npm run lint
 
+  test:
+    runs-on: ubuntu-latest
+    name: Test
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
       - name: Run tests
         run: npm test -- --passWithNoTests --coverage
 
@@ -41,7 +58,7 @@ jobs:
   build:
     runs-on: ubuntu-latest
     name: Build Check
-    needs: lint-and-test
+    # No needs - runs in parallel with lint and test
 
     steps:
       - name: Checkout
@@ -62,7 +79,7 @@ jobs:
   docker-build:
     runs-on: ubuntu-latest
     name: Docker Build Check
-    needs: build
+    # No needs - runs in parallel with lint, test, and build
     if: github.event_name == 'pull_request' && github.base_ref == 'main'
 
     steps:

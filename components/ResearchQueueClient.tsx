@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { useState } from 'react';
 import { useMutation } from '@apollo/client/react';
 import { UPDATE_RESEARCH_PRIORITY, UPDATE_RESEARCH_STATUS } from '@/lib/graphql/queries';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui';
 
 const STATUS_LABELS: Record<string, { label: string; color: string }> = {
   not_started: { label: 'Not Started', color: 'bg-gray-200 text-gray-700' },
@@ -108,15 +109,19 @@ export default function ResearchQueueClient({ initialQueue }: Props) {
                       </td>
                       <td className="py-3 px-3 text-sm text-gray-600">{years}</td>
                       <td className="py-3 px-3">
-                        <select
+                        <Select
                           value={person.research_status || 'not_started'}
-                          onChange={(e) => handleStatusChange(person.id, e.target.value)}
-                          className={`px-2 py-1 text-xs rounded-full border-0 cursor-pointer ${statusInfo.color}`}
+                          onValueChange={(v) => handleStatusChange(person.id, v)}
                         >
-                          {Object.entries(STATUS_LABELS).map(([key, info]) => (
-                            <option key={key} value={key}>{info.label}</option>
-                          ))}
-                        </select>
+                          <SelectTrigger className={`px-2 py-1 text-xs rounded-full border-0 cursor-pointer h-auto ${statusInfo.color}`}>
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {Object.entries(STATUS_LABELS).map(([key, info]) => (
+                              <SelectItem key={key} value={key}>{info.label}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
                       </td>
                       <td className="py-3 px-3 text-sm text-gray-500">
                         {person.last_researched

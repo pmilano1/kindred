@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { useMutation } from '@apollo/client/react';
 import { CREATE_PERSON, GET_PEOPLE_LIST } from '@/lib/graphql/queries';
 import { useSession } from 'next-auth/react';
-import { Button } from '@/components/ui';
+import { Button, Input, Label, Textarea, Checkbox, Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui';
 import { X } from 'lucide-react';
 
 interface CreatePersonModalProps {
@@ -107,25 +107,24 @@ export default function CreatePersonModal({ isOpen, onClose, onSuccess }: Create
           {/* Name Section */}
           <div className="space-y-4">
             <h3 className="font-semibold text-gray-700 border-b pb-2">Name</h3>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Full Name *</label>
-              <input type="text" required value={formData.name_full}
+            <div className="space-y-2">
+              <Label>Full Name *</Label>
+              <Input type="text" required value={formData.name_full}
                 onChange={(e) => setFormData(prev => ({ ...prev, name_full: e.target.value }))}
-                className="w-full border rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500"
                 placeholder="John Smith" />
             </div>
             <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Given Name</label>
-                <input type="text" value={formData.name_given}
+              <div className="space-y-2">
+                <Label>Given Name</Label>
+                <Input type="text" value={formData.name_given}
                   onChange={(e) => setFormData(prev => ({ ...prev, name_given: e.target.value }))}
-                  className="w-full border rounded-lg px-3 py-2" placeholder="John" />
+                  placeholder="John" />
               </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Surname</label>
-                <input type="text" value={formData.name_surname}
+              <div className="space-y-2">
+                <Label>Surname</Label>
+                <Input type="text" value={formData.name_surname}
                   onChange={(e) => setFormData(prev => ({ ...prev, name_surname: e.target.value }))}
-                  className="w-full border rounded-lg px-3 py-2" placeholder="Smith" />
+                  placeholder="Smith" />
               </div>
             </div>
           </div>
@@ -134,21 +133,23 @@ export default function CreatePersonModal({ isOpen, onClose, onSuccess }: Create
           <div className="space-y-4">
             <h3 className="font-semibold text-gray-700 border-b pb-2">Demographics</h3>
             <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Sex</label>
-                <select value={formData.sex}
-                  onChange={(e) => setFormData(prev => ({ ...prev, sex: e.target.value }))}
-                  className="w-full border rounded-lg px-3 py-2">
-                  <option value="">Unknown</option>
-                  <option value="M">Male</option>
-                  <option value="F">Female</option>
-                </select>
+              <div className="space-y-2">
+                <Label>Sex</Label>
+                <Select value={formData.sex} onValueChange={(value) => setFormData(prev => ({ ...prev, sex: value }))}>
+                  <SelectTrigger className="w-full">
+                    <SelectValue placeholder="Unknown" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="">Unknown</SelectItem>
+                    <SelectItem value="M">Male</SelectItem>
+                    <SelectItem value="F">Female</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
-              <div className="flex items-center pt-6">
-                <input type="checkbox" id="living" checked={formData.living}
-                  onChange={(e) => setFormData(prev => ({ ...prev, living: e.target.checked }))}
-                  className="w-4 h-4 mr-2" />
-                <label htmlFor="living" className="text-sm text-gray-700">Living</label>
+              <div className="flex items-center gap-2 pt-6">
+                <Checkbox id="living" checked={formData.living}
+                  onCheckedChange={(checked) => setFormData(prev => ({ ...prev, living: checked === true }))} />
+                <Label htmlFor="living" className="cursor-pointer">Living</Label>
               </div>
             </div>
           </div>
@@ -157,17 +158,17 @@ export default function CreatePersonModal({ isOpen, onClose, onSuccess }: Create
           <div className="space-y-4">
             <h3 className="font-semibold text-gray-700 border-b pb-2">Birth</h3>
             <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Birth Year</label>
-                <input type="number" value={formData.birth_year}
+              <div className="space-y-2">
+                <Label>Birth Year</Label>
+                <Input type="number" value={formData.birth_year}
                   onChange={(e) => setFormData(prev => ({ ...prev, birth_year: e.target.value }))}
-                  className="w-full border rounded-lg px-3 py-2" placeholder="1900" min="1" max="2100" />
+                  placeholder="1900" min={1} max={2100} />
               </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Birth Place</label>
-                <input type="text" value={formData.birth_place}
+              <div className="space-y-2">
+                <Label>Birth Place</Label>
+                <Input type="text" value={formData.birth_place}
                   onChange={(e) => setFormData(prev => ({ ...prev, birth_place: e.target.value }))}
-                  className="w-full border rounded-lg px-3 py-2" placeholder="City, State, Country" />
+                  placeholder="City, State, Country" />
               </div>
             </div>
           </div>
@@ -177,28 +178,28 @@ export default function CreatePersonModal({ isOpen, onClose, onSuccess }: Create
             <div className="space-y-4">
               <h3 className="font-semibold text-gray-700 border-b pb-2">Death</h3>
               <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Death Year</label>
-                  <input type="number" value={formData.death_year}
+                <div className="space-y-2">
+                  <Label>Death Year</Label>
+                  <Input type="number" value={formData.death_year}
                     onChange={(e) => setFormData(prev => ({ ...prev, death_year: e.target.value }))}
-                    className="w-full border rounded-lg px-3 py-2" placeholder="1980" min="1" max="2100" />
+                    placeholder="1980" min={1} max={2100} />
                 </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Death Place</label>
-                  <input type="text" value={formData.death_place}
+                <div className="space-y-2">
+                  <Label>Death Place</Label>
+                  <Input type="text" value={formData.death_place}
                     onChange={(e) => setFormData(prev => ({ ...prev, death_place: e.target.value }))}
-                    className="w-full border rounded-lg px-3 py-2" placeholder="City, State, Country" />
+                    placeholder="City, State, Country" />
                 </div>
               </div>
             </div>
           )}
 
           {/* Notes */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Description / Notes</label>
-            <textarea value={formData.description}
+          <div className="space-y-2">
+            <Label>Description / Notes</Label>
+            <Textarea value={formData.description}
               onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
-              className="w-full border rounded-lg px-3 py-2 h-24" placeholder="Additional information..." />
+              className="h-24" placeholder="Additional information..." />
           </div>
 
           {/* Actions */}

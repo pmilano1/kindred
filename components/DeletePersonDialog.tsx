@@ -5,7 +5,7 @@ import { useMutation } from '@apollo/client/react';
 import { useRouter } from 'next/navigation';
 import { AlertTriangle, Trash2 } from 'lucide-react';
 import { DELETE_PERSON } from '@/lib/graphql/queries';
-import { Button } from '@/components/ui';
+import { Button, Input, Label } from '@/components/ui';
 import {
   Dialog,
   DialogContent,
@@ -95,15 +95,15 @@ export default function DeletePersonDialog({ person, isOpen, onClose }: DeletePe
           </div>
 
           {/* Confirmation input */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+          <div className="space-y-2">
+            <Label>
               Type <strong>DELETE</strong> to confirm:
-            </label>
-            <input
+            </Label>
+            <Input
               type="text"
               value={confirmText}
               onChange={(e) => setConfirmText(e.target.value)}
-              className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"
+              className="focus:ring-red-500 focus:border-red-500"
               placeholder="DELETE"
             />
           </div>

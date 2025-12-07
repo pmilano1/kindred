@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { useQuery, useMutation } from '@apollo/client/react';
 import { Plus, X, Save } from 'lucide-react';
 import { GET_PERSON_SOURCES, ADD_SOURCE, UPDATE_RESEARCH_STATUS, UPDATE_RESEARCH_PRIORITY } from '@/lib/graphql/queries';
-import { Button } from '@/components/ui';
+import { Button, Label, Input, Textarea, Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui';
 import { Source, ResearchStatus, ResearchActionType, ResearchSource, ResearchConfidence } from '@/lib/types';
 
 interface ResearchPanelProps {
@@ -192,21 +192,22 @@ export default function ResearchPanel({ personId, compact = false }: ResearchPan
 
       {/* Status and Priority Controls */}
       <div className="flex flex-wrap gap-4 mb-4 p-3 bg-gray-50 rounded-lg">
-        <div className="flex-1 min-w-[200px]">
+        <div className="flex-1 min-w-[200px] space-y-1">
           <div className="flex items-center gap-2">
-            <span className="text-sm font-medium">Status:</span>
+            <Label className="text-sm">Status:</Label>
             <span className="text-gray-400 cursor-help text-xs" title="Tracks research progress for this person">ⓘ</span>
           </div>
-          <select
-            value={status}
-            onChange={(e) => handleStatusChange(e.target.value as ResearchStatus)}
-            className="text-sm rounded border-gray-300 p-1 mt-1 w-full"
-          >
-            {STATUS_OPTIONS.map(s => (
-              <option key={s.value} value={s.value}>{s.label}</option>
-            ))}
-          </select>
-          <div className="text-[10px] text-gray-400 mt-0.5">
+          <Select value={status} onValueChange={(v) => handleStatusChange(v as ResearchStatus)}>
+            <SelectTrigger className="w-full text-sm">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {STATUS_OPTIONS.map(s => (
+                <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <div className="text-[10px] text-gray-400">
             {STATUS_OPTIONS.find(s => s.value === status)?.desc}
           </div>
         </div>
@@ -239,65 +240,68 @@ export default function ResearchPanel({ personId, compact = false }: ResearchPan
       {showForm && (
         <form onSubmit={handleSubmit} className="mb-4 p-4 bg-amber-50 rounded-lg border border-amber-200">
           <div className="grid grid-cols-2 gap-3 mb-3">
-            <div>
-              <label className="block text-xs font-medium mb-1">Type</label>
-              <select
-                value={actionType}
-                onChange={(e) => setActionType(e.target.value as ResearchActionType)}
-                className="w-full text-sm rounded border-gray-300 p-2"
-              >
-                {ACTION_TYPES.map(t => (
-                  <option key={t.value} value={t.value}>{t.emoji} {t.label}</option>
-                ))}
-              </select>
+            <div className="space-y-1">
+              <Label className="text-xs">Type</Label>
+              <Select value={actionType} onValueChange={(v) => setActionType(v as ResearchActionType)}>
+                <SelectTrigger className="w-full text-sm">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {ACTION_TYPES.map(t => (
+                    <SelectItem key={t.value} value={t.value}>{t.emoji} {t.label}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
-            <div>
-              <label className="block text-xs font-medium mb-1">Source</label>
-              <select
-                value={sourceChecked}
-                onChange={(e) => setSourceChecked(e.target.value as ResearchSource)}
-                className="w-full text-sm rounded border-gray-300 p-2"
-              >
-                <option value="">-- Select --</option>
-                {SOURCES.map(s => (
-                  <option key={s.value} value={s.value}>{s.label}</option>
-                ))}
-              </select>
+            <div className="space-y-1">
+              <Label className="text-xs">Source</Label>
+              <Select value={sourceChecked} onValueChange={(v) => setSourceChecked(v as ResearchSource)}>
+                <SelectTrigger className="w-full text-sm">
+                  <SelectValue placeholder="-- Select --" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="">-- Select --</SelectItem>
+                  {SOURCES.map(s => (
+                    <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
           </div>
-          <div className="mb-3">
-            <label className="block text-xs font-medium mb-1">Note</label>
-            <textarea
+          <div className="mb-3 space-y-1">
+            <Label className="text-xs">Note</Label>
+            <Textarea
               value={content}
               onChange={(e) => setContent(e.target.value)}
               placeholder="What did you find or learn?"
-              className="w-full text-sm rounded border-gray-300 p-2"
+              className="text-sm"
               rows={3}
               required
             />
           </div>
           <div className="grid grid-cols-2 gap-3 mb-3">
-            <div>
-              <label className="block text-xs font-medium mb-1">Confidence</label>
-              <select
-                value={confidenceField}
-                onChange={(e) => setConfidenceField(e.target.value as ResearchConfidence)}
-                className="w-full text-sm rounded border-gray-300 p-2"
-              >
-                <option value="">-- Select --</option>
-                {CONFIDENCE.map(c => (
-                  <option key={c.value} value={c.value}>{c.label}</option>
-                ))}
-              </select>
+            <div className="space-y-1">
+              <Label className="text-xs">Confidence</Label>
+              <Select value={confidenceField} onValueChange={(v) => setConfidenceField(v as ResearchConfidence)}>
+                <SelectTrigger className="w-full text-sm">
+                  <SelectValue placeholder="-- Select --" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="">-- Select --</SelectItem>
+                  {CONFIDENCE.map(c => (
+                    <SelectItem key={c.value} value={c.value}>{c.label}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
-            <div>
-              <label className="block text-xs font-medium mb-1">URL (optional)</label>
-              <input
+            <div className="space-y-1">
+              <Label className="text-xs">URL (optional)</Label>
+              <Input
                 type="url"
                 value={externalUrl}
                 onChange={(e) => setExternalUrl(e.target.value)}
                 placeholder="https://..."
-                className="w-full text-sm rounded border-gray-300 p-2"
+                className="text-sm"
               />
             </div>
           </div>

@@ -130,8 +130,8 @@ export default function CoatsOfArmsPage() {
                 {crest.motto && <p className="text-sm italic text-gray-600 mt-1">&ldquo;{crest.motto}&rdquo;</p>}
                 {crest.description && <p className="text-sm text-gray-500 mt-2">{crest.description}</p>}
                 {isEditor && (
-                  <button onClick={() => handleRemove(crest.surname)}
-                    className="text-red-600 text-sm hover:underline mt-3">Remove</button>
+                  <Button variant="link" size="sm" onClick={() => handleRemove(crest.surname)}
+                    className="text-red-600 text-sm hover:underline mt-3 p-0">Remove</Button>
                 )}
               </div>
             ))}

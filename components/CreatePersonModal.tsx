@@ -4,6 +4,8 @@ import { useState } from 'react';
 import { useMutation } from '@apollo/client/react';
 import { CREATE_PERSON, GET_PEOPLE_LIST } from '@/lib/graphql/queries';
 import { useSession } from 'next-auth/react';
+import { Button } from '@/components/ui';
+import { X } from 'lucide-react';
 
 interface CreatePersonModalProps {
   isOpen: boolean;
@@ -93,7 +95,7 @@ export default function CreatePersonModal({ isOpen, onClose, onSuccess }: Create
         <div className="p-6 border-b">
           <div className="flex justify-between items-center">
             <h2 className="text-2xl font-bold text-gray-900">Add New Person</h2>
-            <button onClick={() => { resetForm(); onClose(); }} className="text-gray-500 hover:text-gray-700 text-2xl">&times;</button>
+            <Button variant="ghost" size="icon" onClick={() => { resetForm(); onClose(); }}><X className="w-5 h-5" /></Button>
           </div>
         </div>
         
@@ -201,14 +203,8 @@ export default function CreatePersonModal({ isOpen, onClose, onSuccess }: Create
 
           {/* Actions */}
           <div className="flex justify-end gap-3 pt-4 border-t">
-            <button type="button" onClick={() => { resetForm(); onClose(); }}
-              className="px-4 py-2 text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200">
-              Cancel
-            </button>
-            <button type="submit" disabled={loading}
-              className="px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50">
-              {loading ? 'Creating...' : 'Create Person'}
-            </button>
+            <Button type="button" variant="secondary" onClick={() => { resetForm(); onClose(); }}>Cancel</Button>
+            <Button type="submit" loading={loading} className="bg-green-600 hover:bg-green-700">Create Person</Button>
           </div>
         </form>
       </div>

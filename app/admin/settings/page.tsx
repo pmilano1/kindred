@@ -314,11 +314,12 @@ function ThemePresetPicker({
           {themePresets.map(preset => {
             const isSelected = currentPreset?.id === preset.id;
             return (
-              <button
+              <Button
                 key={preset.id}
                 type="button"
+                variant="outline"
                 onClick={() => onSelectPreset(preset)}
-                className={`p-3 bg-white border-2 rounded-lg hover:border-blue-400 hover:shadow-md transition-all text-left ${
+                className={`p-3 h-auto bg-white border-2 rounded-lg hover:border-blue-400 hover:shadow-md transition-all text-left flex-col items-start ${
                   isSelected ? 'border-blue-500 ring-2 ring-blue-200' : 'border-gray-200'
                 }`}
               >
@@ -333,7 +334,7 @@ function ThemePresetPicker({
                 </div>
                 <div className="font-medium text-sm">{preset.name}</div>
                 <div className="text-xs text-gray-500">{preset.description}</div>
-              </button>
+              </Button>
             );
           })}
         </div>

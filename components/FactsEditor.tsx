@@ -4,6 +4,8 @@ import { useState } from 'react';
 import { useMutation } from '@apollo/client/react';
 import { ADD_FACT, UPDATE_FACT, DELETE_FACT, GET_PERSON } from '@/lib/graphql/queries';
 import { Fact } from '@/lib/types';
+import { Button, Input, Label, Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui';
+import { Plus, Pencil, Trash2 } from 'lucide-react';
 
 interface Props {
   personId: string;
@@ -68,32 +70,33 @@ export default function FactsEditor({ personId, facts, canEdit }: Props) {
       <div className="flex justify-between items-center mb-4">
         <h3 className="section-title">📋 Additional Information</h3>
         {canEdit && !showForm && (
-          <button onClick={() => setShowForm(true)} className="text-sm px-3 py-1 bg-green-100 text-green-700 rounded hover:bg-green-200">
-            + Add Fact
-          </button>
+          <Button variant="secondary" size="sm" onClick={() => setShowForm(true)} icon={<Plus className="w-4 h-4" />}>
+            Add Fact
+          </Button>
         )}
       </div>
 
       {showForm && (
-        <form onSubmit={handleSubmit} className="mb-4 p-4 bg-gray-50 rounded-lg space-y-3">
+        <form onSubmit={handleSubmit} className="mb-4 p-4 bg-muted rounded-lg space-y-3">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Fact Type</label>
-            <select value={formData.fact_type} onChange={(e) => setFormData(p => ({ ...p, fact_type: e.target.value }))}
-              className="w-full border rounded px-3 py-2">
-              {FACT_TYPES.map(t => <option key={t} value={t}>{t.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())}</option>)}
-            </select>
+            <Label className="mb-1">Fact Type</Label>
+            <Select value={formData.fact_type} onValueChange={v => setFormData(p => ({ ...p, fact_type: v }))}>
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>
+                {FACT_TYPES.map(t => <SelectItem key={t} value={t}>{t.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())}</SelectItem>)}
+              </SelectContent>
+            </Select>
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Value</label>
-            <input type="text" value={formData.fact_value} onChange={(e) => setFormData(p => ({ ...p, fact_value: e.target.value }))}
-              className="w-full border rounded px-3 py-2" placeholder="Enter value..." required />
+            <Label className="mb-1">Value</Label>
+            <Input type="text" value={formData.fact_value} onChange={(e) => setFormData(p => ({ ...p, fact_value: e.target.value }))}
+              placeholder="Enter value..." required />
           </div>
           <div className="flex gap-2">
-            <button type="submit" disabled={adding || updating}
-              className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50">
+            <Button type="submit" loading={adding || updating}>
               {editingId ? 'Update' : 'Add'}
-            </button>
-            <button type="button" onClick={resetForm} className="px-4 py-2 bg-gray-200 rounded hover:bg-gray-300">Cancel</button>
+            </Button>
+            <Button type="button" variant="outline" onClick={resetForm}>Cancel</Button>
           </div>
         </form>
       )}
@@ -110,8 +113,12 @@ export default function FactsEditor({ personId, facts, canEdit }: Props) {
               </div>
               {canEdit && (
                 <div className="opacity-0 group-hover:opacity-100 flex gap-1">
-                  <button onClick={() => handleEdit(fact)} className="text-blue-600 hover:text-blue-800">✏️</button>
-                  <button onClick={() => handleDelete(fact.id)} className="text-red-600 hover:text-red-800">🗑️</button>
+                  <Button variant="ghost" size="icon-sm" onClick={() => handleEdit(fact)}>
+                    <Pencil className="w-3 h-3" />
+                  </Button>
+                  <Button variant="ghost" size="icon-sm" className="text-destructive" onClick={() => handleDelete(fact.id)}>
+                    <Trash2 className="w-3 h-3" />
+                  </Button>
                 </div>
               )}
             </div>

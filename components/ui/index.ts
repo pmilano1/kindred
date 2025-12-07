@@ -83,6 +83,34 @@ export {
   TooltipProvider,
 } from './tooltip';
 
+export { Alert, AlertTitle, AlertDescription } from './alert';
+
+export { ScrollArea, ScrollBar } from './scroll-area';
+
+export {
+  Sheet,
+  SheetTrigger,
+  SheetClose,
+  SheetContent,
+  SheetHeader,
+  SheetFooter,
+  SheetTitle,
+  SheetDescription,
+} from './sheet';
+
+export { Toaster } from './sonner';
+
+export {
+  Table,
+  TableHeader,
+  TableBody,
+  TableFooter,
+  TableHead,
+  TableRow,
+  TableCell,
+  TableCaption,
+} from './table';
+
 // Custom components
 export { default as ButtonLink } from './ButtonLink';
 export type { ButtonLinkVariant, ButtonLinkSize } from './ButtonLink';

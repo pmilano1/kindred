@@ -4,6 +4,8 @@ import { useState } from 'react';
 import { useMutation } from '@apollo/client/react';
 import { ADD_LIFE_EVENT, UPDATE_LIFE_EVENT, DELETE_LIFE_EVENT, GET_PERSON } from '@/lib/graphql/queries';
 import { LifeEvent } from '@/lib/types';
+import { Button, Input, Label, Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui';
+import { Plus, Pencil, Trash2 } from 'lucide-react';
 
 interface Props {
   personId: string;
@@ -74,49 +76,50 @@ export default function LifeEventsEditor({ personId, lifeEvents, canEdit }: Prop
       <div className="flex justify-between items-center mb-4">
         <h3 className="section-title">📅 Life Events</h3>
         {canEdit && !showForm && (
-          <button onClick={() => setShowForm(true)} className="text-sm px-3 py-1 bg-green-100 text-green-700 rounded hover:bg-green-200">
-            + Add Event
-          </button>
+          <Button variant="secondary" size="sm" onClick={() => setShowForm(true)} icon={<Plus className="w-4 h-4" />}>
+            Add Event
+          </Button>
         )}
       </div>
 
       {showForm && (
-        <form onSubmit={handleSubmit} className="mb-4 p-4 bg-gray-50 rounded-lg space-y-3">
+        <form onSubmit={handleSubmit} className="mb-4 p-4 bg-muted rounded-lg space-y-3">
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Event Type</label>
-              <select value={formData.event_type} onChange={(e) => setFormData(p => ({ ...p, event_type: e.target.value }))}
-                className="w-full border rounded px-3 py-2">
-                {EVENT_TYPES.map(t => <option key={t} value={t}>{t.charAt(0).toUpperCase() + t.slice(1)}</option>)}
-              </select>
+              <Label className="mb-1">Event Type</Label>
+              <Select value={formData.event_type} onValueChange={v => setFormData(p => ({ ...p, event_type: v }))}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {EVENT_TYPES.map(t => <SelectItem key={t} value={t}>{t.charAt(0).toUpperCase() + t.slice(1)}</SelectItem>)}
+                </SelectContent>
+              </Select>
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Year</label>
-              <input type="number" value={formData.event_year} onChange={(e) => setFormData(p => ({ ...p, event_year: e.target.value }))}
-                className="w-full border rounded px-3 py-2" placeholder="1920" />
+              <Label className="mb-1">Year</Label>
+              <Input type="number" value={formData.event_year} onChange={(e) => setFormData(p => ({ ...p, event_year: e.target.value }))}
+                placeholder="1920" />
             </div>
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Date (optional)</label>
-            <input type="text" value={formData.event_date} onChange={(e) => setFormData(p => ({ ...p, event_date: e.target.value }))}
-              className="w-full border rounded px-3 py-2" placeholder="15 Mar 1920" />
+            <Label className="mb-1">Date (optional)</Label>
+            <Input type="text" value={formData.event_date} onChange={(e) => setFormData(p => ({ ...p, event_date: e.target.value }))}
+              placeholder="15 Mar 1920" />
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Place</label>
-            <input type="text" value={formData.event_place} onChange={(e) => setFormData(p => ({ ...p, event_place: e.target.value }))}
-              className="w-full border rounded px-3 py-2" placeholder="City, State, Country" />
+            <Label className="mb-1">Place</Label>
+            <Input type="text" value={formData.event_place} onChange={(e) => setFormData(p => ({ ...p, event_place: e.target.value }))}
+              placeholder="City, State, Country" />
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Details</label>
-            <input type="text" value={formData.event_value} onChange={(e) => setFormData(p => ({ ...p, event_value: e.target.value }))}
-              className="w-full border rounded px-3 py-2" placeholder="e.g., Farmer, Harvard University" />
+            <Label className="mb-1">Details</Label>
+            <Input type="text" value={formData.event_value} onChange={(e) => setFormData(p => ({ ...p, event_value: e.target.value }))}
+              placeholder="e.g., Farmer, Harvard University" />
           </div>
           <div className="flex gap-2">
-            <button type="submit" disabled={adding || updating}
-              className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50">
+            <Button type="submit" loading={adding || updating}>
               {editingId ? 'Update' : 'Add'}
-            </button>
-            <button type="button" onClick={resetForm} className="px-4 py-2 bg-gray-200 rounded hover:bg-gray-300">Cancel</button>
+            </Button>
+            <Button type="button" variant="outline" onClick={resetForm}>Cancel</Button>
           </div>
         </form>
       )}
@@ -137,8 +140,12 @@ export default function LifeEventsEditor({ personId, lifeEvents, canEdit }: Prop
               </div>
               {canEdit && (
                 <div className="opacity-0 group-hover:opacity-100 flex gap-1">
-                  <button onClick={() => handleEdit(evt)} className="text-blue-600 hover:text-blue-800">✏️</button>
-                  <button onClick={() => handleDelete(evt.id)} className="text-red-600 hover:text-red-800">🗑️</button>
+                  <Button variant="ghost" size="icon-sm" onClick={() => handleEdit(evt)}>
+                    <Pencil className="w-3 h-3" />
+                  </Button>
+                  <Button variant="ghost" size="icon-sm" className="text-destructive" onClick={() => handleDelete(evt.id)}>
+                    <Trash2 className="w-3 h-3" />
+                  </Button>
                 </div>
               )}
             </div>

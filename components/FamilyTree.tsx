@@ -6,6 +6,8 @@ import { useQuery, useMutation } from '@apollo/client/react';
 import { gql } from '@apollo/client/core';
 import * as d3 from 'd3';
 import { UPDATE_RESEARCH_STATUS, UPDATE_RESEARCH_PRIORITY } from '@/lib/graphql/queries';
+import { Button } from '@/components/ui';
+import { ChevronDown, ChevronRight, Crown } from 'lucide-react';
 
 // GraphQL query - component asks for exactly what it needs
 const TREE_DATA_QUERY = gql`
@@ -1264,24 +1266,28 @@ export default function FamilyTree({ rootPersonId, showAncestors, onPersonClick,
       {data && data.notableRelatives.length > 0 && (
         <div className="absolute top-4 right-4 z-40">
           <div className="bg-white rounded-lg shadow-lg border border-amber-300 overflow-hidden max-w-xs">
-            <button
+            <Button
+              variant="ghost"
               onClick={(e) => { e.stopPropagation(); setNotablePanelOpen(!notablePanelOpen); }}
-              className="w-full px-3 py-2 bg-amber-50 hover:bg-amber-100 flex items-center justify-between text-sm font-medium text-amber-800"
+              className="w-full px-3 py-2 bg-amber-50 hover:bg-amber-100 justify-between text-sm font-medium text-amber-800 rounded-none"
             >
-              <span>👑 Notable Relatives ({data.notableRelatives.length})</span>
-              <span className="text-xs">{notablePanelOpen ? '▼' : '▶'}</span>
-            </button>
+              <span className="flex items-center gap-1"><Crown className="w-4 h-4" /> Notable Relatives ({data.notableRelatives.length})</span>
+              {notablePanelOpen ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
+            </Button>
             {notablePanelOpen && (
               <div className="max-h-64 overflow-y-auto">
                 {data.notableRelatives.map((rel) => (
-                  <button
+                  <Button
                     key={rel.person.id}
+                    variant="ghost"
                     onClick={(e) => { e.stopPropagation(); onTileClick(rel.person.id); }}
-                    className="w-full px-3 py-2 text-left hover:bg-amber-50 border-t border-amber-100 text-sm"
+                    className="w-full px-3 py-2 justify-start hover:bg-amber-50 border-t border-amber-100 text-sm rounded-none h-auto"
                   >
-                    <div className="font-medium text-gray-800">{rel.person.name_full}</div>
-                    <div className="text-xs text-gray-500">{rel.generation} generation{rel.generation !== 1 ? 's' : ''} away</div>
-                  </button>
+                    <div className="text-left">
+                      <div className="font-medium text-gray-800">{rel.person.name_full}</div>
+                      <div className="text-xs text-gray-500">{rel.generation} generation{rel.generation !== 1 ? 's' : ''} away</div>
+                    </div>
+                  </Button>
                 ))}
               </div>
             )}
@@ -1349,12 +1355,9 @@ export default function FamilyTree({ rootPersonId, showAncestors, onPersonClick,
           </div>
 
           <div className="mt-2 text-right">
-            <button
-              onClick={() => setPriorityPopup(null)}
-              className="text-xs text-gray-500 hover:text-gray-700"
-            >
+            <Button variant="link" size="sm" onClick={() => setPriorityPopup(null)} className="text-xs text-gray-500 hover:text-gray-700">
               Close
-            </button>
+            </Button>
           </div>
         </div>
       )}

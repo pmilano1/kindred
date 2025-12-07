@@ -5,6 +5,8 @@ import { useMutation } from '@apollo/client/react';
 import { UPDATE_PERSON, GET_PERSON } from '@/lib/graphql/queries';
 import { useSession } from 'next-auth/react';
 import { Person } from '@/lib/types';
+import { Button } from '@/components/ui';
+import { X } from 'lucide-react';
 
 interface EditPersonModalProps {
   person: Person;
@@ -127,7 +129,7 @@ export default function EditPersonModal({ person, isOpen, onClose, onSuccess }: 
         <div className="p-6 border-b sticky top-0 bg-white z-10">
           <div className="flex justify-between items-center">
             <h2 className="text-2xl font-bold text-gray-900">Edit Person</h2>
-            <button onClick={onClose} className="text-gray-500 hover:text-gray-700 text-2xl">&times;</button>
+            <Button variant="ghost" size="icon" onClick={onClose}><X className="w-5 h-5" /></Button>
           </div>
         </div>
         
@@ -235,12 +237,8 @@ export default function EditPersonModal({ person, isOpen, onClose, onSuccess }: 
 
           {/* Actions */}
           <div className="flex justify-end gap-3 pt-4 border-t">
-            <button type="button" onClick={onClose}
-              className="px-4 py-2 text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200">Cancel</button>
-            <button type="submit" disabled={loading}
-              className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50">
-              {loading ? 'Saving...' : 'Save Changes'}
-            </button>
+            <Button type="button" variant="secondary" onClick={onClose}>Cancel</Button>
+            <Button type="submit" loading={loading}>Save Changes</Button>
           </div>
         </form>
       </div>

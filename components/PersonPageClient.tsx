@@ -5,9 +5,9 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { useQuery, useMutation } from '@apollo/client/react';
 import { useSession } from 'next-auth/react';
-import { ArrowLeft } from 'lucide-react';
+import { ArrowLeft, Star, Pencil } from 'lucide-react';
 import { GET_PERSON, UPDATE_NOTABLE_STATUS } from '@/lib/graphql/queries';
-import { ButtonLink } from '@/components/ui';
+import { Button, ButtonLink, Textarea } from '@/components/ui';
 import ResearchPanel from '@/components/ResearchPanel';
 import TreeLink from '@/components/TreeLink';
 import Hero from '@/components/Hero';
@@ -129,29 +129,19 @@ export default function PersonPageClient({ personId }: Props) {
           <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
             <div className="bg-white rounded-xl p-6 max-w-md w-full mx-4 shadow-2xl">
               <h3 className="text-lg font-semibold mb-4">⭐ Mark as Notable Figure</h3>
-              <p className="text-sm text-gray-600 mb-3">
+              <p className="text-sm text-muted-foreground mb-3">
                 Add a short description of why this person is notable (optional):
               </p>
-              <textarea
+              <Textarea
                 value={notableDesc}
                 onChange={(e) => setNotableDesc(e.target.value)}
                 placeholder="e.g., First Empress of France, married Napoleon Bonaparte"
-                className="w-full border rounded-lg p-3 text-sm mb-4"
+                className="mb-4"
                 rows={3}
               />
               <div className="flex justify-end gap-2">
-                <button
-                  onClick={() => setNotableEditing(false)}
-                  className="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded-lg"
-                >
-                  Cancel
-                </button>
-                <button
-                  onClick={handleSaveNotable}
-                  className="px-4 py-2 bg-amber-500 text-white rounded-lg hover:bg-amber-600"
-                >
-                  Save
-                </button>
+                <Button variant="ghost" onClick={() => setNotableEditing(false)}>Cancel</Button>
+                <Button className="bg-amber-500 hover:bg-amber-600" onClick={handleSaveNotable}>Save</Button>
               </div>
             </div>
           </div>
@@ -166,24 +156,28 @@ export default function PersonPageClient({ personId }: Props) {
             {person.living && <span className="badge badge-living">Living</span>}
             {canEdit && (
               <>
-                <button
+                <Button
+                  variant="ghost"
+                  size="sm"
                   onClick={handleToggleNotable}
-                  className={`badge cursor-pointer transition-colors ${
-                    person.is_notable
-                      ? 'bg-amber-100 text-amber-800 border border-amber-300 hover:bg-amber-200'
-                      : 'bg-gray-100 text-gray-600 border border-gray-300 hover:bg-gray-200'
-                  }`}
+                  className={person.is_notable
+                    ? 'bg-amber-100 text-amber-800 border border-amber-300 hover:bg-amber-200'
+                    : 'bg-gray-100 text-gray-600 border border-gray-300 hover:bg-gray-200'}
                   title={person.is_notable ? 'Click to remove notable status' : 'Click to mark as notable'}
+                  icon={<Star className={`w-3 h-3 ${person.is_notable ? 'fill-amber-500' : ''}`} />}
                 >
-                  {person.is_notable ? '⭐ Notable' : '☆ Mark Notable'}
-                </button>
-                <button
+                  {person.is_notable ? 'Notable' : 'Mark Notable'}
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
                   onClick={() => setShowEditModal(true)}
-                  className="badge cursor-pointer transition-colors bg-blue-100 text-blue-800 border border-blue-300 hover:bg-blue-200"
+                  className="bg-blue-100 text-blue-800 border border-blue-300 hover:bg-blue-200"
                   title="Edit person details"
+                  icon={<Pencil className="w-3 h-3" />}
                 >
-                  ✏️ Edit
-                </button>
+                  Edit
+                </Button>
               </>
             )}
           </div>

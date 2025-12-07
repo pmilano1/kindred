@@ -151,12 +151,14 @@ export default function MediaGallery({ personId, media, canEdit, onMediaChange }
       {selectedMedia && (
         <div className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4" onClick={() => setSelectedMedia(null)}>
           <div className="relative max-w-4xl max-h-full" onClick={(e) => e.stopPropagation()}>
-            <button
+            <Button
+              variant="ghost"
+              size="icon"
               onClick={() => setSelectedMedia(null)}
-              className="absolute -top-10 right-0 text-white hover:text-gray-300"
+              className="absolute -top-10 right-0 text-white hover:text-gray-300 hover:bg-transparent"
             >
               <X className="w-8 h-8" />
-            </button>
+            </Button>
             {selectedMedia.mime_type.startsWith('image/') ? (
               <img src={getMediaUrl(selectedMedia)} alt={selectedMedia.caption || ''} className="max-h-[80vh] rounded-lg" />
             ) : (

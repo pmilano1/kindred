@@ -5,7 +5,7 @@ import { useQuery } from '@apollo/client/react';
 import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import { UserPlus } from 'lucide-react';
-import { PageHeader, Button } from '@/components/ui';
+import { PageHeader, Button, Input, Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui';
 import LoadingSpinner from '@/components/LoadingSpinner';
 import PersonCard from '@/components/PersonCard';
 import CreatePersonModal from '@/components/CreatePersonModal';
@@ -82,23 +82,24 @@ export default function PeoplePage() {
       />
       <div className="content-wrapper">
         <div className="flex flex-col md:flex-row gap-4 mb-6">
-          <input
+          <Input
             type="text"
             placeholder="Search by name or place..."
-            className="search-box flex-1"
+            className="flex-1"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
           />
-          <select
-            className="tree-select"
-            value={filter}
-            onChange={(e) => setFilter(e.target.value as typeof filter)}
-          >
-            <option value="all">All People</option>
-            <option value="living">Living Only</option>
-            <option value="male">Male Only</option>
-            <option value="female">Female Only</option>
-          </select>
+          <Select value={filter} onValueChange={(value) => setFilter(value as typeof filter)}>
+            <SelectTrigger className="w-full md:w-48">
+              <SelectValue placeholder="Filter" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All People</SelectItem>
+              <SelectItem value="living">Living Only</SelectItem>
+              <SelectItem value="male">Male Only</SelectItem>
+              <SelectItem value="female">Female Only</SelectItem>
+            </SelectContent>
+          </Select>
         </div>
 
         {loading ? (

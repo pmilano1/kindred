@@ -260,7 +260,19 @@ export const resolvers = {
           last_researched NULLS FIRST
         LIMIT $1
       `, [Math.min(limit, 100)]);
-      return rows;
+      // Convert Date objects to ISO strings for serialization
+      return rows.map((row: Record<string, unknown>) => ({
+        ...row,
+        last_researched: row.last_researched instanceof Date
+          ? row.last_researched.toISOString()
+          : row.last_researched,
+        created_at: row.created_at instanceof Date
+          ? row.created_at.toISOString()
+          : row.created_at,
+        updated_at: row.updated_at instanceof Date
+          ? row.updated_at.toISOString()
+          : row.updated_at,
+      }));
     },
 
     // Optimized ancestry traversal (single recursive CTE)

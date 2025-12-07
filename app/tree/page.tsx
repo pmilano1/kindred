@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback, useMemo, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import dynamic from 'next/dynamic';
 import { useQuery } from '@apollo/client/react';
-import { TreeDeciduous, ArrowUp, ArrowDown } from 'lucide-react';
+import { ArrowUp, ArrowDown } from 'lucide-react';
 import { PageHeader, Button } from '@/components/ui';
 import LoadingSpinner from '@/components/LoadingSpinner';
 import { Person } from '@/lib/types';
@@ -88,7 +88,7 @@ function TreePageContent() {
       <PageHeader
         title="Family Tree"
         subtitle="Interactive visualization of family connections"
-        icon={TreeDeciduous}
+        icon="TreeDeciduous"
       />
       <div className="content-wrapper">
         <div className="tree-controls">
@@ -158,7 +158,7 @@ export default function TreePage() {
         <PageHeader
           title="Family Tree"
           subtitle="Interactive visualization of family connections"
-          icon={TreeDeciduous}
+          icon="TreeDeciduous"
         />
         <div className="content-wrapper">
           <div className="tree-container flex items-center justify-center">

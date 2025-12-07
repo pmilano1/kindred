@@ -3,7 +3,7 @@
 import { useState, useMemo } from 'react';
 import Link from 'next/link';
 import { useQuery } from '@apollo/client/react';
-import { Calendar } from 'lucide-react';
+
 import { PageHeader, Button } from '@/components/ui';
 import { Person } from '@/lib/types';
 import { GET_TIMELINE } from '@/lib/graphql/queries';
@@ -38,7 +38,7 @@ export default function TimelinePage() {
       <PageHeader
         title="Timeline"
         subtitle="Family events through history"
-        icon={Calendar}
+        icon="Calendar"
       />
       <div className="content-wrapper">
         <div className="flex gap-2 mb-6">

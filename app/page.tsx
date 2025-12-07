@@ -1,4 +1,3 @@
-import { LayoutDashboard } from 'lucide-react';
 import { PageHeader } from '@/components/ui';
 import StatsCard from '@/components/StatsCard';
 import PersonCard from '@/components/PersonCard';
@@ -19,7 +18,7 @@ export default async function Home() {
 
   return (
     <>
-      <PageHeader icon={LayoutDashboard} />
+      <PageHeader icon="LayoutDashboard" />
       <div className="content-wrapper">
         <div className="stats-grid">
           <StatsCard label="Total People" value={stats.total_people} icon="👥" />

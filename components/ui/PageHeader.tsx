@@ -2,16 +2,53 @@
 
 import { ReactNode } from 'react';
 import { useSettings } from '../SettingsProvider';
-import { LucideIcon } from 'lucide-react';
+import {
+  LayoutDashboard,
+  Users,
+  Search,
+  Clock,
+  Network,
+  Shield,
+  Key,
+  Settings,
+  Sliders,
+  User,
+  BookOpen,
+  FlaskConical,
+  ClipboardList,
+  Calendar,
+  TreeDeciduous,
+} from 'lucide-react';
 import GlobalSearch from '../GlobalSearch';
+
+// Map of icon names to components (for Server → Client serialization)
+const iconMap = {
+  LayoutDashboard,
+  Users,
+  Search,
+  Clock,
+  Network,
+  Shield,
+  Key,
+  Settings,
+  Sliders,
+  User,
+  BookOpen,
+  FlaskConical,
+  ClipboardList,
+  Calendar,
+  TreeDeciduous,
+} as const;
+
+export type IconName = keyof typeof iconMap;
 
 export interface PageHeaderProps {
   /** Page title - falls back to family name from settings */
   title?: string;
   /** Subtitle text */
   subtitle?: string;
-  /** Optional icon component */
-  icon?: LucideIcon;
+  /** Optional icon name (string) - resolved internally to avoid Server→Client serialization issues */
+  icon?: IconName;
   /** Optional actions (buttons, etc.) to display in header */
   actions?: ReactNode;
   /** Whether to show breadcrumbs (future feature) */
@@ -22,19 +59,20 @@ export interface PageHeaderProps {
   stats?: Array<{
     label: string;
     value: string | number;
-    icon?: LucideIcon;
+    icon?: IconName;
   }>;
 }
 
 export function PageHeader({
   title,
   subtitle,
-  icon: Icon,
+  icon,
   actions,
   stats,
   showSearch = true,
 }: PageHeaderProps) {
   const settings = useSettings();
+  const Icon = icon ? iconMap[icon] : null;
 
   const displayTitle = title ?? settings.family_name;
   const displaySubtitle = subtitle ?? settings.site_tagline;
@@ -64,13 +102,16 @@ export function PageHeader({
 
       {stats && stats.length > 0 && (
         <div className="page-header-stats">
-          {stats.map((stat, index) => (
-            <div key={index} className="page-header-stat">
-              {stat.icon && <stat.icon className="w-4 h-4 text-white/60" />}
-              <span className="page-header-stat-value">{stat.value}</span>
-              <span className="page-header-stat-label">{stat.label}</span>
-            </div>
-          ))}
+          {stats.map((stat, index) => {
+            const StatIcon = stat.icon ? iconMap[stat.icon] : null;
+            return (
+              <div key={index} className="page-header-stat">
+                {StatIcon && <StatIcon className="w-4 h-4 text-white/60" />}
+                <span className="page-header-stat-value">{stat.value}</span>
+                <span className="page-header-stat-label">{stat.label}</span>
+              </div>
+            );
+          })}
         </div>
       )}
     </header>

@@ -4,7 +4,7 @@ import { useEffect, useState, useCallback } from 'react';
 import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import { useQuery, useMutation } from '@apollo/client/react';
-import { Settings, Send, UserPlus, Trash2, Copy, Mail, RefreshCw } from 'lucide-react';
+import { Send, UserPlus, Trash2, Copy, Mail, RefreshCw } from 'lucide-react';
 import { PageHeader, Button } from '@/components/ui';
 import LoadingSpinner from '@/components/LoadingSpinner';
 import {
@@ -218,7 +218,7 @@ export default function AdminPage() {
 
   if (loading) return (
     <>
-      <PageHeader title="Admin Panel" subtitle="Manage users and site settings" icon={Settings} />
+      <PageHeader title="Admin Panel" subtitle="Manage users and site settings" icon="Settings" />
       <div className="content-wrapper flex justify-center py-12">
         <LoadingSpinner size="lg" message="Loading admin data..." />
       </div>
@@ -227,7 +227,7 @@ export default function AdminPage() {
 
   return (
     <>
-      <PageHeader title="Admin Panel" subtitle="Manage users and site settings" icon={Settings} />
+      <PageHeader title="Admin Panel" subtitle="Manage users and site settings" icon="Settings" />
       <div className="content-wrapper">
 
         {/* Admin Navigation */}

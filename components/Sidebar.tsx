@@ -116,7 +116,7 @@ export default function Sidebar() {
       </div>
 
       {/* Navigation */}
-      <div className="flex-1 overflow-y-auto py-4">
+      <div className={`flex-1 py-4 ${isCollapsed ? 'overflow-hidden' : 'overflow-y-auto'}`}>
         {/* Main section */}
         {!isCollapsed && (
           <div className="px-4 mb-2">

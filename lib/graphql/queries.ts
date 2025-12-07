@@ -218,6 +218,21 @@ export const ADD_SOURCE = gql`
   }
 `;
 
+export const UPDATE_SOURCE = gql`
+  ${SOURCE_FIELDS}
+  mutation UpdateSource($id: ID!, $input: SourceInput!) {
+    updateSource(id: $id, input: $input) {
+      ...SourceFields
+    }
+  }
+`;
+
+export const DELETE_SOURCE = gql`
+  mutation DeleteSource($id: ID!) {
+    deleteSource(id: $id)
+  }
+`;
+
 export const UPDATE_RESEARCH_STATUS = gql`
   mutation UpdateResearchStatus($personId: ID!, $status: String!) {
     updateResearchStatus(personId: $personId, status: $status) {

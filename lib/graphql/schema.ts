@@ -420,8 +420,10 @@ export const typeDefs = `#graphql
     addChildToFamily(familyId: ID!, personId: ID!): Boolean!
     removeChildFromFamily(familyId: ID!, personId: ID!): Boolean!
 
-    # Source mutations
-    addSource(personId: ID!, input: SourceInput!): Source
+    # Source mutations (requires editor role)
+    addSource(personId: ID!, input: SourceInput!): Source!
+    updateSource(id: ID!, input: SourceInput!): Source
+    deleteSource(id: ID!): Boolean!
     updateResearchStatus(personId: ID!, status: String!): Person
     updateResearchPriority(personId: ID!, priority: Int!): Person
 

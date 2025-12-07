@@ -25,12 +25,12 @@ export default async function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  // Fetch settings server-side
+  // Fetch settings server-side (silently falls back to defaults during build)
   let settings;
   try {
     settings = await getSettings();
-  } catch (error) {
-    console.error('Failed to load settings for layout:', error);
+  } catch {
+    // Handled in getSettings - uses defaults
   }
 
   // Generate darker shade for gradients

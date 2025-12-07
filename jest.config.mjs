@@ -11,6 +11,11 @@ const customJestConfig = {
     '^@/(.*)$': '<rootDir>/$1',
   },
   testPathIgnorePatterns: ['<rootDir>/node_modules/', '<rootDir>/.next/', '<rootDir>/.next/standalone/'],
+  // Performance optimizations - use more CPUs on powerful machines
+  maxWorkers: '75%',
+  cache: true,
+  cacheDirectory: '<rootDir>/.jest-cache',
+  workerIdleMemoryLimit: '512MB',
   // Coverage configuration
   collectCoverageFrom: [
     'lib/**/*.{js,ts}',

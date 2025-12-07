@@ -1043,6 +1043,49 @@ export const resolvers = {
       return rows[0];
     },
 
+    // Service account mutations
+    createServiceAccount: async (_: unknown, { name, description, role }: { name: string; description?: string; role: string }, context: Context) => {
+      requireAuth(context, 'admin');
+      const crypto = await import('crypto');
+
+      // Validate role (service accounts cannot be admin)
+      if (!['editor', 'viewer'].includes(role)) {
+        throw new Error('Invalid role. Service accounts can only be editor or viewer');
+      }
+
+      // Generate unique ID and API key
+      const userId = crypto.randomBytes(8).toString('hex');
+      const apiKey = crypto.randomBytes(32).toString('hex');
+
+      // Create service account (no email, no password)
+      const { rows } = await pool.query(
+        `INSERT INTO users (id, email, name, role, account_type, description, api_key, auth_provider, created_at)
+         VALUES ($1, $2, $3, $4, 'service', $5, $6, 'api', NOW())
+         RETURNING id, email, name, role, account_type, description, created_at`,
+        [userId, `service-${userId}@internal`, name, role, description || null, apiKey]
+      );
+
+      return { user: rows[0], apiKey };
+    },
+
+    revokeServiceAccount: async (_: unknown, { userId }: { userId: string }, context: Context) => {
+      requireAuth(context, 'admin');
+
+      // Verify it's a service account
+      const { rows } = await pool.query(
+        'SELECT id FROM users WHERE id = $1 AND account_type = $2',
+        [userId, 'service']
+      );
+
+      if (rows.length === 0) {
+        throw new Error('Service account not found');
+      }
+
+      // Delete the service account
+      await pool.query('DELETE FROM users WHERE id = $1', [userId]);
+      return true;
+    },
+
     // Local auth mutations
     registerWithInvitation: async (_: unknown, { token, password, name }: { token: string; password: string; name?: string }) => {
       const bcrypt = await import('bcryptjs');

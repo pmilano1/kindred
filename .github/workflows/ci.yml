@@ -58,7 +58,7 @@ jobs:
   build:
     runs-on: ubuntu-latest
     name: Build Check
-    needs: [lint, test]
+    # No needs - runs in parallel with lint and test
 
     steps:
       - name: Checkout
@@ -79,7 +79,7 @@ jobs:
   docker-build:
     runs-on: ubuntu-latest
     name: Docker Build Check
-    needs: [lint, test]  # Run in parallel with build job
+    # No needs - runs in parallel with lint, test, and build
     if: github.event_name == 'pull_request' && github.base_ref == 'main'
 
     steps:

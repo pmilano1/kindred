@@ -226,10 +226,20 @@ export const typeDefs = `#graphql
     message: String
   }
 
+  type AppliedMigration {
+    version: Int!
+    name: String!
+    applied_at: String!
+  }
+
   type MigrationStatus {
     tables: [String!]!
     missingTables: [String!]!
     migrationNeeded: Boolean!
+    currentVersion: Int!
+    latestVersion: Int!
+    pendingMigrations: Int!
+    appliedMigrations: [AppliedMigration!]!
   }
 
   type EmailLog {

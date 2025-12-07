@@ -14,6 +14,7 @@ import { sendInviteEmail, verifyEmailForSandbox } from '../email';
 import { Loaders } from './dataloaders';
 import { getSettings, clearSettingsCache, SiteSettings } from '../settings';
 import { generateGedcom, GedcomPerson, GedcomFamily, GedcomSource, parseGedcom } from '../gedcom';
+import { runMigrations as runMigrationsFromModule, getMigrationStatus } from '../migrations';
 
 // ===========================================
 // QUERY CACHING
@@ -430,6 +431,7 @@ export const resolvers = {
 
     migrationStatus: async (_: unknown, __: unknown, context: Context) => {
       requireAuth(context, 'admin');
+      const status = await getMigrationStatus(pool);
       const { rows } = await pool.query(`
         SELECT table_name FROM information_schema.tables
         WHERE table_schema = 'public'
@@ -441,7 +443,11 @@ export const resolvers = {
       return {
         tables: existingTables,
         missingTables,
-        migrationNeeded: missingTables.length > 0
+        migrationNeeded: missingTables.length > 0 || status.pendingCount > 0,
+        currentVersion: status.currentVersion,
+        latestVersion: status.latestVersion,
+        pendingMigrations: status.pendingCount,
+        appliedMigrations: status.appliedMigrations,
       };
     },
 
@@ -885,234 +891,7 @@ export const resolvers = {
 
     runMigrations: async (_: unknown, __: unknown, context: Context) => {
       requireAuth(context, 'admin');
-      const results: string[] = [];
-
-      // Check/create settings table
-      const settingsCheck = await pool.query(`
-        SELECT EXISTS (SELECT FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'settings')
-      `);
-
-      if (!settingsCheck.rows[0].exists) {
-        await pool.query(`
-          CREATE TABLE settings (
-            key VARCHAR(100) PRIMARY KEY,
-            value TEXT,
-            description VARCHAR(500),
-            category VARCHAR(50) DEFAULT 'general',
-            updated_at TIMESTAMP DEFAULT NOW()
-          )
-        `);
-        results.push('Created settings table');
-
-        await pool.query(`
-          INSERT INTO settings (key, value, description, category) VALUES
-            ('site_name', 'Family Tree', 'Site name', 'branding'),
-            ('family_name', 'Family', 'Family name', 'branding'),
-            ('site_tagline', 'Preserving our heritage', 'Tagline', 'branding'),
-            ('theme_color', '#4F46E5', 'Theme color', 'branding'),
-            ('logo_url', NULL, 'Logo URL', 'branding'),
-            ('require_login', 'true', 'Require login', 'privacy'),
-            ('show_living_details', 'false', 'Show living details', 'privacy'),
-            ('living_cutoff_years', '100', 'Living cutoff years', 'privacy'),
-            ('date_format', 'MDY', 'Date format', 'display'),
-            ('default_tree_generations', '4', 'Default generations', 'display'),
-            ('show_coats_of_arms', 'true', 'Show coats of arms', 'display'),
-            ('admin_email', NULL, 'Admin email', 'contact'),
-            ('footer_text', NULL, 'Footer text', 'contact')
-          ON CONFLICT DO NOTHING
-        `);
-        results.push('Inserted default settings');
-      } else {
-        results.push('Settings table exists');
-      }
-
-      // Check/create email_log table
-      const emailLogCheck = await pool.query(`
-        SELECT EXISTS (SELECT FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'email_log')
-      `);
-
-      if (!emailLogCheck.rows[0].exists) {
-        await pool.query(`
-          CREATE TABLE email_log (
-            id SERIAL PRIMARY KEY,
-            email_type VARCHAR(50) NOT NULL,
-            recipient VARCHAR(255) NOT NULL,
-            subject VARCHAR(500),
-            success BOOLEAN DEFAULT false,
-            error_message TEXT,
-            sent_at TIMESTAMP DEFAULT NOW()
-          )
-        `);
-        await pool.query('CREATE INDEX idx_email_log_recipient ON email_log(recipient)');
-        await pool.query('CREATE INDEX idx_email_log_sent_at ON email_log(sent_at)');
-        results.push('Created email_log table');
-      } else {
-        results.push('email_log table exists');
-      }
-
-      // Check/create email_preferences table
-      const emailPrefsCheck = await pool.query(`
-        SELECT EXISTS (SELECT FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'email_preferences')
-      `);
-
-      if (!emailPrefsCheck.rows[0].exists) {
-        await pool.query(`
-          CREATE TABLE email_preferences (
-            user_id VARCHAR(50) PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
-            research_updates BOOLEAN DEFAULT true,
-            tree_changes BOOLEAN DEFAULT false,
-            weekly_digest BOOLEAN DEFAULT false,
-            birthday_reminders BOOLEAN DEFAULT false,
-            updated_at TIMESTAMP DEFAULT NOW()
-          )
-        `);
-        results.push('Created email_preferences table');
-      } else {
-        results.push('email_preferences table exists');
-      }
-
-      // Add performance indexes for tree traversal queries
-      const indexQueries = [
-        // Children table indexes for ancestry traversal
-        { name: 'idx_children_person_id', sql: 'CREATE INDEX IF NOT EXISTS idx_children_person_id ON children(person_id)' },
-        { name: 'idx_children_family_id', sql: 'CREATE INDEX IF NOT EXISTS idx_children_family_id ON children(family_id)' },
-        { name: 'idx_children_composite', sql: 'CREATE INDEX IF NOT EXISTS idx_children_composite ON children(family_id, person_id)' },
-        // Families table indexes for parent lookups
-        { name: 'idx_families_husband_id', sql: 'CREATE INDEX IF NOT EXISTS idx_families_husband_id ON families(husband_id)' },
-        { name: 'idx_families_wife_id', sql: 'CREATE INDEX IF NOT EXISTS idx_families_wife_id ON families(wife_id)' },
-        { name: 'idx_families_parents', sql: 'CREATE INDEX IF NOT EXISTS idx_families_parents ON families(husband_id, wife_id)' },
-        // People table indexes for filtering
-        { name: 'idx_people_is_notable', sql: 'CREATE INDEX IF NOT EXISTS idx_people_is_notable ON people(is_notable) WHERE is_notable = true' },
-        { name: 'idx_people_surname', sql: 'CREATE INDEX IF NOT EXISTS idx_people_surname ON people(name_surname)' },
-        { name: 'idx_people_living', sql: 'CREATE INDEX IF NOT EXISTS idx_people_living ON people(living)' },
-      ];
-
-      for (const idx of indexQueries) {
-        try {
-          await pool.query(idx.sql);
-        } catch {
-          // Index might already exist with different definition
-        }
-      }
-      results.push('Verified tree traversal indexes');
-
-      // Add local auth columns to users table
-      const authColumnsCheck = await pool.query(`
-        SELECT column_name FROM information_schema.columns
-        WHERE table_name = 'users' AND column_name = 'password_hash'
-      `);
-
-      if (authColumnsCheck.rows.length === 0) {
-        await pool.query(`
-          ALTER TABLE users
-          ADD COLUMN IF NOT EXISTS password_hash VARCHAR(255),
-          ADD COLUMN IF NOT EXISTS auth_provider VARCHAR(20) DEFAULT 'google',
-          ADD COLUMN IF NOT EXISTS failed_login_attempts INTEGER DEFAULT 0,
-          ADD COLUMN IF NOT EXISTS locked_until TIMESTAMP,
-          ADD COLUMN IF NOT EXISTS password_reset_token VARCHAR(255),
-          ADD COLUMN IF NOT EXISTS password_reset_expires TIMESTAMP,
-          ADD COLUMN IF NOT EXISTS require_password_change BOOLEAN DEFAULT false
-        `);
-        results.push('Added local auth columns to users table');
-      } else {
-        // Add require_password_change column if missing
-        await pool.query(`
-          ALTER TABLE users ADD COLUMN IF NOT EXISTS require_password_change BOOLEAN DEFAULT false
-        `);
-        results.push('Local auth columns exist');
-      }
-
-      // Create password_reset_tokens table for secure reset flow
-      const resetTokensCheck = await pool.query(`
-        SELECT EXISTS (SELECT FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'password_reset_tokens')
-      `);
-
-      if (!resetTokensCheck.rows[0].exists) {
-        await pool.query(`
-          CREATE TABLE password_reset_tokens (
-            id SERIAL PRIMARY KEY,
-            user_id VARCHAR(50) REFERENCES users(id) ON DELETE CASCADE,
-            token VARCHAR(255) UNIQUE NOT NULL,
-            expires_at TIMESTAMP NOT NULL,
-            used_at TIMESTAMP,
-            created_at TIMESTAMP DEFAULT NOW()
-          )
-        `);
-        await pool.query('CREATE INDEX idx_reset_tokens_token ON password_reset_tokens(token)');
-        results.push('Created password_reset_tokens table');
-      } else {
-        results.push('password_reset_tokens table exists');
-      }
-
-      // Full-text search setup
-      const searchVectorCheck = await pool.query(`
-        SELECT column_name FROM information_schema.columns
-        WHERE table_name = 'people' AND column_name = 'search_vector'
-      `);
-
-      if (searchVectorCheck.rows.length === 0) {
-        // Enable extensions
-        await pool.query('CREATE EXTENSION IF NOT EXISTS pg_trgm');
-        await pool.query('CREATE EXTENSION IF NOT EXISTS unaccent');
-
-        // Create immutable unaccent function
-        await pool.query(`
-          CREATE OR REPLACE FUNCTION immutable_unaccent(text)
-          RETURNS text AS $$
-            SELECT unaccent('unaccent', $1)
-          $$ LANGUAGE SQL IMMUTABLE PARALLEL SAFE
-        `);
-
-        // Add search_vector column
-        await pool.query('ALTER TABLE people ADD COLUMN search_vector tsvector');
-
-        // Create trigger function
-        await pool.query(`
-          CREATE OR REPLACE FUNCTION people_search_vector_update() RETURNS trigger AS $$
-          BEGIN
-            NEW.search_vector :=
-              setweight(to_tsvector('simple', immutable_unaccent(COALESCE(NEW.name_full, ''))), 'A') ||
-              setweight(to_tsvector('simple', immutable_unaccent(COALESCE(NEW.name_given, ''))), 'A') ||
-              setweight(to_tsvector('simple', immutable_unaccent(COALESCE(NEW.name_surname, ''))), 'A') ||
-              setweight(to_tsvector('simple', immutable_unaccent(COALESCE(NEW.birth_place, ''))), 'B') ||
-              setweight(to_tsvector('simple', immutable_unaccent(COALESCE(NEW.death_place, ''))), 'B') ||
-              setweight(to_tsvector('simple', immutable_unaccent(COALESCE(NEW.description, ''))), 'C') ||
-              setweight(to_tsvector('simple', immutable_unaccent(COALESCE(NEW.notes, ''))), 'C');
-            RETURN NEW;
-          END
-          $$ LANGUAGE plpgsql
-        `);
-
-        // Create trigger
-        await pool.query('DROP TRIGGER IF EXISTS people_search_vector_trigger ON people');
-        await pool.query(`
-          CREATE TRIGGER people_search_vector_trigger
-            BEFORE INSERT OR UPDATE ON people
-            FOR EACH ROW EXECUTE FUNCTION people_search_vector_update()
-        `);
-
-        // Create indexes
-        await pool.query('CREATE INDEX IF NOT EXISTS idx_people_search_vector ON people USING GIN(search_vector)');
-        await pool.query('CREATE INDEX IF NOT EXISTS idx_people_name_trgm ON people USING GIN(immutable_unaccent(name_full) gin_trgm_ops)');
-
-        // Populate existing records
-        await pool.query(`
-          UPDATE people SET search_vector =
-            setweight(to_tsvector('simple', immutable_unaccent(COALESCE(name_full, ''))), 'A') ||
-            setweight(to_tsvector('simple', immutable_unaccent(COALESCE(name_given, ''))), 'A') ||
-            setweight(to_tsvector('simple', immutable_unaccent(COALESCE(name_surname, ''))), 'A') ||
-            setweight(to_tsvector('simple', immutable_unaccent(COALESCE(birth_place, ''))), 'B') ||
-            setweight(to_tsvector('simple', immutable_unaccent(COALESCE(death_place, ''))), 'B') ||
-            setweight(to_tsvector('simple', immutable_unaccent(COALESCE(description, ''))), 'C') ||
-            setweight(to_tsvector('simple', immutable_unaccent(COALESCE(notes, ''))), 'C')
-        `);
-
-        results.push('Created full-text search infrastructure (search_vector, indexes, trigger)');
-      } else {
-        results.push('Full-text search already configured');
-      }
-
-      return { success: true, results, message: 'Migrations completed' };
+      return runMigrationsFromModule(pool);
     },
 
     // API Key mutations

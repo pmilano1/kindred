@@ -438,6 +438,7 @@ export const typeDefs = `#graphql
     # Admin mutations (requires admin role)
     createInvitation(email: String!, role: String!): Invitation
     deleteInvitation(id: ID!): Boolean
+    createLocalUser(email: String!, name: String!, role: String!, password: String!, requirePasswordChange: Boolean): User!
     updateUserRole(userId: ID!, role: String!): User
     deleteUser(userId: ID!): Boolean
 

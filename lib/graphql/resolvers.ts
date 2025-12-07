@@ -928,10 +928,15 @@ export const resolvers = {
           ADD COLUMN IF NOT EXISTS failed_login_attempts INTEGER DEFAULT 0,
           ADD COLUMN IF NOT EXISTS locked_until TIMESTAMP,
           ADD COLUMN IF NOT EXISTS password_reset_token VARCHAR(255),
-          ADD COLUMN IF NOT EXISTS password_reset_expires TIMESTAMP
+          ADD COLUMN IF NOT EXISTS password_reset_expires TIMESTAMP,
+          ADD COLUMN IF NOT EXISTS require_password_change BOOLEAN DEFAULT false
         `);
         results.push('Added local auth columns to users table');
       } else {
+        // Add require_password_change column if missing
+        await pool.query(`
+          ALTER TABLE users ADD COLUMN IF NOT EXISTS require_password_change BOOLEAN DEFAULT false
+        `);
         results.push('Local auth columns exist');
       }
 
@@ -1002,6 +1007,38 @@ export const resolvers = {
         input.weekly_digest ?? false,
         input.birthday_reminders ?? false
       ]);
+
+      return rows[0];
+    },
+
+    // Admin: Create local user directly (no invitation required)
+    createLocalUser: async (_: unknown, { email, name, role, password, requirePasswordChange }: { email: string; name: string; role: string; password: string; requirePasswordChange?: boolean }, context: Context) => {
+      requireAuth(context, 'admin');
+      const bcrypt = await import('bcryptjs');
+      const crypto = await import('crypto');
+
+      // Check if user already exists
+      const existingUser = await pool.query('SELECT id FROM users WHERE email = $1', [email]);
+      if (existingUser.rows.length > 0) {
+        throw new Error('User with this email already exists');
+      }
+
+      // Validate role
+      if (!['admin', 'editor', 'viewer'].includes(role)) {
+        throw new Error('Invalid role. Must be admin, editor, or viewer');
+      }
+
+      // Hash password
+      const passwordHash = await bcrypt.hash(password, 12);
+      const userId = crypto.randomBytes(8).toString('hex');
+
+      // Create user
+      const { rows } = await pool.query(
+        `INSERT INTO users (id, email, name, role, password_hash, auth_provider, require_password_change, created_at, last_login)
+         VALUES ($1, $2, $3, $4, $5, 'local', $6, NOW(), NULL)
+         RETURNING id, email, name, role, created_at`,
+        [userId, email, name, role, passwordHash, requirePasswordChange ?? false]
+      );
 
       return rows[0];
     },

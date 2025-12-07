@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import "./globals.css";
 import { Providers } from "@/components/Providers";
 import Sidebar from "@/components/Sidebar";
+import MainContent from "@/components/MainContent";
 import Footer from "@/components/Footer";
 import { getSettings } from "@/lib/settings";
 
@@ -58,10 +59,10 @@ export default async function RootLayout({
       <body>
         <Providers settings={settings}>
           <Sidebar />
-          <main className="main-content">
+          <MainContent>
             {children}
             <Footer />
-          </main>
+          </MainContent>
         </Providers>
       </body>
     </html>

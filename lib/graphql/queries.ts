@@ -519,8 +519,7 @@ export const GET_USERS = gql`
       email
       name
       role
-      account_type
-      description
+      image
       created_at
       last_login
       last_accessed

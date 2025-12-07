@@ -55,6 +55,10 @@ export default function GlobalSearch() {
     if (e.key === 'Escape') {
       setQuery('');
       inputRef.current?.blur();
+    } else if (e.key === 'Enter' && query.trim()) {
+      // Navigate to full search page on Enter
+      setIsFocused(false);
+      router.push(`/search?q=${encodeURIComponent(query.trim())}`);
     }
   };
 

@@ -106,14 +106,14 @@ describe('Sidebar', () => {
 
     it('renders all navigation items', () => {
       render(<Sidebar />);
-      
+
       expect(screen.getByText('Dashboard')).toBeInTheDocument();
       expect(screen.getByText('Family Tree')).toBeInTheDocument();
       expect(screen.getByText('People')).toBeInTheDocument();
       expect(screen.getByText('Research Queue')).toBeInTheDocument();
       expect(screen.getByText('Timeline')).toBeInTheDocument();
       expect(screen.getByText('Coats of Arms')).toBeInTheDocument();
-      expect(screen.getByText('Search')).toBeInTheDocument();
+      // Search moved to PageHeader global search bar
     });
 
     it('marks active nav item based on pathname', () => {

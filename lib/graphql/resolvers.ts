@@ -1,3 +1,4 @@
+import crypto from 'crypto';
 import { pool } from '../pool';
 import { Person } from '../types';
 import {
@@ -460,21 +461,68 @@ export const resolvers = {
   },
 
   Mutation: {
+    createPerson: async (_: unknown, { input }: { input: Record<string, unknown> }, context: Context) => {
+      requireAuth(context, 'editor');
+
+      // Generate a nanoid-style ID (12 chars alphanumeric)
+      const id = crypto.randomBytes(9).toString('base64').replace(/[+/=]/g, '').substring(0, 12);
+
+      // Require at least name_full
+      if (!input.name_full) {
+        throw new Error('name_full is required');
+      }
+
+      const fields = Object.keys(input).filter(k => input[k] !== undefined);
+      const columns = ['id', ...fields];
+      const placeholders = columns.map((_, i) => `$${i + 1}`).join(', ');
+      const values = [id, ...fields.map(f => input[f])];
+
+      await pool.query(
+        `INSERT INTO people (${columns.join(', ')}) VALUES (${placeholders})`,
+        values
+      );
+
+      return getPerson(id);
+    },
+
     updatePerson: async (_: unknown, { id, input }: { id: string; input: Record<string, unknown> }, context: Context) => {
       requireAuth(context, 'editor');
-      
+
       const fields = Object.keys(input).filter(k => input[k] !== undefined);
       if (fields.length === 0) return getPerson(id);
-      
+
       const setClause = fields.map((f, i) => `${f} = $${i + 2}`).join(', ');
       const values = fields.map(f => input[f]);
-      
+
       await pool.query(
         `UPDATE people SET ${setClause} WHERE id = $1`,
         [id, ...values]
       );
-      
+
       return getPerson(id);
+    },
+
+    deletePerson: async (_: unknown, { id }: { id: string }, context: Context) => {
+      requireAuth(context, 'admin'); // Only admin can delete
+
+      // Check if person exists
+      const person = await getPerson(id);
+      if (!person) {
+        throw new Error('Person not found');
+      }
+
+      // Delete related records first (sources, facts, life_events, family links)
+      await pool.query('DELETE FROM sources WHERE person_id = $1', [id]);
+      await pool.query('DELETE FROM facts WHERE person_id = $1', [id]);
+      await pool.query('DELETE FROM life_events WHERE person_id = $1', [id]);
+      await pool.query('DELETE FROM children WHERE person_id = $1 OR child_id = $1', [id]);
+      await pool.query('UPDATE families SET husband_id = NULL WHERE husband_id = $1', [id]);
+      await pool.query('UPDATE families SET wife_id = NULL WHERE wife_id = $1', [id]);
+
+      // Delete the person
+      await pool.query('DELETE FROM people WHERE id = $1', [id]);
+
+      return true;
     },
     
     addSource: async (_: unknown, { personId, input }: { personId: string; input: { source_type?: string; source_name?: string; source_url?: string; action: string; content?: string; confidence?: string } }, context: Context) => {

@@ -236,12 +236,27 @@ export const UPDATE_RESEARCH_PRIORITY = gql`
   }
 `;
 
+export const CREATE_PERSON = gql`
+  ${PERSON_FULL_FIELDS}
+  mutation CreatePerson($input: PersonInput!) {
+    createPerson(input: $input) {
+      ...PersonFullFields
+    }
+  }
+`;
+
 export const UPDATE_PERSON = gql`
   ${PERSON_FULL_FIELDS}
   mutation UpdatePerson($id: ID!, $input: PersonInput!) {
     updatePerson(id: $id, input: $input) {
       ...PersonFullFields
     }
+  }
+`;
+
+export const DELETE_PERSON = gql`
+  mutation DeletePerson($id: ID!) {
+    deletePerson(id: $id)
   }
 `;
 

@@ -2,15 +2,22 @@
 
 import { useState, useMemo, useEffect, useCallback } from 'react';
 import { useQuery } from '@apollo/client/react';
+import { useSession } from 'next-auth/react';
+import { useRouter } from 'next/navigation';
 import Hero from '@/components/Hero';
 import LoadingSpinner from '@/components/LoadingSpinner';
 import PersonCard from '@/components/PersonCard';
+import CreatePersonModal from '@/components/CreatePersonModal';
 import { Person } from '@/lib/types';
 import { GET_PEOPLE_LIST } from '@/lib/graphql/queries';
 
 const PAGE_SIZE = 50;
 
 export default function PeoplePage() {
+  const { data: session } = useSession();
+  const router = useRouter();
+  const canEdit = session?.user?.role === 'admin' || session?.user?.role === 'editor';
+
   const { data, loading } = useQuery<{ peopleList: Person[] }>(GET_PEOPLE_LIST, {
     variables: { limit: 10000 },
   });
@@ -19,6 +26,7 @@ export default function PeoplePage() {
   const [search, setSearch] = useState('');
   const [filter, setFilter] = useState<'all' | 'living' | 'male' | 'female'>('all');
   const [displayCount, setDisplayCount] = useState(PAGE_SIZE);
+  const [showCreateModal, setShowCreateModal] = useState(false);
 
   // Reset display count when filters change - valid synchronization pattern
   useEffect(() => {
@@ -78,6 +86,14 @@ export default function PeoplePage() {
             <option value="male">Male Only</option>
             <option value="female">Female Only</option>
           </select>
+          {canEdit && (
+            <button
+              onClick={() => setShowCreateModal(true)}
+              className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors flex items-center gap-2"
+            >
+              <span>➕</span> Add Person
+            </button>
+          )}
         </div>
 
         {loading ? (
@@ -108,6 +124,13 @@ export default function PeoplePage() {
           </>
         )}
       </div>
+
+      {/* Create Person Modal */}
+      <CreatePersonModal
+        isOpen={showCreateModal}
+        onClose={() => setShowCreateModal(false)}
+        onSuccess={(personId) => router.push(`/person/${personId}`)}
+      />
     </>
   );
 }

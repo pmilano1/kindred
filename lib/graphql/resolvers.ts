@@ -1044,6 +1044,74 @@ export const resolvers = {
         results.push('password_reset_tokens table exists');
       }
 
+      // Full-text search setup
+      const searchVectorCheck = await pool.query(`
+        SELECT column_name FROM information_schema.columns
+        WHERE table_name = 'people' AND column_name = 'search_vector'
+      `);
+
+      if (searchVectorCheck.rows.length === 0) {
+        // Enable extensions
+        await pool.query('CREATE EXTENSION IF NOT EXISTS pg_trgm');
+        await pool.query('CREATE EXTENSION IF NOT EXISTS unaccent');
+
+        // Create immutable unaccent function
+        await pool.query(`
+          CREATE OR REPLACE FUNCTION immutable_unaccent(text)
+          RETURNS text AS $$
+            SELECT unaccent('unaccent', $1)
+          $$ LANGUAGE SQL IMMUTABLE PARALLEL SAFE
+        `);
+
+        // Add search_vector column
+        await pool.query('ALTER TABLE people ADD COLUMN search_vector tsvector');
+
+        // Create trigger function
+        await pool.query(`
+          CREATE OR REPLACE FUNCTION people_search_vector_update() RETURNS trigger AS $$
+          BEGIN
+            NEW.search_vector :=
+              setweight(to_tsvector('simple', immutable_unaccent(COALESCE(NEW.name_full, ''))), 'A') ||
+              setweight(to_tsvector('simple', immutable_unaccent(COALESCE(NEW.name_given, ''))), 'A') ||
+              setweight(to_tsvector('simple', immutable_unaccent(COALESCE(NEW.name_surname, ''))), 'A') ||
+              setweight(to_tsvector('simple', immutable_unaccent(COALESCE(NEW.birth_place, ''))), 'B') ||
+              setweight(to_tsvector('simple', immutable_unaccent(COALESCE(NEW.death_place, ''))), 'B') ||
+              setweight(to_tsvector('simple', immutable_unaccent(COALESCE(NEW.description, ''))), 'C') ||
+              setweight(to_tsvector('simple', immutable_unaccent(COALESCE(NEW.notes, ''))), 'C');
+            RETURN NEW;
+          END
+          $$ LANGUAGE plpgsql
+        `);
+
+        // Create trigger
+        await pool.query('DROP TRIGGER IF EXISTS people_search_vector_trigger ON people');
+        await pool.query(`
+          CREATE TRIGGER people_search_vector_trigger
+            BEFORE INSERT OR UPDATE ON people
+            FOR EACH ROW EXECUTE FUNCTION people_search_vector_update()
+        `);
+
+        // Create indexes
+        await pool.query('CREATE INDEX IF NOT EXISTS idx_people_search_vector ON people USING GIN(search_vector)');
+        await pool.query('CREATE INDEX IF NOT EXISTS idx_people_name_trgm ON people USING GIN(immutable_unaccent(name_full) gin_trgm_ops)');
+
+        // Populate existing records
+        await pool.query(`
+          UPDATE people SET search_vector =
+            setweight(to_tsvector('simple', immutable_unaccent(COALESCE(name_full, ''))), 'A') ||
+            setweight(to_tsvector('simple', immutable_unaccent(COALESCE(name_given, ''))), 'A') ||
+            setweight(to_tsvector('simple', immutable_unaccent(COALESCE(name_surname, ''))), 'A') ||
+            setweight(to_tsvector('simple', immutable_unaccent(COALESCE(birth_place, ''))), 'B') ||
+            setweight(to_tsvector('simple', immutable_unaccent(COALESCE(death_place, ''))), 'B') ||
+            setweight(to_tsvector('simple', immutable_unaccent(COALESCE(description, ''))), 'C') ||
+            setweight(to_tsvector('simple', immutable_unaccent(COALESCE(notes, ''))), 'C')
+        `);
+
+        results.push('Created full-text search infrastructure (search_vector, indexes, trigger)');
+      } else {
+        results.push('Full-text search already configured');
+      }
+
       return { success: true, results, message: 'Migrations completed' };
     },
 

@@ -20,241 +20,111 @@ export interface ThemePreset {
   preview: string[];
 }
 
+// Curated selection of 8 themes - one best option per category
 export const themePresets: ThemePreset[] = [
-  // === Nature ===
+  // === Nature (Green) ===
   {
     id: 'forest',
-    name: '🌲 Forest',
-    description: 'Deep greens inspired by woodland',
+    name: 'Forest',
+    description: 'Classic woodland green',
     colors: {
       primary: '#37b24d',
       primaryDark: '#2b8a3e',
       secondary: '#12b886',
       accent: '#82c91e',
     },
-    preview: ['#37b24d', '#2b8a3e', '#12b886', '#82c91e'],
+    preview: ['#37b24d', '#2b8a3e', '#12b886'],
   },
-  {
-    id: 'jungle',
-    name: '🌴 Jungle',
-    description: 'Lush tropical greens',
-    colors: {
-      primary: '#40c057',
-      primaryDark: '#2f9e44',
-      secondary: '#51cf66',
-      accent: '#94d82d',
-    },
-    preview: ['#40c057', '#2f9e44', '#51cf66', '#94d82d'],
-  },
-  {
-    id: 'lime',
-    name: '🍋 Citrus',
-    description: 'Bright and energetic lime',
-    colors: {
-      primary: '#82c91e',
-      primaryDark: '#66a80f',
-      secondary: '#40c057',
-      accent: '#fcc419',
-    },
-    preview: ['#82c91e', '#66a80f', '#40c057', '#fcc419'],
-  },
-  // === Water ===
+  // === Water (Blue) ===
   {
     id: 'ocean',
-    name: '🌊 Ocean',
-    description: 'Calming blues of the deep sea',
+    name: 'Ocean',
+    description: 'Calming sea blue',
     colors: {
       primary: '#228be6',
       primaryDark: '#1971c2',
       secondary: '#15aabf',
       accent: '#5c7cfa',
     },
-    preview: ['#228be6', '#1971c2', '#15aabf', '#5c7cfa'],
+    preview: ['#228be6', '#1971c2', '#15aabf'],
   },
+  // === Teal ===
   {
     id: 'teal',
-    name: '🧊 Glacier',
-    description: 'Cool teals and aqua',
+    name: 'Teal',
+    description: 'Modern teal',
     colors: {
       primary: '#12b886',
       primaryDark: '#099268',
       secondary: '#15aabf',
       accent: '#40c057',
     },
-    preview: ['#12b886', '#099268', '#15aabf', '#40c057'],
+    preview: ['#12b886', '#099268', '#15aabf'],
   },
-  {
-    id: 'cyan',
-    name: '💎 Aquamarine',
-    description: 'Crystalline cyan waters',
-    colors: {
-      primary: '#15aabf',
-      primaryDark: '#0c8599',
-      secondary: '#12b886',
-      accent: '#339af0',
-    },
-    preview: ['#15aabf', '#0c8599', '#12b886', '#339af0'],
-  },
-  // === Warm ===
+  // === Warm (Orange) ===
   {
     id: 'sunset',
-    name: '🌅 Sunset',
-    description: 'Warm oranges of dusk',
+    name: 'Sunset',
+    description: 'Warm orange',
     colors: {
       primary: '#fd7e14',
       primaryDark: '#e8590c',
       secondary: '#fa5252',
       accent: '#fcc419',
     },
-    preview: ['#fd7e14', '#e8590c', '#fa5252', '#fcc419'],
+    preview: ['#fd7e14', '#e8590c', '#fa5252'],
   },
-  {
-    id: 'cherry',
-    name: '🍒 Cherry',
-    description: 'Bold and vibrant reds',
-    colors: {
-      primary: '#fa5252',
-      primaryDark: '#e03131',
-      secondary: '#fd7e14',
-      accent: '#f06595',
-    },
-    preview: ['#fa5252', '#e03131', '#fd7e14', '#f06595'],
-  },
-  {
-    id: 'sunshine',
-    name: '☀️ Sunshine',
-    description: 'Bright golden yellows',
-    colors: {
-      primary: '#fab005',
-      primaryDark: '#f08c00',
-      secondary: '#ff922b',
-      accent: '#94d82d',
-    },
-    preview: ['#fab005', '#f08c00', '#ff922b', '#94d82d'],
-  },
-  // === Royal ===
+  // === Royal (Purple) ===
   {
     id: 'royal',
-    name: '👑 Royal',
-    description: 'Regal purples and violets',
+    name: 'Royal',
+    description: 'Regal purple',
     colors: {
       primary: '#7950f2',
       primaryDark: '#6741d9',
       secondary: '#be4bdb',
       accent: '#5c7cfa',
     },
-    preview: ['#7950f2', '#6741d9', '#be4bdb', '#5c7cfa'],
+    preview: ['#7950f2', '#6741d9', '#be4bdb'],
   },
-  {
-    id: 'amethyst',
-    name: '🔮 Amethyst',
-    description: 'Mystical purple hues',
-    colors: {
-      primary: '#be4bdb',
-      primaryDark: '#9c36b5',
-      secondary: '#7950f2',
-      accent: '#f06595',
-    },
-    preview: ['#be4bdb', '#9c36b5', '#7950f2', '#f06595'],
-  },
-  {
-    id: 'indigo',
-    name: '🌌 Midnight',
-    description: 'Deep indigo night sky',
-    colors: {
-      primary: '#4c6ef5',
-      primaryDark: '#3b5bdb',
-      secondary: '#845ef7',
-      accent: '#339af0',
-    },
-    preview: ['#4c6ef5', '#3b5bdb', '#845ef7', '#339af0'],
-  },
-  // === Romantic ===
+  // === Rose (Pink) ===
   {
     id: 'rose',
-    name: '🌸 Rose',
-    description: 'Soft romantic pinks',
+    name: 'Rose',
+    description: 'Soft pink',
     colors: {
       primary: '#e64980',
       primaryDark: '#c2255c',
       secondary: '#cc5de8',
       accent: '#ff6b6b',
     },
-    preview: ['#e64980', '#c2255c', '#cc5de8', '#ff6b6b'],
+    preview: ['#e64980', '#c2255c', '#cc5de8'],
   },
-  // === Earth Tones ===
+  // === Earth (Brown) ===
   {
     id: 'espresso',
-    name: '☕ Espresso',
-    description: 'Rich coffee browns',
+    name: 'Espresso',
+    description: 'Rich brown',
     colors: {
       primary: '#a87c56',
       primaryDark: '#825b3a',
       secondary: '#df8545',
       accent: '#ff922b',
     },
-    preview: ['#a87c56', '#825b3a', '#df8545', '#ff922b'],
+    preview: ['#a87c56', '#825b3a', '#df8545'],
   },
-  {
-    id: 'chocolate',
-    name: '🍫 Chocolate',
-    description: 'Warm cocoa tones',
-    colors: {
-      primary: '#d46e25',
-      primaryDark: '#a45117',
-      secondary: '#b78f6d',
-      accent: '#ffa94d',
-    },
-    preview: ['#d46e25', '#a45117', '#b78f6d', '#ffa94d'],
-  },
-  {
-    id: 'desert',
-    name: '🏜️ Desert',
-    description: 'Sandy warm neutrals',
-    colors: {
-      primary: '#867c65',
-      primaryDark: '#5f5746',
-      secondary: '#b78f6d',
-      accent: '#ff922b',
-    },
-    preview: ['#867c65', '#5f5746', '#b78f6d', '#ff922b'],
-  },
-  {
-    id: 'olive',
-    name: '🫒 Olive',
-    description: 'Military-inspired greens',
-    colors: {
-      primary: '#808000',
-      primaryDark: '#556b2f',
-      secondary: '#6b8e23',
-      accent: '#b78f6d',
-    },
-    preview: ['#808000', '#556b2f', '#6b8e23', '#b78f6d'],
-  },
-  // === Neutral ===
+  // === Neutral (Gray) ===
   {
     id: 'slate',
-    name: '🪨 Slate',
-    description: 'Professional cool grays',
+    name: 'Slate',
+    description: 'Professional gray',
     colors: {
       primary: '#495057',
       primaryDark: '#212529',
       secondary: '#228be6',
       accent: '#22b8cf',
     },
-    preview: ['#495057', '#212529', '#228be6', '#22b8cf'],
-  },
-  {
-    id: 'stone',
-    name: '⚪ Stone',
-    description: 'Clean neutral stone',
-    colors: {
-      primary: '#7e8282',
-      primaryDark: '#50514f',
-      secondary: '#12b886',
-      accent: '#339af0',
-    },
-    preview: ['#7e8282', '#50514f', '#12b886', '#339af0'],
+    preview: ['#495057', '#212529', '#228be6'],
   },
 ];
 

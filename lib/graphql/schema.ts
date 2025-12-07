@@ -172,6 +172,7 @@ export const typeDefs = `#graphql
     created_at: String!
     last_login: String
     last_accessed: String
+    api_key: String
   }
 
   type Invitation {

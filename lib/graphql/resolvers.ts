@@ -13,6 +13,7 @@ import {
 import { sendInviteEmail, verifyEmailForSandbox } from '../email';
 import { Loaders } from './dataloaders';
 import { getSettings, clearSettingsCache, SiteSettings } from '../settings';
+import { generateGedcom, GedcomPerson, GedcomFamily, GedcomSource } from '../gedcom';
 
 // Strip accents from a string for accent-insensitive search
 function stripAccents(str: string): string {
@@ -457,6 +458,59 @@ export const resolvers = {
         [user.id]
       );
       return rows[0] || null;
+    },
+
+    // GEDCOM export
+    exportGedcom: async (_: unknown, { includeLiving, includeSources }: { includeLiving?: boolean; includeSources?: boolean }, context: Context) => {
+      requireAuth(context);
+
+      // Fetch all people with sources
+      const peopleResult = await pool.query(`
+        SELECT p.id, p.name_given, p.name_surname, p.name_full, p.sex,
+               p.birth_date, p.birth_place, p.death_date, p.death_place,
+               p.burial_date, p.burial_place, p.christening_date, p.christening_place, p.living
+        FROM people p ORDER BY p.name_full
+      `);
+
+      // Fetch sources for all people
+      const sourcesResult = await pool.query(`
+        SELECT id, person_id, source_name, source_url, content FROM sources
+      `);
+      const sourcesByPerson = new Map<string, GedcomSource[]>();
+      for (const src of sourcesResult.rows) {
+        if (!sourcesByPerson.has(src.person_id)) sourcesByPerson.set(src.person_id, []);
+        sourcesByPerson.get(src.person_id)!.push(src);
+      }
+
+      const people: GedcomPerson[] = peopleResult.rows.map(p => ({
+        ...p,
+        sources: sourcesByPerson.get(p.id) || []
+      }));
+
+      // Fetch all families with children
+      const familiesResult = await pool.query(`
+        SELECT f.id, f.husband_id, f.wife_id, f.marriage_date, f.marriage_place
+        FROM families f
+      `);
+      const childrenResult = await pool.query(`
+        SELECT family_id, person_id FROM children
+      `);
+      const childrenByFamily = new Map<string, string[]>();
+      for (const c of childrenResult.rows) {
+        if (!childrenByFamily.has(c.family_id)) childrenByFamily.set(c.family_id, []);
+        childrenByFamily.get(c.family_id)!.push(c.person_id);
+      }
+
+      const families: GedcomFamily[] = familiesResult.rows.map(f => ({
+        ...f,
+        children_ids: childrenByFamily.get(f.id) || []
+      }));
+
+      return generateGedcom(people, families, {
+        includeLiving: includeLiving ?? false,
+        includeSources: includeSources ?? true,
+        submitterName: 'Kindred Family Tree'
+      });
     },
   },
 

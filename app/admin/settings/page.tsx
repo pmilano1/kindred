@@ -3,7 +3,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
-import { Sliders, Save, Play } from 'lucide-react';
+import { Sliders, Save, Play, Download } from 'lucide-react';
 import { PageHeader, Button } from '@/components/ui';
 import LoadingSpinner from '@/components/LoadingSpinner';
 import Link from 'next/link';
@@ -62,6 +62,11 @@ export default function SettingsPage() {
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
   const [needsMigration, setNeedsMigration] = useState(false);
   const [migrating, setMigrating] = useState(false);
+
+  // GEDCOM export state
+  const [exporting, setExporting] = useState(false);
+  const [exportIncludeLiving, setExportIncludeLiving] = useState(false);
+  const [exportIncludeSources, setExportIncludeSources] = useState(true);
 
   const loadSettings = useCallback(async () => {
     try {
@@ -136,6 +141,34 @@ export default function SettingsPage() {
 
   const updateSetting = (key: string, value: string) => {
     setSettings(prev => ({ ...prev, [key]: value }));
+  };
+
+  const handleExportGedcom = async () => {
+    setExporting(true);
+    try {
+      const data = await graphqlFetch(`
+        query ExportGedcom($includeLiving: Boolean, $includeSources: Boolean) {
+          exportGedcom(includeLiving: $includeLiving, includeSources: $includeSources)
+        }
+      `, { includeLiving: exportIncludeLiving, includeSources: exportIncludeSources });
+
+      // Create and download the file
+      const blob = new Blob([data.exportGedcom], { type: 'text/plain;charset=utf-8' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `family-tree-${new Date().toISOString().split('T')[0]}.ged`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      setMessage({ type: 'success', text: 'GEDCOM file exported successfully!' });
+    } catch (err) {
+      console.error('Failed to export GEDCOM:', err);
+      setMessage({ type: 'error', text: 'Failed to export GEDCOM: ' + (err as Error).message });
+    } finally {
+      setExporting(false);
+    }
   };
 
   const groupedSettings = rows.reduce((acc, row) => {
@@ -263,6 +296,43 @@ export default function SettingsPage() {
                 icon={<Save className="w-4 h-4" />}
               >
                 Save Settings
+              </Button>
+            </div>
+
+            {/* GEDCOM Export Section */}
+            <div className="bg-gray-50 rounded-lg p-6 mt-8">
+              <h3 className="text-lg font-semibold mb-4">📤 Export Data</h3>
+              <p className="text-gray-600 mb-4">
+                Export your family tree data in GEDCOM format for backup or import into other genealogy software.
+              </p>
+              <div className="flex flex-wrap gap-4 mb-4">
+                <label className="flex items-center gap-2">
+                  <input
+                    type="checkbox"
+                    checked={exportIncludeLiving}
+                    onChange={e => setExportIncludeLiving(e.target.checked)}
+                    className="rounded"
+                  />
+                  <span className="text-sm">Include living people</span>
+                </label>
+                <label className="flex items-center gap-2">
+                  <input
+                    type="checkbox"
+                    checked={exportIncludeSources}
+                    onChange={e => setExportIncludeSources(e.target.checked)}
+                    className="rounded"
+                  />
+                  <span className="text-sm">Include sources</span>
+                </label>
+              </div>
+              <Button
+                onClick={handleExportGedcom}
+                disabled={exporting}
+                loading={exporting}
+                variant="secondary"
+                icon={<Download className="w-4 h-4" />}
+              >
+                Export GEDCOM
               </Button>
             </div>
           </div>

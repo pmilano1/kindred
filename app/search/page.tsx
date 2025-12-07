@@ -2,7 +2,8 @@
 
 import { useState } from 'react';
 import { useLazyQuery } from '@apollo/client/react';
-import Hero from '@/components/Hero';
+import { Search } from 'lucide-react';
+import { PageHeader } from '@/components/ui';
 import PersonCard from '@/components/PersonCard';
 import { Person } from '@/lib/types';
 import { SEARCH_PEOPLE } from '@/lib/graphql/queries';
@@ -31,7 +32,11 @@ export default function SearchPage() {
 
   return (
     <>
-      <Hero title="Search" subtitle="Find ancestors by name, place, or date" />
+      <PageHeader
+        title="Search"
+        subtitle="Find ancestors by name, place, or date"
+        icon={Search}
+      />
       <div className="content-wrapper">
         <form onSubmit={handleSearch} className="max-w-2xl mx-auto mb-8">
           <div className="flex gap-2">

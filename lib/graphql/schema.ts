@@ -45,6 +45,7 @@ export const typeDefs = `#graphql
     lifeEvents: [LifeEvent!]!
     facts: [Fact!]!
     sources: [Source!]!
+    media: [Media!]!
     coatOfArms: String
 
     # Notable relatives connected through ancestry
@@ -94,6 +95,24 @@ export const typeDefs = `#graphql
     validated_date: String
     created_at: String!
     updated_at: String
+  }
+
+  type Media {
+    id: ID!
+    person_id: String!
+    filename: String!
+    original_filename: String!
+    mime_type: String!
+    file_size: Int!
+    storage_path: String!
+    thumbnail_path: String
+    media_type: String!
+    caption: String
+    date_taken: String
+    source_attribution: String
+    uploaded_by: String
+    created_at: String!
+    url: String!
   }
 
   # ===========================================
@@ -476,6 +495,31 @@ export const typeDefs = `#graphql
 
     # GEDCOM import (requires admin role)
     importGedcom(content: String!): GedcomImportResult!
+
+    # Media mutations (requires editor role)
+    uploadMedia(personId: ID!, input: MediaInput!): Media!
+    updateMedia(id: ID!, input: MediaUpdateInput!): Media
+    deleteMedia(id: ID!): Boolean!
+  }
+
+  input MediaInput {
+    filename: String!
+    original_filename: String!
+    mime_type: String!
+    file_size: Int!
+    storage_path: String!
+    thumbnail_path: String
+    media_type: String!
+    caption: String
+    date_taken: String
+    source_attribution: String
+  }
+
+  input MediaUpdateInput {
+    caption: String
+    date_taken: String
+    source_attribution: String
+    media_type: String
   }
 
   type AuthResult {

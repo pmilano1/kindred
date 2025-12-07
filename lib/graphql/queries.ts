@@ -322,6 +322,54 @@ export const DELETE_FACT = gql`
   }
 `;
 
+// ============================================
+// FAMILY MUTATIONS
+// ============================================
+
+export const CREATE_FAMILY = gql`
+  mutation CreateFamily($input: FamilyInput!) {
+    createFamily(input: $input) {
+      id
+      husband_id
+      wife_id
+      marriage_date
+      marriage_year
+      marriage_place
+    }
+  }
+`;
+
+export const UPDATE_FAMILY = gql`
+  mutation UpdateFamily($id: ID!, $input: FamilyInput!) {
+    updateFamily(id: $id, input: $input) {
+      id
+      husband_id
+      wife_id
+      marriage_date
+      marriage_year
+      marriage_place
+    }
+  }
+`;
+
+export const DELETE_FAMILY = gql`
+  mutation DeleteFamily($id: ID!) {
+    deleteFamily(id: $id)
+  }
+`;
+
+export const ADD_CHILD_TO_FAMILY = gql`
+  mutation AddChildToFamily($familyId: ID!, $personId: ID!) {
+    addChildToFamily(familyId: $familyId, personId: $personId)
+  }
+`;
+
+export const REMOVE_CHILD_FROM_FAMILY = gql`
+  mutation RemoveChildFromFamily($familyId: ID!, $personId: ID!) {
+    removeChildFromFamily(familyId: $familyId, personId: $personId)
+  }
+`;
+
 export const UPDATE_NOTABLE_STATUS = gql`
   mutation UpdateNotableStatus($id: ID!, $isNotable: Boolean!, $notableDescription: String) {
     updatePerson(id: $id, input: { is_notable: $isNotable, notable_description: $notableDescription }) {

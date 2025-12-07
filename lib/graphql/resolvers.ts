@@ -524,7 +524,58 @@ export const resolvers = {
 
       return true;
     },
-    
+
+    // Life Event mutations
+    addLifeEvent: async (_: unknown, { personId, input }: { personId: string; input: { event_type: string; event_date?: string; event_year?: number; event_place?: string; event_value?: string } }, context: Context) => {
+      requireAuth(context, 'editor');
+      const { rows } = await pool.query(
+        `INSERT INTO life_events (person_id, event_type, event_date, event_year, event_place, event_value)
+         VALUES ($1, $2, $3, $4, $5, $6) RETURNING *`,
+        [personId, input.event_type, input.event_date || null, input.event_year || null, input.event_place || null, input.event_value || null]
+      );
+      return rows[0];
+    },
+
+    updateLifeEvent: async (_: unknown, { id, input }: { id: number; input: { event_type: string; event_date?: string; event_year?: number; event_place?: string; event_value?: string } }, context: Context) => {
+      requireAuth(context, 'editor');
+      const { rows } = await pool.query(
+        `UPDATE life_events SET event_type = $2, event_date = $3, event_year = $4, event_place = $5, event_value = $6 WHERE id = $1 RETURNING *`,
+        [id, input.event_type, input.event_date || null, input.event_year || null, input.event_place || null, input.event_value || null]
+      );
+      return rows[0] || null;
+    },
+
+    deleteLifeEvent: async (_: unknown, { id }: { id: number }, context: Context) => {
+      requireAuth(context, 'editor');
+      await pool.query('DELETE FROM life_events WHERE id = $1', [id]);
+      return true;
+    },
+
+    // Fact mutations
+    addFact: async (_: unknown, { personId, input }: { personId: string; input: { fact_type: string; fact_value?: string } }, context: Context) => {
+      requireAuth(context, 'editor');
+      const { rows } = await pool.query(
+        `INSERT INTO facts (person_id, fact_type, fact_value) VALUES ($1, $2, $3) RETURNING *`,
+        [personId, input.fact_type, input.fact_value || null]
+      );
+      return rows[0];
+    },
+
+    updateFact: async (_: unknown, { id, input }: { id: number; input: { fact_type: string; fact_value?: string } }, context: Context) => {
+      requireAuth(context, 'editor');
+      const { rows } = await pool.query(
+        `UPDATE facts SET fact_type = $2, fact_value = $3 WHERE id = $1 RETURNING *`,
+        [id, input.fact_type, input.fact_value || null]
+      );
+      return rows[0] || null;
+    },
+
+    deleteFact: async (_: unknown, { id }: { id: number }, context: Context) => {
+      requireAuth(context, 'editor');
+      await pool.query('DELETE FROM facts WHERE id = $1', [id]);
+      return true;
+    },
+
     addSource: async (_: unknown, { personId, input }: { personId: string; input: { source_type?: string; source_name?: string; source_url?: string; action: string; content?: string; confidence?: string } }, context: Context) => {
       requireAuth(context, 'editor');
 

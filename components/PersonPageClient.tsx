@@ -9,6 +9,8 @@ import { GET_PERSON, UPDATE_NOTABLE_STATUS } from '@/lib/graphql/queries';
 import ResearchPanel from '@/components/ResearchPanel';
 import TreeLink from '@/components/TreeLink';
 import Hero from '@/components/Hero';
+import LifeEventsEditor from '@/components/LifeEventsEditor';
+import FactsEditor from '@/components/FactsEditor';
 import { Person, Family, LifeEvent, Fact } from '@/lib/types';
 
 interface PersonData {
@@ -324,25 +326,7 @@ export default function PersonPageClient({ personId }: Props) {
         )}
 
         {/* Life Events (residences, occupations, other events) */}
-        {person.lifeEvents.length > 0 && (
-          <div className="card p-6 mb-6">
-            <h3 className="section-title">📅 Life Events</h3>
-            <div className="space-y-2">
-              {person.lifeEvents.map((evt) => (
-                <div key={`${evt.event_type}-${evt.id}`} className="flex items-start gap-2 text-sm">
-                  <span className="bg-gray-100 px-2 py-0.5 rounded text-gray-600 capitalize">
-                    {evt.event_type === 'residence' ? '🏠' : evt.event_type === 'occupation' ? '💼' : '📌'} {evt.event_type}
-                  </span>
-                  {(evt.event_date || evt.event_year) && (
-                    <span className="text-gray-500">{evt.event_date || evt.event_year}</span>
-                  )}
-                  {evt.event_value && <span className="text-gray-800 font-medium">{evt.event_value}</span>}
-                  {evt.event_place && <span className="text-gray-600">{evt.event_place}</span>}
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
+        <LifeEventsEditor personId={personId} lifeEvents={person.lifeEvents} canEdit={canEdit} />
 
         {/* Coat of Arms */}
         {person.facts.filter(f => f.fact_type === 'coat_of_arms').length > 0 && (
@@ -367,19 +351,7 @@ export default function PersonPageClient({ personId }: Props) {
         )}
 
         {/* Facts */}
-        {person.facts.filter(f => f.fact_type !== 'coat_of_arms').length > 0 && (
-          <div className="card p-6 mb-6">
-            <h3 className="section-title">📋 Additional Information</h3>
-            <div className="space-y-2">
-              {person.facts.filter(f => f.fact_type !== 'coat_of_arms').map((fact) => (
-                <div key={fact.id} className="text-sm">
-                  <span className="text-gray-600 font-medium">{fact.fact_type || 'Fact'}:</span>{' '}
-                  <span className="text-gray-800">{fact.fact_value}</span>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
+        <FactsEditor personId={personId} facts={person.facts} canEdit={canEdit} />
 
         <Link href="/people" className="inline-block tree-btn">
           ← Back to People

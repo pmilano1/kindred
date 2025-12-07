@@ -36,7 +36,10 @@ function SearchContent() {
   const [livingFilter, setLivingFilter] = useState<LivingFilter>('all');
   const [surnameFilter, setSurnameFilter] = useState<string>('');
 
-  const rawResults = data?.search?.edges?.map(e => e.node) || [];
+  const rawResults = useMemo(() =>
+    data?.search?.edges?.map(e => e.node) || [],
+    [data?.search?.edges]
+  );
   const totalCount = data?.search?.pageInfo?.totalCount || 0;
 
   // Extract unique surnames for filter dropdown

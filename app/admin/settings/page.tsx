@@ -162,13 +162,9 @@ export default function SettingsPage() {
       <div className="content-wrapper">
         {/* Navigation */}
         <div className="flex gap-4 mb-8">
-          <Link href="/admin" className="bg-gray-200 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-300">
-            Users
-          </Link>
-          <span className="bg-blue-600 text-white px-4 py-2 rounded-lg">Site Settings</span>
-          <Link href="/admin/api-keys" className="bg-gray-200 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-300">
-            API Keys
-          </Link>
+          <Link href="/admin" className="nav-tab">Users</Link>
+          <span className="nav-tab-active">Site Settings</span>
+          <Link href="/admin/api-keys" className="nav-tab">API Keys</Link>
         </div>
 
         {/* Message */}

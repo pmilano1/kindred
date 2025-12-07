@@ -99,13 +99,9 @@ export default function ApiKeysPage() {
       <div className="content-wrapper">
         {/* Navigation */}
         <div className="flex gap-4 mb-8">
-          <Link href="/admin" className="bg-gray-200 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-300">
-            Users
-          </Link>
-          <Link href="/admin/settings" className="bg-gray-200 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-300">
-            Site Settings
-          </Link>
-          <span className="bg-blue-600 text-white px-4 py-2 rounded-lg">API Keys</span>
+          <Link href="/admin" className="nav-tab">Users</Link>
+          <Link href="/admin/settings" className="nav-tab">Site Settings</Link>
+          <span className="nav-tab-active">API Keys</span>
         </div>
 
         {/* API Key Section */}

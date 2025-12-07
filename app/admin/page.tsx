@@ -181,13 +181,9 @@ export default function AdminPage() {
 
         {/* Admin Navigation */}
         <div className="flex gap-4 mb-8">
-          <span className="bg-blue-600 text-white px-4 py-2 rounded-lg">Users</span>
-          <a href="/admin/settings" className="bg-gray-200 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-300">
-            Site Settings
-          </a>
-          <a href="/admin/api-keys" className="bg-gray-200 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-300">
-            API Keys
-          </a>
+          <span className="nav-tab-active">Users</span>
+          <a href="/admin/settings" className="nav-tab">Site Settings</a>
+          <a href="/admin/api-keys" className="nav-tab">API Keys</a>
         </div>
 
         {/* Add User Section */}

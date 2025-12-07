@@ -67,22 +67,23 @@ export default function Sidebar() {
   const isAdmin = session?.user?.role === 'admin';
 
   // Persist collapsed state in localStorage
-  const [isCollapsed, setIsCollapsed] = useState(false);
-
-  useEffect(() => {
-    const saved = localStorage.getItem('sidebar-collapsed');
-    if (saved !== null) {
-      const collapsed = saved === 'true';
-      setIsCollapsed(collapsed);
-      document.body.classList.toggle('sidebar-is-collapsed', collapsed);
+  const [isCollapsed, setIsCollapsed] = useState(() => {
+    // Initialize from localStorage (only runs on client)
+    if (typeof window !== 'undefined') {
+      return localStorage.getItem('sidebar-collapsed') === 'true';
     }
-  }, []);
+    return false;
+  });
+
+  // Sync body class with collapsed state
+  useEffect(() => {
+    document.body.classList.toggle('sidebar-is-collapsed', isCollapsed);
+  }, [isCollapsed]);
 
   const toggleCollapse = () => {
     const newState = !isCollapsed;
     setIsCollapsed(newState);
     localStorage.setItem('sidebar-collapsed', String(newState));
-    document.body.classList.toggle('sidebar-is-collapsed', newState);
   };
 
   // Don't show sidebar on login page or when not authenticated

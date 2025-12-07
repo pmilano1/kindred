@@ -1,4 +1,5 @@
-import Hero from '@/components/Hero';
+import { LayoutDashboard } from 'lucide-react';
+import { PageHeader } from '@/components/ui';
 import StatsCard from '@/components/StatsCard';
 import PersonCard from '@/components/PersonCard';
 import { query } from '@/lib/graphql/server';
@@ -18,7 +19,7 @@ export default async function Home() {
 
   return (
     <>
-      <Hero />
+      <PageHeader icon={LayoutDashboard} />
       <div className="content-wrapper">
         <div className="stats-grid">
           <StatsCard label="Total People" value={stats.total_people} icon="👥" />

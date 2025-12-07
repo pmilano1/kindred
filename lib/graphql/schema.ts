@@ -378,7 +378,9 @@ export const typeDefs = `#graphql
 
   type Mutation {
     # Person mutations
+    createPerson(input: PersonInput!): Person!
     updatePerson(id: ID!, input: PersonInput!): Person
+    deletePerson(id: ID!): Boolean!
 
     # Source mutations
     addSource(personId: ID!, input: SourceInput!): Source

@@ -1,11 +1,21 @@
 import NextAuth from 'next-auth';
 import authConfig from './auth.config';
 
+// Skip auth ONLY in development mode when SKIP_AUTH=true
+// Both conditions must be true - prevents accidental bypass in production
+const SKIP_AUTH =
+  process.env.SKIP_AUTH === 'true' && process.env.NODE_ENV === 'development';
+
 // Create a lightweight auth instance for proxy (no database)
 const { auth } = NextAuth(authConfig);
 
 // Wrap auth for route protection
 export default auth((req) => {
+  // Allow all requests only in dev mode with explicit SKIP_AUTH
+  if (SKIP_AUTH) {
+    return;
+  }
+
   const isLoggedIn = !!req.auth;
   const { pathname } = req.nextUrl;
 

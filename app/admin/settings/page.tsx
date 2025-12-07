@@ -7,7 +7,7 @@ import Hero from '@/components/Hero';
 import LoadingSpinner from '@/components/LoadingSpinner';
 import Link from 'next/link';
 import { useSettingsRefetch } from '@/components/SettingsProvider';
-import { themePresets, applyThemePreset, type ThemePreset } from '@/lib/theme-presets';
+import { themePresets, applyThemePreset, getPresetByPrimaryColor, type ThemePreset } from '@/lib/theme-presets';
 
 interface SettingRow {
   key: string;
@@ -207,11 +207,10 @@ export default function SettingsPage() {
                       </div>
                       <div className="col-span-2">
                         {row.key === 'theme_color' ? (
-                          <ThemeColorPicker
-                            value={settings[row.key] || '#4F46E5'}
-                            onChange={(color) => updateSetting(row.key, color)}
-                            onApplyPreset={(preset) => {
-                              updateSetting('theme_color', preset.cssVars.primary);
+                          <ThemePresetPicker
+                            value={settings[row.key] || '#37b24d'}
+                            onSelectPreset={(preset) => {
+                              updateSetting('theme_color', preset.colors.primary);
                               // Apply theme immediately for preview
                               applyThemePreset(preset);
                             }}
@@ -276,60 +275,51 @@ export default function SettingsPage() {
   );
 }
 
-// Theme Color Picker with Presets
-function ThemeColorPicker({
+// Theme Preset Picker (no custom colors - presets only)
+function ThemePresetPicker({
   value,
-  onChange,
-  onApplyPreset
+  onSelectPreset
 }: {
   value: string;
-  onChange: (color: string) => void;
-  onApplyPreset: (preset: ThemePreset) => void;
+  onSelectPreset: (preset: ThemePreset) => void;
 }) {
-  const [showPresets, setShowPresets] = useState(false);
+  const currentPreset = getPresetByPrimaryColor(value);
 
   return (
     <div className="space-y-3">
-      {/* Custom Color Input */}
-      <div className="flex items-center gap-2">
-        <input
-          type="color"
-          value={value}
-          onChange={e => onChange(e.target.value)}
-          className="w-12 h-10 border rounded cursor-pointer"
-        />
-        <input
-          type="text"
-          value={value}
-          onChange={e => onChange(e.target.value)}
-          className="flex-1 border rounded-lg px-3 py-2"
-          placeholder="#4F46E5"
-        />
-        <button
-          type="button"
-          onClick={() => setShowPresets(!showPresets)}
-          className="px-3 py-2 bg-gray-100 hover:bg-gray-200 rounded-lg text-sm font-medium transition-colors"
-        >
-          {showPresets ? 'Hide Presets' : '🎨 Theme Presets'}
-        </button>
-      </div>
+      {/* Current theme indicator */}
+      {currentPreset && (
+        <div className="flex items-center gap-3 p-2 bg-gray-50 rounded-lg border">
+          <div className="flex gap-1">
+            {currentPreset.preview.map((color, i) => (
+              <div
+                key={i}
+                className="w-5 h-5 rounded-full border border-gray-200"
+                style={{ backgroundColor: color }}
+              />
+            ))}
+          </div>
+          <span className="text-sm font-medium">{currentPreset.name}</span>
+          <span className="text-xs text-gray-500">Current theme</span>
+        </div>
+      )}
 
       {/* Theme Presets Grid */}
-      {showPresets && (
-        <div className="border rounded-lg p-4 bg-gray-50">
-          <p className="text-sm text-gray-600 mb-3">
-            Powered by <a href="https://yeun.github.io/open-color/" target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">Open Color</a> - MIT Licensed
-          </p>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-            {themePresets.map(preset => (
+      <div className="border rounded-lg p-4 bg-gray-50">
+        <p className="text-sm text-gray-600 mb-3">
+          Colors from <a href="https://yeun.github.io/open-color/" target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">Open Color</a> - MIT Licensed
+        </p>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+          {themePresets.map(preset => {
+            const isSelected = currentPreset?.id === preset.id;
+            return (
               <button
                 key={preset.id}
                 type="button"
-                onClick={() => {
-                  onApplyPreset(preset);
-                  setShowPresets(false);
-                }}
-                className="p-3 bg-white border rounded-lg hover:border-blue-400 hover:shadow-md transition-all text-left"
+                onClick={() => onSelectPreset(preset)}
+                className={`p-3 bg-white border-2 rounded-lg hover:border-blue-400 hover:shadow-md transition-all text-left ${
+                  isSelected ? 'border-blue-500 ring-2 ring-blue-200' : 'border-gray-200'
+                }`}
               >
                 <div className="flex gap-1 mb-2">
                   {preset.preview.map((color, i) => (
@@ -343,10 +333,10 @@ function ThemeColorPicker({
                 <div className="font-medium text-sm">{preset.name}</div>
                 <div className="text-xs text-gray-500">{preset.description}</div>
               </button>
-            ))}
-          </div>
+            );
+          })}
         </div>
-      )}
+      </div>
     </div>
   );
 }

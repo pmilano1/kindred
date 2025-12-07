@@ -1,25 +1,22 @@
 /**
- * Theme Presets using Open Props
- * @see https://open-props.style/
+ * Theme Presets using Open Color palette
+ * @see https://yeun.github.io/open-color/
  *
- * Open Props provides CSS custom properties loaded via CDN.
- * MIT Licensed - no account required.
- *
- * CDN Import in globals.css: @import "https://unpkg.com/open-props";
+ * MIT Licensed - colors embedded directly as hex values.
  */
 
 export interface ThemePreset {
   id: string;
   name: string;
   description: string;
-  // CSS variable names from Open Props (e.g., '--green-7')
-  cssVars: {
+  // Hex color values
+  colors: {
     primary: string;
     primaryDark: string;
     secondary: string;
     accent: string;
   };
-  // Hex values for preview swatches (Open Props values)
+  // Preview swatches (same as colors for consistency)
   preview: string[];
 }
 
@@ -29,11 +26,11 @@ export const themePresets: ThemePreset[] = [
     id: 'forest',
     name: '🌲 Forest',
     description: 'Deep greens inspired by woodland',
-    cssVars: {
-      primary: 'var(--green-7)',
-      primaryDark: 'var(--green-9)',
-      secondary: 'var(--teal-6)',
-      accent: 'var(--lime-6)',
+    colors: {
+      primary: '#37b24d',
+      primaryDark: '#2b8a3e',
+      secondary: '#12b886',
+      accent: '#82c91e',
     },
     preview: ['#37b24d', '#2b8a3e', '#12b886', '#82c91e'],
   },
@@ -41,23 +38,23 @@ export const themePresets: ThemePreset[] = [
     id: 'jungle',
     name: '🌴 Jungle',
     description: 'Lush tropical greens',
-    cssVars: {
-      primary: 'var(--jungle-6)',
-      primaryDark: 'var(--jungle-9)',
-      secondary: 'var(--green-6)',
-      accent: 'var(--lime-5)',
+    colors: {
+      primary: '#40c057',
+      primaryDark: '#2f9e44',
+      secondary: '#51cf66',
+      accent: '#94d82d',
     },
-    preview: ['#9bbb36', '#7a9908', '#40c057', '#94d82d'],
+    preview: ['#40c057', '#2f9e44', '#51cf66', '#94d82d'],
   },
   {
     id: 'lime',
     name: '🍋 Citrus',
     description: 'Bright and energetic lime',
-    cssVars: {
-      primary: 'var(--lime-6)',
-      primaryDark: 'var(--lime-8)',
-      secondary: 'var(--green-6)',
-      accent: 'var(--yellow-5)',
+    colors: {
+      primary: '#82c91e',
+      primaryDark: '#66a80f',
+      secondary: '#40c057',
+      accent: '#fcc419',
     },
     preview: ['#82c91e', '#66a80f', '#40c057', '#fcc419'],
   },
@@ -66,11 +63,11 @@ export const themePresets: ThemePreset[] = [
     id: 'ocean',
     name: '🌊 Ocean',
     description: 'Calming blues of the deep sea',
-    cssVars: {
-      primary: 'var(--blue-6)',
-      primaryDark: 'var(--blue-8)',
-      secondary: 'var(--cyan-6)',
-      accent: 'var(--indigo-5)',
+    colors: {
+      primary: '#228be6',
+      primaryDark: '#1971c2',
+      secondary: '#15aabf',
+      accent: '#5c7cfa',
     },
     preview: ['#228be6', '#1971c2', '#15aabf', '#5c7cfa'],
   },
@@ -78,11 +75,11 @@ export const themePresets: ThemePreset[] = [
     id: 'teal',
     name: '🧊 Glacier',
     description: 'Cool teals and aqua',
-    cssVars: {
-      primary: 'var(--teal-6)',
-      primaryDark: 'var(--teal-8)',
-      secondary: 'var(--cyan-6)',
-      accent: 'var(--green-6)',
+    colors: {
+      primary: '#12b886',
+      primaryDark: '#099268',
+      secondary: '#15aabf',
+      accent: '#40c057',
     },
     preview: ['#12b886', '#099268', '#15aabf', '#40c057'],
   },
@@ -90,11 +87,11 @@ export const themePresets: ThemePreset[] = [
     id: 'cyan',
     name: '💎 Aquamarine',
     description: 'Crystalline cyan waters',
-    cssVars: {
-      primary: 'var(--cyan-6)',
-      primaryDark: 'var(--cyan-8)',
-      secondary: 'var(--teal-6)',
-      accent: 'var(--blue-5)',
+    colors: {
+      primary: '#15aabf',
+      primaryDark: '#0c8599',
+      secondary: '#12b886',
+      accent: '#339af0',
     },
     preview: ['#15aabf', '#0c8599', '#12b886', '#339af0'],
   },
@@ -103,11 +100,11 @@ export const themePresets: ThemePreset[] = [
     id: 'sunset',
     name: '🌅 Sunset',
     description: 'Warm oranges of dusk',
-    cssVars: {
-      primary: 'var(--orange-6)',
-      primaryDark: 'var(--orange-8)',
-      secondary: 'var(--red-6)',
-      accent: 'var(--yellow-5)',
+    colors: {
+      primary: '#fd7e14',
+      primaryDark: '#e8590c',
+      secondary: '#fa5252',
+      accent: '#fcc419',
     },
     preview: ['#fd7e14', '#e8590c', '#fa5252', '#fcc419'],
   },
@@ -115,11 +112,11 @@ export const themePresets: ThemePreset[] = [
     id: 'cherry',
     name: '🍒 Cherry',
     description: 'Bold and vibrant reds',
-    cssVars: {
-      primary: 'var(--red-6)',
-      primaryDark: 'var(--red-8)',
-      secondary: 'var(--orange-6)',
-      accent: 'var(--pink-5)',
+    colors: {
+      primary: '#fa5252',
+      primaryDark: '#e03131',
+      secondary: '#fd7e14',
+      accent: '#f06595',
     },
     preview: ['#fa5252', '#e03131', '#fd7e14', '#f06595'],
   },
@@ -127,11 +124,11 @@ export const themePresets: ThemePreset[] = [
     id: 'sunshine',
     name: '☀️ Sunshine',
     description: 'Bright golden yellows',
-    cssVars: {
-      primary: 'var(--yellow-6)',
-      primaryDark: 'var(--yellow-8)',
-      secondary: 'var(--orange-5)',
-      accent: 'var(--lime-5)',
+    colors: {
+      primary: '#fab005',
+      primaryDark: '#f08c00',
+      secondary: '#ff922b',
+      accent: '#94d82d',
     },
     preview: ['#fab005', '#f08c00', '#ff922b', '#94d82d'],
   },
@@ -140,11 +137,11 @@ export const themePresets: ThemePreset[] = [
     id: 'royal',
     name: '👑 Royal',
     description: 'Regal purples and violets',
-    cssVars: {
-      primary: 'var(--violet-6)',
-      primaryDark: 'var(--violet-8)',
-      secondary: 'var(--purple-6)',
-      accent: 'var(--indigo-5)',
+    colors: {
+      primary: '#7950f2',
+      primaryDark: '#6741d9',
+      secondary: '#be4bdb',
+      accent: '#5c7cfa',
     },
     preview: ['#7950f2', '#6741d9', '#be4bdb', '#5c7cfa'],
   },
@@ -152,11 +149,11 @@ export const themePresets: ThemePreset[] = [
     id: 'amethyst',
     name: '🔮 Amethyst',
     description: 'Mystical purple hues',
-    cssVars: {
-      primary: 'var(--purple-6)',
-      primaryDark: 'var(--purple-8)',
-      secondary: 'var(--violet-6)',
-      accent: 'var(--pink-5)',
+    colors: {
+      primary: '#be4bdb',
+      primaryDark: '#9c36b5',
+      secondary: '#7950f2',
+      accent: '#f06595',
     },
     preview: ['#be4bdb', '#9c36b5', '#7950f2', '#f06595'],
   },
@@ -164,11 +161,11 @@ export const themePresets: ThemePreset[] = [
     id: 'indigo',
     name: '🌌 Midnight',
     description: 'Deep indigo night sky',
-    cssVars: {
-      primary: 'var(--indigo-6)',
-      primaryDark: 'var(--indigo-8)',
-      secondary: 'var(--violet-5)',
-      accent: 'var(--blue-5)',
+    colors: {
+      primary: '#4c6ef5',
+      primaryDark: '#3b5bdb',
+      secondary: '#845ef7',
+      accent: '#339af0',
     },
     preview: ['#4c6ef5', '#3b5bdb', '#845ef7', '#339af0'],
   },
@@ -177,11 +174,11 @@ export const themePresets: ThemePreset[] = [
     id: 'rose',
     name: '🌸 Rose',
     description: 'Soft romantic pinks',
-    cssVars: {
-      primary: 'var(--pink-6)',
-      primaryDark: 'var(--pink-8)',
-      secondary: 'var(--purple-5)',
-      accent: 'var(--red-5)',
+    colors: {
+      primary: '#e64980',
+      primaryDark: '#c2255c',
+      secondary: '#cc5de8',
+      accent: '#ff6b6b',
     },
     preview: ['#e64980', '#c2255c', '#cc5de8', '#ff6b6b'],
   },
@@ -190,11 +187,11 @@ export const themePresets: ThemePreset[] = [
     id: 'espresso',
     name: '☕ Espresso',
     description: 'Rich coffee browns',
-    cssVars: {
-      primary: 'var(--brown-6)',
-      primaryDark: 'var(--brown-8)',
-      secondary: 'var(--choco-5)',
-      accent: 'var(--orange-5)',
+    colors: {
+      primary: '#a87c56',
+      primaryDark: '#825b3a',
+      secondary: '#df8545',
+      accent: '#ff922b',
     },
     preview: ['#a87c56', '#825b3a', '#df8545', '#ff922b'],
   },
@@ -202,11 +199,11 @@ export const themePresets: ThemePreset[] = [
     id: 'chocolate',
     name: '🍫 Chocolate',
     description: 'Warm cocoa tones',
-    cssVars: {
-      primary: 'var(--choco-6)',
-      primaryDark: 'var(--choco-8)',
-      secondary: 'var(--brown-5)',
-      accent: 'var(--orange-4)',
+    colors: {
+      primary: '#d46e25',
+      primaryDark: '#a45117',
+      secondary: '#b78f6d',
+      accent: '#ffa94d',
     },
     preview: ['#d46e25', '#a45117', '#b78f6d', '#ffa94d'],
   },
@@ -214,36 +211,36 @@ export const themePresets: ThemePreset[] = [
     id: 'desert',
     name: '🏜️ Desert',
     description: 'Sandy warm neutrals',
-    cssVars: {
-      primary: 'var(--sand-6)',
-      primaryDark: 'var(--sand-8)',
-      secondary: 'var(--brown-5)',
-      accent: 'var(--orange-5)',
+    colors: {
+      primary: '#867c65',
+      primaryDark: '#5f5746',
+      secondary: '#b78f6d',
+      accent: '#ff922b',
     },
     preview: ['#867c65', '#5f5746', '#b78f6d', '#ff922b'],
   },
   {
     id: 'olive',
     name: '🫒 Olive',
-    description: 'Military-inspired camo greens',
-    cssVars: {
-      primary: 'var(--camo-6)',
-      primaryDark: 'var(--camo-8)',
-      secondary: 'var(--jungle-6)',
-      accent: 'var(--brown-5)',
+    description: 'Military-inspired greens',
+    colors: {
+      primary: '#808000',
+      primaryDark: '#556b2f',
+      secondary: '#6b8e23',
+      accent: '#b78f6d',
     },
-    preview: ['#999621', '#7e7416', '#9bbb36', '#b78f6d'],
+    preview: ['#808000', '#556b2f', '#6b8e23', '#b78f6d'],
   },
   // === Neutral ===
   {
     id: 'slate',
     name: '🪨 Slate',
     description: 'Professional cool grays',
-    cssVars: {
-      primary: 'var(--gray-7)',
-      primaryDark: 'var(--gray-9)',
-      secondary: 'var(--blue-6)',
-      accent: 'var(--cyan-5)',
+    colors: {
+      primary: '#495057',
+      primaryDark: '#212529',
+      secondary: '#228be6',
+      accent: '#22b8cf',
     },
     preview: ['#495057', '#212529', '#228be6', '#22b8cf'],
   },
@@ -251,11 +248,11 @@ export const themePresets: ThemePreset[] = [
     id: 'stone',
     name: '⚪ Stone',
     description: 'Clean neutral stone',
-    cssVars: {
-      primary: 'var(--stone-7)',
-      primaryDark: 'var(--stone-9)',
-      secondary: 'var(--teal-6)',
-      accent: 'var(--blue-5)',
+    colors: {
+      primary: '#7e8282',
+      primaryDark: '#50514f',
+      secondary: '#12b886',
+      accent: '#339af0',
     },
     preview: ['#7e8282', '#50514f', '#12b886', '#339af0'],
   },
@@ -265,11 +262,15 @@ export function getPresetById(id: string): ThemePreset | undefined {
   return themePresets.find(p => p.id === id);
 }
 
+export function getPresetByPrimaryColor(color: string): ThemePreset | undefined {
+  return themePresets.find(p => p.colors.primary.toLowerCase() === color.toLowerCase());
+}
+
 export function applyThemePreset(preset: ThemePreset): void {
   const root = document.documentElement;
-  root.style.setProperty('--primary-color', preset.cssVars.primary);
-  root.style.setProperty('--primary-dark', preset.cssVars.primaryDark);
-  root.style.setProperty('--secondary-color', preset.cssVars.secondary);
-  root.style.setProperty('--accent-color', preset.cssVars.accent);
+  root.style.setProperty('--primary-color', preset.colors.primary);
+  root.style.setProperty('--primary-dark', preset.colors.primaryDark);
+  root.style.setProperty('--secondary-color', preset.colors.secondary);
+  root.style.setProperty('--accent-color', preset.colors.accent);
 }
 

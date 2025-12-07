@@ -715,3 +715,13 @@ export const GET_SITE_SETTINGS = gql`
     }
   }
 `;
+
+// ============================================
+// GEDCOM EXPORT
+// ============================================
+
+export const EXPORT_GEDCOM = gql`
+  query ExportGedcom($includeLiving: Boolean, $includeSources: Boolean) {
+    exportGedcom(includeLiving: $includeLiving, includeSources: $includeSources)
+  }
+`;

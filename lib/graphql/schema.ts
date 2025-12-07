@@ -342,6 +342,9 @@ export const typeDefs = `#graphql
 
     # Email preferences (current user)
     myEmailPreferences: EmailPreferences
+
+    # GEDCOM export
+    exportGedcom(includeLiving: Boolean, includeSources: Boolean): String!
   }
 
   type EmailStats {

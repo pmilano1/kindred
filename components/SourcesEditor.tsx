@@ -4,6 +4,8 @@ import { useState } from 'react';
 import { useMutation } from '@apollo/client/react';
 import { ADD_SOURCE, UPDATE_SOURCE, DELETE_SOURCE, GET_PERSON } from '@/lib/graphql/queries';
 import { Source, SourceType, SourceAction, SourceConfidence } from '@/lib/types';
+import { Button, Input, Textarea, Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui';
+import { Plus } from 'lucide-react';
 
 const SOURCE_TYPES: SourceType[] = ['FamilySearch', 'Geni', 'Ancestry', 'MyHeritage', 'FindAGrave', 'ANOM', 'Geneanet', 'WikiTree', 'Newspapers', 'Census', 'VitalRecords', 'ChurchRecords', 'Immigration', 'Military', 'DNA', 'FamilyBible', 'Interview', 'Other'];
 const SOURCE_ACTIONS: SourceAction[] = ['searched', 'found', 'verified', 'rejected', 'corrected', 'todo', 'note', 'question', 'brick_wall'];
@@ -105,38 +107,38 @@ export default function SourcesEditor({ personId, sources, canEdit }: Props) {
   };
 
   const renderForm = (isEdit: boolean, sourceId?: string) => (
-    <div className="space-y-3 p-4 bg-gray-50 rounded-lg">
+    <div className="space-y-3 p-4 bg-muted rounded-lg">
       <div className="grid grid-cols-2 gap-3">
-        <select value={formData.source_type} onChange={e => setFormData({ ...formData, source_type: e.target.value })}
-          className="p-2 border rounded">
-          <option value="">Source Type</option>
-          {SOURCE_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
-        </select>
-        <select value={formData.action} onChange={e => setFormData({ ...formData, action: e.target.value as SourceAction })}
-          className="p-2 border rounded">
-          {SOURCE_ACTIONS.map(a => <option key={a} value={a}>{a}</option>)}
-        </select>
+        <Select value={formData.source_type} onValueChange={v => setFormData({ ...formData, source_type: v })}>
+          <SelectTrigger><SelectValue placeholder="Source Type" /></SelectTrigger>
+          <SelectContent>
+            {SOURCE_TYPES.map(t => <SelectItem key={t} value={t}>{t}</SelectItem>)}
+          </SelectContent>
+        </Select>
+        <Select value={formData.action} onValueChange={v => setFormData({ ...formData, action: v as SourceAction })}>
+          <SelectTrigger><SelectValue placeholder="Action" /></SelectTrigger>
+          <SelectContent>
+            {SOURCE_ACTIONS.map(a => <SelectItem key={a} value={a}>{a}</SelectItem>)}
+          </SelectContent>
+        </Select>
       </div>
-      <input type="text" placeholder="Source Name" value={formData.source_name}
-        onChange={e => setFormData({ ...formData, source_name: e.target.value })}
-        className="w-full p-2 border rounded" />
-      <input type="url" placeholder="Source URL" value={formData.source_url}
-        onChange={e => setFormData({ ...formData, source_url: e.target.value })}
-        className="w-full p-2 border rounded" />
-      <textarea placeholder="Notes / Content" value={formData.content}
-        onChange={e => setFormData({ ...formData, content: e.target.value })}
-        className="w-full p-2 border rounded" rows={3} />
-      <select value={formData.confidence} onChange={e => setFormData({ ...formData, confidence: e.target.value })}
-        className="w-full p-2 border rounded">
-        <option value="">Confidence Level</option>
-        {CONFIDENCE_LEVELS.map(c => <option key={c} value={c}>{c}</option>)}
-      </select>
+      <Input type="text" placeholder="Source Name" value={formData.source_name}
+        onChange={e => setFormData({ ...formData, source_name: e.target.value })} />
+      <Input type="url" placeholder="Source URL" value={formData.source_url}
+        onChange={e => setFormData({ ...formData, source_url: e.target.value })} />
+      <Textarea placeholder="Notes / Content" value={formData.content}
+        onChange={e => setFormData({ ...formData, content: e.target.value })} rows={3} />
+      <Select value={formData.confidence} onValueChange={v => setFormData({ ...formData, confidence: v })}>
+        <SelectTrigger><SelectValue placeholder="Confidence Level" /></SelectTrigger>
+        <SelectContent>
+          {CONFIDENCE_LEVELS.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}
+        </SelectContent>
+      </Select>
       <div className="flex gap-2">
-        <button onClick={() => isEdit && sourceId ? handleUpdate(sourceId) : handleAdd()}
-          className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700">
+        <Button onClick={() => isEdit && sourceId ? handleUpdate(sourceId) : handleAdd()}>
           {isEdit ? 'Update' : 'Add Source'}
-        </button>
-        <button onClick={resetForm} className="px-4 py-2 border rounded hover:bg-gray-50">Cancel</button>
+        </Button>
+        <Button variant="outline" onClick={resetForm}>Cancel</Button>
       </div>
     </div>
   );
@@ -146,7 +148,9 @@ export default function SourcesEditor({ personId, sources, canEdit }: Props) {
       <div className="flex justify-between items-center mb-4">
         <h3 className="section-title">Sources & Research ({sources.length})</h3>
         {canEdit && !showAddForm && !editingId && (
-          <button onClick={() => setShowAddForm(true)} className="text-sm text-blue-600 hover:underline">+ Add Source</button>
+          <Button variant="secondary" size="sm" onClick={() => setShowAddForm(true)} icon={<Plus className="w-4 h-4" />}>
+            Add Source
+          </Button>
         )}
       </div>
 
@@ -190,9 +194,10 @@ export default function SourcesEditor({ personId, sources, canEdit }: Props) {
                   </div>
                   {canEdit && (
                     <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition">
-                      <button onClick={() => startEdit(source)} className="text-sm text-blue-600 hover:underline">Edit</button>
-                      <button onClick={() => deleteSource({ variables: { id: source.id } })}
-                        className="text-sm text-red-600 hover:underline">Delete</button>
+                      <Button variant="link" size="sm" onClick={() => startEdit(source)}>Edit</Button>
+                      <Button variant="link" size="sm" className="text-destructive" onClick={() => deleteSource({ variables: { id: source.id } })}>
+                        Delete
+                      </Button>
                     </div>
                   )}
                 </div>

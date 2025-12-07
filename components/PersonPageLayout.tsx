@@ -1,7 +1,8 @@
 'use client';
 
 import { useState, useEffect, ReactNode } from 'react';
-import Link from 'next/link';
+import { TreeDeciduous, Users, ChevronLeft, ChevronRight, BookOpen } from 'lucide-react';
+import { Button, ButtonLink } from '@/components/ui';
 import ResearchPanel from './ResearchPanel';
 
 interface PersonPageLayoutProps {
@@ -37,18 +38,22 @@ export default function PersonPageLayout({ personId, personName, children }: Per
       >
         {/* Tree View Links */}
         <div className="flex gap-2 mb-4">
-          <Link 
+          <ButtonLink
             href={`/tree?person=${personId}&view=ancestors`}
-            className="tree-btn text-sm flex items-center gap-1"
+            variant="secondary"
+            size="sm"
+            icon={TreeDeciduous}
           >
-            🌳 Ancestors
-          </Link>
-          <Link 
+            Ancestors
+          </ButtonLink>
+          <ButtonLink
             href={`/tree?person=${personId}&view=descendants`}
-            className="tree-btn text-sm flex items-center gap-1"
+            variant="secondary"
+            size="sm"
+            icon={Users}
           >
-            👨‍👩‍👧‍👦 Descendants
-          </Link>
+            Descendants
+          </ButtonLink>
         </div>
 
         {children}
@@ -66,27 +71,29 @@ export default function PersonPageLayout({ personId, personName, children }: Per
       </div>
 
       {/* Toggle Button */}
-      <button
+      <Button
+        variant="ghost"
+        size="sm"
         onClick={toggleCollapsed}
-        className={`absolute top-0 z-10 bg-amber-100 hover:bg-amber-200 text-amber-800 
+        className={`absolute top-0 z-10 bg-amber-100 hover:bg-amber-200 text-amber-800
           p-2 rounded-l shadow-md transition-all duration-300 ${
           isCollapsed ? 'right-0' : 'right-[40%]'
         }`}
         title={isCollapsed ? 'Show Research Panel' : 'Hide Research Panel'}
       >
-        {isCollapsed ? '📚 «' : '»'}
-      </button>
+        {isCollapsed ? <><BookOpen className="w-4 h-4" /> <ChevronLeft className="w-4 h-4" /></> : <ChevronRight className="w-4 h-4" />}
+      </Button>
 
       {/* Floating button when collapsed */}
       {isCollapsed && (
-        <button
+        <Button
           onClick={toggleCollapsed}
-          className="fixed bottom-20 right-4 bg-amber-500 hover:bg-amber-600 text-white 
-            p-4 rounded-full shadow-lg z-20 flex items-center gap-2"
+          className="fixed bottom-20 right-4 bg-amber-500 hover:bg-amber-600 text-white p-4 rounded-full shadow-lg z-20"
           title="Open Research Panel"
+          size="icon-lg"
         >
-          📚
-        </button>
+          <BookOpen className="w-5 h-5" />
+        </Button>
       )}
     </div>
   );

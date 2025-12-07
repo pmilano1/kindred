@@ -3,8 +3,8 @@
 import { useEffect, useState, useCallback } from 'react';
 import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
-import { Sliders } from 'lucide-react';
-import { PageHeader } from '@/components/ui';
+import { Sliders, Save, Play } from 'lucide-react';
+import { PageHeader, Button } from '@/components/ui';
 import LoadingSpinner from '@/components/LoadingSpinner';
 import Link from 'next/link';
 import { useSettingsRefetch } from '@/components/SettingsProvider';
@@ -182,10 +182,9 @@ export default function SettingsPage() {
         {needsMigration && (
           <div className="mb-6 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
             <p className="text-yellow-800 mb-3">Settings table needs to be created.</p>
-            <button onClick={handleMigrate} disabled={migrating}
-              className="bg-yellow-600 text-white px-4 py-2 rounded hover:bg-yellow-700 disabled:opacity-50">
-              {migrating ? 'Running...' : 'Run Migration'}
-            </button>
+            <Button onClick={handleMigrate} disabled={migrating} loading={migrating} icon={<Play className="w-4 h-4" />}>
+              Run Migration
+            </Button>
           </div>
         )}
 
@@ -261,13 +260,14 @@ export default function SettingsPage() {
 
             {/* Save Button */}
             <div className="flex justify-end">
-              <button
+              <Button
                 onClick={handleSave}
                 disabled={saving}
-                className="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 disabled:opacity-50"
+                loading={saving}
+                icon={<Save className="w-4 h-4" />}
               >
-                {saving ? 'Saving...' : 'Save Settings'}
-              </button>
+                Save Settings
+              </Button>
             </div>
           </div>
         )}
@@ -314,11 +314,12 @@ function ThemePresetPicker({
           {themePresets.map(preset => {
             const isSelected = currentPreset?.id === preset.id;
             return (
-              <button
+              <Button
                 key={preset.id}
                 type="button"
+                variant="outline"
                 onClick={() => onSelectPreset(preset)}
-                className={`p-3 bg-white border-2 rounded-lg hover:border-blue-400 hover:shadow-md transition-all text-left ${
+                className={`p-3 h-auto bg-white border-2 rounded-lg hover:border-blue-400 hover:shadow-md transition-all text-left flex-col items-start ${
                   isSelected ? 'border-blue-500 ring-2 ring-blue-200' : 'border-gray-200'
                 }`}
               >
@@ -333,7 +334,7 @@ function ThemePresetPicker({
                 </div>
                 <div className="font-medium text-sm">{preset.name}</div>
                 <div className="text-xs text-gray-500">{preset.description}</div>
-              </button>
+              </Button>
             );
           })}
         </div>

@@ -3,6 +3,8 @@
 import { useState, useEffect, ReactNode } from 'react';
 import Link from 'next/link';
 import ResearchPanel from './ResearchPanel';
+import { Button } from '@/components/ui';
+import { ChevronLeft, ChevronRight, BookOpen } from 'lucide-react';
 
 interface PersonSplitLayoutProps {
   personId: string;
@@ -39,15 +41,17 @@ export default function PersonSplitLayout({ personId, personName, children }: Pe
       </div>
 
       {/* Collapse/Expand Toggle */}
-      <button
+      <Button
+        variant="ghost"
+        size="sm"
         onClick={toggleCollapsed}
         className={`absolute top-0 z-10 bg-amber-100 hover:bg-amber-200 text-amber-800 px-1 py-3 rounded-l transition-all duration-300 ${
           collapsed ? 'right-0' : 'right-[40%]'
         }`}
         title={collapsed ? 'Show Research Panel' : 'Hide Research Panel'}
       >
-        {collapsed ? '📚' : '«'}
-      </button>
+        {collapsed ? <BookOpen className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
+      </Button>
 
       {/* Research Panel - Right Panel */}
       <div
@@ -73,13 +77,14 @@ export default function PersonSplitLayout({ personId, personName, children }: Pe
 
       {/* Floating button when collapsed */}
       {collapsed && (
-        <button
+        <Button
           onClick={toggleCollapsed}
           className="fixed right-4 bottom-20 bg-amber-500 hover:bg-amber-600 text-white p-3 rounded-full shadow-lg z-20"
           title="Open Research Panel"
+          size="icon"
         >
-          📚
-        </button>
+          <BookOpen className="w-5 h-5" />
+        </Button>
       )}
     </div>
   );

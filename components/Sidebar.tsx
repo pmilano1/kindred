@@ -20,6 +20,7 @@ import {
   ChevronRight,
   type LucideIcon,
 } from 'lucide-react';
+import { Button } from '@/components/ui';
 
 interface NavItem {
   href: string;
@@ -184,19 +185,15 @@ export default function Sidebar() {
       </div>
 
       {/* Collapse toggle */}
-      <button
+      <Button
+        variant="ghost"
+        size="icon-sm"
         onClick={toggleCollapse}
-        className="absolute -right-3 top-20 w-6 h-6 bg-gray-700 hover:bg-gray-600
-                   rounded-full flex items-center justify-center text-white
-                   transition-colors duration-200 shadow-md z-10"
+        className="absolute -right-3 top-20 w-6 h-6 bg-gray-700 hover:bg-gray-600 rounded-full text-white shadow-md z-10"
         aria-label={isCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
       >
-        {isCollapsed ? (
-          <ChevronRight className="w-4 h-4" />
-        ) : (
-          <ChevronLeft className="w-4 h-4" />
-        )}
-      </button>
+        {isCollapsed ? <ChevronRight className="w-4 h-4" /> : <ChevronLeft className="w-4 h-4" />}
+      </Button>
 
       {/* User section */}
       <div className={`border-t border-white/10 ${isCollapsed ? 'p-3' : 'p-6'}`}>
@@ -224,14 +221,15 @@ export default function Sidebar() {
               <p className="text-xs text-gray-600 capitalize mb-2">{session.user.role}</p>
             )}
             <Tooltip label="Sign Out" show={isCollapsed}>
-              <button
+              <Button
+                variant="ghost"
+                size="sm"
                 onClick={() => signOut({ callbackUrl: '/login' })}
-                className={`text-xs text-red-400 hover:text-red-300 inline-flex items-center gap-1.5
-                          transition-colors duration-200 ${isCollapsed ? 'p-2' : ''}`}
+                className={`text-xs text-red-400 hover:text-red-300 ${isCollapsed ? 'p-2' : ''}`}
+                icon={<LogOut className="w-3.5 h-3.5" />}
               >
-                <LogOut className="w-3.5 h-3.5" />
-                {!isCollapsed && <span>Sign Out</span>}
-              </button>
+                {!isCollapsed && 'Sign Out'}
+              </Button>
             </Tooltip>
           </div>
         )}

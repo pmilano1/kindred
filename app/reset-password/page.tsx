@@ -4,6 +4,7 @@ import { useState, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import LoadingSpinner from '@/components/LoadingSpinner';
+import { Button } from '@/components/ui';
 
 function ResetPasswordContent() {
   const searchParams = useSearchParams();
@@ -108,10 +109,10 @@ function ResetPasswordContent() {
                 className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-lg text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-green-500"
                 placeholder="••••••••" required minLength={8} />
             </div>
-            <button type="submit" disabled={isLoading}
-              className="w-full bg-green-600 hover:bg-green-700 disabled:bg-green-800 text-white font-semibold py-3 px-4 rounded-lg transition-all duration-200 flex items-center justify-center gap-2">
-              {isLoading ? <LoadingSpinner size="sm" /> : 'Reset Password'}
-            </button>
+            <Button type="submit" loading={isLoading}
+              className="w-full bg-green-600 hover:bg-green-700 disabled:bg-green-800 text-white font-semibold py-3 px-4">
+              Reset Password
+            </Button>
           </form>
         )}
       </div>

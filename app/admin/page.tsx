@@ -4,8 +4,8 @@ import { useEffect, useState } from 'react';
 import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import { useQuery, useMutation } from '@apollo/client/react';
-import { Settings } from 'lucide-react';
-import { PageHeader } from '@/components/ui';
+import { Settings, Send, UserPlus, Trash2, Copy, Mail } from 'lucide-react';
+import { PageHeader, Button } from '@/components/ui';
 import LoadingSpinner from '@/components/LoadingSpinner';
 import {
   GET_USERS,
@@ -179,18 +179,22 @@ export default function AdminPage() {
           <div className="flex justify-between items-center mb-4">
             <h2 className="text-xl font-semibold">Add New User</h2>
             <div className="flex gap-2">
-              <button
+              <Button
                 onClick={() => { setShowCreateUser(false); setCreateUserError(''); }}
-                className={`px-3 py-1 rounded-lg text-sm ${!showCreateUser ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-700'}`}
+                variant={!showCreateUser ? 'primary' : 'secondary'}
+                size="sm"
+                icon={<Mail className="w-4 h-4" />}
               >
                 Send Invite
-              </button>
-              <button
+              </Button>
+              <Button
                 onClick={() => setShowCreateUser(true)}
-                className={`px-3 py-1 rounded-lg text-sm ${showCreateUser ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-700'}`}
+                variant={showCreateUser ? 'primary' : 'secondary'}
+                size="sm"
+                icon={<UserPlus className="w-4 h-4" />}
               >
                 Create Directly
-              </button>
+              </Button>
             </div>
           </div>
 
@@ -210,9 +214,9 @@ export default function AdminPage() {
                     <option value="admin">Admin</option>
                   </select>
                 </div>
-                <button onClick={handleInvite} className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700">
+                <Button onClick={handleInvite} icon={<Send className="w-4 h-4" />}>
                   Send Invite
-                </button>
+                </Button>
               </div>
               {inviteUrl && (
                 <div className="mt-4 p-3 bg-green-50 border border-green-200 rounded-lg">
@@ -258,9 +262,9 @@ export default function AdminPage() {
                     className="rounded border-gray-300" />
                   Require password change on first login
                 </label>
-                <button onClick={handleCreateLocalUser} className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700">
+                <Button onClick={handleCreateLocalUser} icon={<UserPlus className="w-4 h-4" />}>
                   Create User
-                </button>
+                </Button>
               </div>
             </>
           )}
@@ -284,20 +288,24 @@ export default function AdminPage() {
                       </div>
                       <div className="flex items-center gap-3">
                         <span className="text-xs text-gray-400">Expires {new Date(inv.expires_at).toLocaleDateString()}</span>
-                        <button onClick={() => handleDeleteInvite(inv.id)} className="text-red-600 text-sm hover:underline">Cancel</button>
+                        <Button onClick={() => handleDeleteInvite(inv.id)} variant="ghost" size="sm" className="text-red-600">
+                          Cancel
+                        </Button>
                       </div>
                     </div>
                     <div className="flex items-center gap-2 bg-gray-50 rounded p-2">
                       <code className="text-xs text-gray-600 flex-1 break-all">{inviteLink}</code>
-                      <button
+                      <Button
                         onClick={() => {
                           navigator.clipboard.writeText(inviteLink);
                           alert('Link copied!');
                         }}
-                        className="text-blue-600 text-xs hover:underline whitespace-nowrap"
+                        variant="ghost"
+                        size="sm"
+                        icon={<Copy className="w-3 h-3" />}
                       >
                         Copy
-                      </button>
+                      </Button>
                     </div>
                   </div>
                 );
@@ -336,7 +344,9 @@ export default function AdminPage() {
                   </td>
                   <td className="py-3">
                     {user.id !== session?.user?.id && (
-                      <button onClick={() => handleDeleteUser(user.id)} className="text-red-600 text-sm">Delete</button>
+                      <Button onClick={() => handleDeleteUser(user.id)} variant="danger" size="sm" icon={<Trash2 className="w-3 h-3" />}>
+                        Delete
+                      </Button>
                     )}
                   </td>
                 </tr>

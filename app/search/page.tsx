@@ -2,8 +2,8 @@
 
 import { useState } from 'react';
 import { useLazyQuery } from '@apollo/client/react';
-import { Search } from 'lucide-react';
-import { PageHeader } from '@/components/ui';
+import { Search as SearchIcon } from 'lucide-react';
+import { PageHeader, Button } from '@/components/ui';
 import PersonCard from '@/components/PersonCard';
 import { Person } from '@/lib/types';
 import { SEARCH_PEOPLE } from '@/lib/graphql/queries';
@@ -35,7 +35,7 @@ export default function SearchPage() {
       <PageHeader
         title="Search"
         subtitle="Find ancestors by name, place, or date"
-        icon={Search}
+        icon={SearchIcon}
       />
       <div className="content-wrapper">
         <form onSubmit={handleSearch} className="max-w-2xl mx-auto mb-8">
@@ -47,9 +47,9 @@ export default function SearchPage() {
               value={query}
               onChange={(e) => setQuery(e.target.value)}
             />
-            <button type="submit" className="tree-btn" disabled={loading}>
-              {loading ? 'Searching...' : 'Search'}
-            </button>
+            <Button type="submit" disabled={loading} loading={loading}>
+              Search
+            </Button>
           </div>
         </form>
 

@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import LoadingSpinner from '@/components/LoadingSpinner';
+import { Button } from '@/components/ui';
 
 export default function ForgotPasswordPage() {
   const [email, setEmail] = useState('');
@@ -82,13 +83,13 @@ export default function ForgotPasswordPage() {
               />
             </div>
 
-            <button
+            <Button
               type="submit"
-              disabled={isLoading}
-              className="w-full bg-green-600 hover:bg-green-700 disabled:bg-green-800 text-white font-semibold py-3 px-4 rounded-lg transition-all duration-200 flex items-center justify-center gap-2"
+              loading={isLoading}
+              className="w-full bg-green-600 hover:bg-green-700 disabled:bg-green-800 text-white font-semibold py-3 px-4"
             >
-              {isLoading ? <LoadingSpinner size="sm" /> : 'Send Reset Link'}
-            </button>
+              Send Reset Link
+            </Button>
 
             <Link href="/login" className="block text-center text-slate-400 hover:text-white text-sm py-2">
               ← Back to login

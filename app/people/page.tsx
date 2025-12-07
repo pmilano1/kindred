@@ -118,12 +118,9 @@ export default function PeoplePage() {
             </div>
             {hasMore && (
               <div className="text-center mt-8">
-                <button
-                  onClick={loadMore}
-                  className="btn-primary px-6 py-3"
-                >
+                <Button onClick={loadMore} size="lg">
                   Load More ({filteredPeople.length - displayCount} remaining)
-                </button>
+                </Button>
               </div>
             )}
           </>

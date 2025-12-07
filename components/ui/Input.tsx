@@ -1,84 +1,21 @@
-'use client';
+import * as React from "react"
 
-import { forwardRef, InputHTMLAttributes } from 'react';
+import { cn } from "@/lib/utils"
 
-interface InputProps extends InputHTMLAttributes<HTMLInputElement> {
-  label?: string;
-  error?: string;
-  hint?: string;
-  icon?: React.ReactNode;
-  iconPosition?: 'left' | 'right';
+function Input({ className, type, ...props }: React.ComponentProps<"input">) {
+  return (
+    <input
+      type={type}
+      data-slot="input"
+      className={cn(
+        "file:text-foreground placeholder:text-muted-foreground selection:bg-primary selection:text-primary-foreground dark:bg-input/30 border-input h-9 w-full min-w-0 rounded-md border bg-transparent px-3 py-1 text-base shadow-xs transition-[color,box-shadow] outline-none file:inline-flex file:h-7 file:border-0 file:bg-transparent file:text-sm file:font-medium disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-50 md:text-sm",
+        "focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px]",
+        "aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 aria-invalid:border-destructive",
+        className
+      )}
+      {...props}
+    />
+  )
 }
 
-const Input = forwardRef<HTMLInputElement, InputProps>(
-  (
-    {
-      label,
-      error,
-      hint,
-      icon,
-      iconPosition = 'left',
-      className = '',
-      id,
-      ...props
-    },
-    ref
-  ) => {
-    const inputId = id || label?.toLowerCase().replace(/\s+/g, '-');
-    const hasError = !!error;
-
-    return (
-      <div className="w-full">
-        {label && (
-          <label
-            htmlFor={inputId}
-            className="block text-sm font-medium text-gray-700 mb-1.5"
-          >
-            {label}
-          </label>
-        )}
-        <div className="relative">
-          {icon && iconPosition === 'left' && (
-            <div className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">
-              {icon}
-            </div>
-          )}
-          <input
-            ref={ref}
-            id={inputId}
-            className={`
-              w-full rounded-lg border bg-white px-4 py-2.5 text-sm
-              transition-all duration-200
-              placeholder:text-gray-400
-              focus:outline-none focus:ring-2 focus:ring-offset-1
-              disabled:bg-gray-50 disabled:cursor-not-allowed disabled:text-gray-500
-              ${icon && iconPosition === 'left' ? 'pl-10' : ''}
-              ${icon && iconPosition === 'right' ? 'pr-10' : ''}
-              ${hasError 
-                ? 'border-red-300 focus:border-red-500 focus:ring-red-200' 
-                : 'border-gray-200 focus:border-primary focus:ring-primary/20'
-              }
-              ${className}
-            `.trim().replace(/\s+/g, ' ')}
-            {...props}
-          />
-          {icon && iconPosition === 'right' && (
-            <div className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400">
-              {icon}
-            </div>
-          )}
-        </div>
-        {(error || hint) && (
-          <p className={`mt-1.5 text-sm ${hasError ? 'text-red-600' : 'text-gray-500'}`}>
-            {error || hint}
-          </p>
-        )}
-      </div>
-    );
-  }
-);
-
-Input.displayName = 'Input';
-
-export default Input;
-
+export { Input }

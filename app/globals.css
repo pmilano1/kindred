@@ -134,6 +134,95 @@
   --color-primary-dark: var(--color-primary-dark);
 }
 
+/*
+ * THEMING CONVENTIONS
+ * -------------------
+ * Use these semantic classes instead of hardcoded Tailwind colors:
+ *
+ * Navigation tabs:
+ *   .nav-tab-active   - Active tab (primary color)
+ *   .nav-tab          - Inactive tab (gray, hover state)
+ *
+ * Cards:
+ *   .card             - Standard card with border and shadow
+ *   .card-header      - Card header section
+ *
+ * Status badges:
+ *   .badge-success    - Green success state
+ *   .badge-warning    - Yellow warning state
+ *   .badge-error      - Red error state
+ *   .badge-info       - Blue info state
+ *
+ * For buttons, use the Button component with variants:
+ *   primary, secondary, destructive, outline, ghost
+ */
+
+/* Navigation tabs */
+.nav-tab {
+  padding: 0.5rem 1rem;
+  border-radius: 0.5rem;
+  background: var(--color-gray-200);
+  color: var(--color-gray-700);
+  transition: background var(--transition-fast);
+}
+.nav-tab:hover {
+  background: var(--color-gray-300);
+}
+.nav-tab-active {
+  padding: 0.5rem 1rem;
+  border-radius: 0.5rem;
+  background: var(--color-primary);
+  color: white;
+}
+
+/* Status badges */
+.badge-success {
+  background: color-mix(in srgb, var(--color-success) 15%, transparent);
+  color: color-mix(in srgb, var(--color-success) 80%, black);
+  padding: 0.25rem 0.75rem;
+  border-radius: 9999px;
+  font-size: 0.75rem;
+  font-weight: 500;
+}
+.badge-warning {
+  background: color-mix(in srgb, var(--color-warning) 15%, transparent);
+  color: color-mix(in srgb, var(--color-warning) 80%, black);
+  padding: 0.25rem 0.75rem;
+  border-radius: 9999px;
+  font-size: 0.75rem;
+  font-weight: 500;
+}
+.badge-error {
+  background: color-mix(in srgb, var(--color-error) 15%, transparent);
+  color: color-mix(in srgb, var(--color-error) 80%, black);
+  padding: 0.25rem 0.75rem;
+  border-radius: 9999px;
+  font-size: 0.75rem;
+  font-weight: 500;
+}
+.badge-info {
+  background: color-mix(in srgb, var(--color-info) 15%, transparent);
+  color: color-mix(in srgb, var(--color-info) 80%, black);
+  padding: 0.25rem 0.75rem;
+  border-radius: 9999px;
+  font-size: 0.75rem;
+  font-weight: 500;
+}
+
+/* Standard card */
+.card {
+  background: white;
+  border-radius: 0.75rem;
+  box-shadow: var(--shadow-sm);
+  border: 1px solid var(--color-gray-200);
+  padding: 1.5rem;
+}
+.card-header {
+  font-size: 1.25rem;
+  font-weight: 600;
+  margin-bottom: 1rem;
+}
+
 html, body { height: 100%; margin: 0; overflow: hidden; }
 
 body {

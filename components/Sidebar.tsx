@@ -5,15 +5,33 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useSession, signOut } from 'next-auth/react';
 import { useSettings } from './SettingsProvider';
+import {
+  LayoutDashboard,
+  TreeDeciduous,
+  Users,
+  ClipboardList,
+  Calendar,
+  Shield,
+  Search,
+  Settings,
+  LogOut,
+  type LucideIcon,
+} from 'lucide-react';
 
-const navItems = [
-  { href: '/', label: 'Dashboard', icon: '🏠' },
-  { href: '/tree', label: 'Family Tree', icon: '🌳' },
-  { href: '/people', label: 'People', icon: '👥' },
-  { href: '/research', label: 'Research Queue', icon: '📋' },
-  { href: '/timeline', label: 'Timeline', icon: '📅' },
-  { href: '/coats-of-arms', label: 'Coats of Arms', icon: '🛡️' },
-  { href: '/search', label: 'Search', icon: '🔍' },
+interface NavItem {
+  href: string;
+  label: string;
+  icon: LucideIcon;
+}
+
+const navItems: NavItem[] = [
+  { href: '/', label: 'Dashboard', icon: LayoutDashboard },
+  { href: '/tree', label: 'Family Tree', icon: TreeDeciduous },
+  { href: '/people', label: 'People', icon: Users },
+  { href: '/research', label: 'Research Queue', icon: ClipboardList },
+  { href: '/timeline', label: 'Timeline', icon: Calendar },
+  { href: '/coats-of-arms', label: 'Coats of Arms', icon: Shield },
+  { href: '/search', label: 'Search', icon: Search },
 ];
 
 export default function Sidebar() {
@@ -33,31 +51,38 @@ export default function Sidebar() {
   return (
     <nav className="sidebar">
       <div className="sidebar-header">
-        <div className="logo">{settings.logo_url ? (
-          <Image src={settings.logo_url} alt="Logo" width={32} height={32} className="w-8 h-8 object-contain" unoptimized />
-        ) : '🌳'}</div>
+        <div className="logo">
+          {settings.logo_url ? (
+            <Image src={settings.logo_url} alt="Logo" width={32} height={32} className="w-8 h-8 object-contain" unoptimized />
+          ) : (
+            <TreeDeciduous className="w-8 h-8 text-green-400" />
+          )}
+        </div>
         <h3 className="text-xl font-semibold">{settings.family_name}</h3>
         <p className="text-sm text-gray-400">{settings.site_tagline}</p>
       </div>
       <ul className="nav-links">
-        {navItems.map((item) => (
-          <li key={item.href}>
-            <Link
-              href={item.href}
-              className={`nav-link ${pathname === item.href ? 'active' : ''}`}
-            >
-              <span className="mr-3">{item.icon}</span>
-              {item.label}
-            </Link>
-          </li>
-        ))}
+        {navItems.map((item) => {
+          const Icon = item.icon;
+          return (
+            <li key={item.href}>
+              <Link
+                href={item.href}
+                className={`nav-link ${pathname === item.href ? 'active' : ''}`}
+              >
+                <Icon className="w-5 h-5 mr-3 flex-shrink-0" />
+                {item.label}
+              </Link>
+            </li>
+          );
+        })}
         {(isAdmin || isLoading) && (
           <li>
             <Link
               href="/admin"
               className={`nav-link ${pathname === '/admin' ? 'active' : ''} ${isLoading ? 'opacity-50' : ''}`}
             >
-              <span className="mr-3">⚙️</span>
+              <Settings className="w-5 h-5 mr-3 flex-shrink-0" />
               Admin
             </Link>
           </li>
@@ -76,8 +101,9 @@ export default function Sidebar() {
             <p className="text-xs text-gray-600 capitalize mt-1">{session.user.role}</p>
             <button
               onClick={() => signOut({ callbackUrl: '/login' })}
-              className="mt-2 text-xs text-red-400 hover:text-red-300"
+              className="mt-2 text-xs text-red-400 hover:text-red-300 inline-flex items-center gap-1.5"
             >
+              <LogOut className="w-3 h-3" />
               Sign Out
             </button>
           </div>

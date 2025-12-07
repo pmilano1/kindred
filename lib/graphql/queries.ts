@@ -717,11 +717,22 @@ export const GET_SITE_SETTINGS = gql`
 `;
 
 // ============================================
-// GEDCOM EXPORT
+// GEDCOM EXPORT/IMPORT
 // ============================================
 
 export const EXPORT_GEDCOM = gql`
   query ExportGedcom($includeLiving: Boolean, $includeSources: Boolean) {
     exportGedcom(includeLiving: $includeLiving, includeSources: $includeSources)
+  }
+`;
+
+export const IMPORT_GEDCOM = gql`
+  mutation ImportGedcom($content: String!) {
+    importGedcom(content: $content) {
+      peopleImported
+      familiesImported
+      errors
+      warnings
+    }
   }
 `;

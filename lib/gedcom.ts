@@ -156,3 +156,176 @@ export function generateGedcom(
   lines.push('0 TRLR');
   return lines.join('\r\n');
 }
+
+// ===========================================
+// GEDCOM PARSER (Import)
+// ===========================================
+
+export interface ParsedPerson {
+  xref: string;
+  name_full: string;
+  name_given: string | null;
+  name_surname: string | null;
+  sex: string | null;
+  birth_date: string | null;
+  birth_place: string | null;
+  death_date: string | null;
+  death_place: string | null;
+  burial_date: string | null;
+  burial_place: string | null;
+  christening_date: string | null;
+  christening_place: string | null;
+}
+
+export interface ParsedFamily {
+  xref: string;
+  husband_xref: string | null;
+  wife_xref: string | null;
+  children_xrefs: string[];
+  marriage_date: string | null;
+  marriage_place: string | null;
+}
+
+export interface GedcomParseResult {
+  people: ParsedPerson[];
+  families: ParsedFamily[];
+  errors: string[];
+  warnings: string[];
+}
+
+interface GedcomLine {
+  level: number;
+  xref: string | null;
+  tag: string;
+  value: string;
+}
+
+function parseLine(line: string): GedcomLine | null {
+  const trimmed = line.trim();
+  if (!trimmed) return null;
+  // GEDCOM line format: LEVEL [XREF] TAG [VALUE]
+  const match = trimmed.match(/^(\d+)\s+(@[^@]+@)?\s*(\S+)\s*(.*)?$/);
+  if (!match) return null;
+  return {
+    level: parseInt(match[1], 10),
+    xref: match[2] || null,
+    tag: match[3].toUpperCase(),
+    value: (match[4] || '').trim()
+  };
+}
+
+export function parseGedcom(content: string): GedcomParseResult {
+  const lines = content.split(/\r?\n/);
+  const people: ParsedPerson[] = [];
+  const families: ParsedFamily[] = [];
+  const errors: string[] = [];
+  const warnings: string[] = [];
+
+  let currentPerson: Partial<ParsedPerson> | null = null;
+  let currentFamily: Partial<ParsedFamily> | null = null;
+  let currentEvent: { type: string; date?: string; place?: string } | null = null;
+  let lineNum = 0;
+
+  for (const line of lines) {
+    lineNum++;
+    const parsed = parseLine(line);
+    if (!parsed) continue;
+
+    const { level, xref, tag, value } = parsed;
+
+    // Level 0 starts new records
+    if (level === 0) {
+      // Save previous records
+      if (currentPerson?.xref) people.push(currentPerson as ParsedPerson);
+      if (currentFamily?.xref) families.push(currentFamily as ParsedFamily);
+      currentPerson = null;
+      currentFamily = null;
+      currentEvent = null;
+
+      if (tag === 'INDI' && xref) {
+        currentPerson = {
+          xref, name_full: '', name_given: null, name_surname: null, sex: null,
+          birth_date: null, birth_place: null, death_date: null, death_place: null,
+          burial_date: null, burial_place: null, christening_date: null, christening_place: null
+        };
+      } else if (tag === 'FAM' && xref) {
+        currentFamily = {
+          xref, husband_xref: null, wife_xref: null, children_xrefs: [],
+          marriage_date: null, marriage_place: null
+        };
+      }
+      continue;
+    }
+
+    // Level 1 tags for individuals
+    if (currentPerson && level === 1) {
+      currentEvent = null;
+      if (tag === 'NAME') {
+        // Parse name: "Given /Surname/"
+        const nameMatch = value.match(/^([^/]*)\s*\/([^/]*)\//);
+        if (nameMatch) {
+          currentPerson.name_given = nameMatch[1].trim() || null;
+          currentPerson.name_surname = nameMatch[2].trim() || null;
+          currentPerson.name_full = `${nameMatch[1].trim()} ${nameMatch[2].trim()}`.trim();
+        } else {
+          currentPerson.name_full = value.replace(/\//g, '').trim();
+        }
+      } else if (tag === 'SEX') {
+        currentPerson.sex = value === 'M' ? 'male' : value === 'F' ? 'female' : null;
+      } else if (tag === 'BIRT') {
+        currentEvent = { type: 'birth' };
+      } else if (tag === 'DEAT') {
+        currentEvent = { type: 'death' };
+      } else if (tag === 'BURI') {
+        currentEvent = { type: 'burial' };
+      } else if (tag === 'CHR') {
+        currentEvent = { type: 'christening' };
+      }
+    }
+
+    // Level 2 tags for event details
+    if (currentPerson && currentEvent && level === 2) {
+      if (tag === 'DATE') currentEvent.date = value;
+      if (tag === 'PLAC') currentEvent.place = value;
+      // Apply to person
+      if (currentEvent.type === 'birth') {
+        if (currentEvent.date) currentPerson.birth_date = currentEvent.date;
+        if (currentEvent.place) currentPerson.birth_place = currentEvent.place;
+      } else if (currentEvent.type === 'death') {
+        if (currentEvent.date) currentPerson.death_date = currentEvent.date;
+        if (currentEvent.place) currentPerson.death_place = currentEvent.place;
+      } else if (currentEvent.type === 'burial') {
+        if (currentEvent.date) currentPerson.burial_date = currentEvent.date;
+        if (currentEvent.place) currentPerson.burial_place = currentEvent.place;
+      } else if (currentEvent.type === 'christening') {
+        if (currentEvent.date) currentPerson.christening_date = currentEvent.date;
+        if (currentEvent.place) currentPerson.christening_place = currentEvent.place;
+      }
+    }
+
+    // Level 1 tags for families
+    if (currentFamily && level === 1) {
+      currentEvent = null;
+      if (tag === 'HUSB') currentFamily.husband_xref = value;
+      else if (tag === 'WIFE') currentFamily.wife_xref = value;
+      else if (tag === 'CHIL') currentFamily.children_xrefs!.push(value);
+      else if (tag === 'MARR') currentEvent = { type: 'marriage' };
+    }
+
+    // Level 2 for family events
+    if (currentFamily && currentEvent && level === 2) {
+      if (tag === 'DATE') currentEvent.date = value;
+      if (tag === 'PLAC') currentEvent.place = value;
+      if (currentEvent.type === 'marriage') {
+        if (currentEvent.date) currentFamily.marriage_date = currentEvent.date;
+        if (currentEvent.place) currentFamily.marriage_place = currentEvent.place;
+      }
+    }
+  }
+
+  // Save last records
+  if (currentPerson?.xref) people.push(currentPerson as ParsedPerson);
+  if (currentFamily?.xref) families.push(currentFamily as ParsedFamily);
+
+  return { people, families, errors, warnings };
+}

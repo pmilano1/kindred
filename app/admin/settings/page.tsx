@@ -3,7 +3,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
-import { Sliders, Save, Play, Download } from 'lucide-react';
+import { Sliders, Save, Play, Download, Upload } from 'lucide-react';
 import { PageHeader, Button } from '@/components/ui';
 import LoadingSpinner from '@/components/LoadingSpinner';
 import Link from 'next/link';
@@ -67,6 +67,10 @@ export default function SettingsPage() {
   const [exporting, setExporting] = useState(false);
   const [exportIncludeLiving, setExportIncludeLiving] = useState(false);
   const [exportIncludeSources, setExportIncludeSources] = useState(true);
+
+  // GEDCOM import state
+  const [importing, setImporting] = useState(false);
+  const [importResult, setImportResult] = useState<{ peopleImported: number; familiesImported: number; errors: string[]; warnings: string[] } | null>(null);
 
   const loadSettings = useCallback(async () => {
     try {
@@ -168,6 +172,43 @@ export default function SettingsPage() {
       setMessage({ type: 'error', text: 'Failed to export GEDCOM: ' + (err as Error).message });
     } finally {
       setExporting(false);
+    }
+  };
+
+  const handleImportGedcom = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    setImporting(true);
+    setImportResult(null);
+    setMessage(null);
+
+    try {
+      const content = await file.text();
+      const data = await graphqlFetch(`
+        mutation ImportGedcom($content: String!) {
+          importGedcom(content: $content) {
+            peopleImported
+            familiesImported
+            errors
+            warnings
+          }
+        }
+      `, { content });
+
+      setImportResult(data.importGedcom);
+      if (data.importGedcom.errors.length === 0) {
+        setMessage({ type: 'success', text: `Imported ${data.importGedcom.peopleImported} people and ${data.importGedcom.familiesImported} families!` });
+      } else {
+        setMessage({ type: 'error', text: `Import completed with ${data.importGedcom.errors.length} errors` });
+      }
+    } catch (err) {
+      console.error('Failed to import GEDCOM:', err);
+      setMessage({ type: 'error', text: 'Failed to import GEDCOM: ' + (err as Error).message });
+    } finally {
+      setImporting(false);
+      // Reset file input
+      event.target.value = '';
     }
   };
 
@@ -334,6 +375,56 @@ export default function SettingsPage() {
               >
                 Export GEDCOM
               </Button>
+            </div>
+
+            {/* GEDCOM Import Section */}
+            <div className="bg-blue-50 rounded-lg p-6 mt-6">
+              <h3 className="text-lg font-semibold mb-4">📥 Import Data</h3>
+              <p className="text-gray-600 mb-4">
+                Import family tree data from a GEDCOM file. Standard GEDCOM 5.5.1 format is supported.
+              </p>
+              <div className="flex items-center gap-4">
+                <input
+                  type="file"
+                  id="gedcom-import"
+                  accept=".ged,.gedcom"
+                  onChange={handleImportGedcom}
+                  disabled={importing}
+                  className="hidden"
+                />
+                <Button
+                  onClick={() => document.getElementById('gedcom-import')?.click()}
+                  disabled={importing}
+                  loading={importing}
+                  variant="secondary"
+                  icon={<Upload className="w-4 h-4" />}
+                >
+                  {importing ? 'Importing...' : 'Import GEDCOM'}
+                </Button>
+              </div>
+              {importResult && (
+                <div className="mt-4 p-4 bg-white rounded-lg border">
+                  <p className="font-medium">Import Results:</p>
+                  <ul className="mt-2 text-sm space-y-1">
+                    <li>✅ People imported: {importResult.peopleImported}</li>
+                    <li>✅ Families imported: {importResult.familiesImported}</li>
+                    {importResult.warnings.length > 0 && (
+                      <li className="text-yellow-600">⚠️ Warnings: {importResult.warnings.length}</li>
+                    )}
+                    {importResult.errors.length > 0 && (
+                      <li className="text-red-600">❌ Errors: {importResult.errors.length}</li>
+                    )}
+                  </ul>
+                  {importResult.errors.length > 0 && (
+                    <details className="mt-2">
+                      <summary className="text-sm text-red-600 cursor-pointer">View errors</summary>
+                      <ul className="mt-1 text-xs text-red-600 max-h-32 overflow-y-auto">
+                        {importResult.errors.map((err, i) => <li key={i}>{err}</li>)}
+                      </ul>
+                    </details>
+                  )}
+                </div>
+              )}
             </div>
           </div>
         )}

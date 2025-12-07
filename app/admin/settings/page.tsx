@@ -3,8 +3,8 @@
 import { useEffect, useState, useCallback } from 'react';
 import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
-import { Sliders } from 'lucide-react';
-import { PageHeader } from '@/components/ui';
+import { Sliders, Save, Play } from 'lucide-react';
+import { PageHeader, Button } from '@/components/ui';
 import LoadingSpinner from '@/components/LoadingSpinner';
 import Link from 'next/link';
 import { useSettingsRefetch } from '@/components/SettingsProvider';
@@ -182,10 +182,9 @@ export default function SettingsPage() {
         {needsMigration && (
           <div className="mb-6 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
             <p className="text-yellow-800 mb-3">Settings table needs to be created.</p>
-            <button onClick={handleMigrate} disabled={migrating}
-              className="bg-yellow-600 text-white px-4 py-2 rounded hover:bg-yellow-700 disabled:opacity-50">
-              {migrating ? 'Running...' : 'Run Migration'}
-            </button>
+            <Button onClick={handleMigrate} disabled={migrating} loading={migrating} icon={<Play className="w-4 h-4" />}>
+              Run Migration
+            </Button>
           </div>
         )}
 
@@ -261,13 +260,14 @@ export default function SettingsPage() {
 
             {/* Save Button */}
             <div className="flex justify-end">
-              <button
+              <Button
                 onClick={handleSave}
                 disabled={saving}
-                className="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 disabled:opacity-50"
+                loading={saving}
+                icon={<Save className="w-4 h-4" />}
               >
-                {saving ? 'Saving...' : 'Save Settings'}
-              </button>
+                Save Settings
+              </Button>
             </div>
           </div>
         )}

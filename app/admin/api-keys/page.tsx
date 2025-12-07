@@ -4,8 +4,8 @@ import { useEffect, useState } from 'react';
 import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import { useQuery, useMutation } from '@apollo/client/react';
-import { Key } from 'lucide-react';
-import { PageHeader } from '@/components/ui';
+import { Key, RefreshCw, Trash2, Copy, Eye, EyeOff } from 'lucide-react';
+import { PageHeader, Button } from '@/components/ui';
 import LoadingSpinner from '@/components/LoadingSpinner';
 import Link from 'next/link';
 import { GET_ME, GENERATE_API_KEY, REVOKE_API_KEY } from '@/lib/graphql/queries';
@@ -124,12 +124,13 @@ export default function ApiKeysPage() {
               </p>
               <div className="flex items-center gap-2 bg-white border rounded p-2">
                 <code className="flex-1 text-sm font-mono break-all">{newKey}</code>
-                <button
+                <Button
                   onClick={() => copyToClipboard(newKey)}
-                  className="px-3 py-1 bg-green-600 text-white rounded text-sm hover:bg-green-700"
+                  size="sm"
+                  icon={<Copy className="w-3 h-3" />}
                 >
                   {copied ? '✓ Copied!' : 'Copy'}
-                </button>
+                </Button>
               </div>
             </div>
           )}
@@ -143,12 +144,14 @@ export default function ApiKeysPage() {
                     {showKey ? user?.api_key : maskKey(user?.api_key || '')}
                   </code>
                 </div>
-                <button
+                <Button
                   onClick={() => setShowKey(!showKey)}
-                  className="text-blue-600 text-sm hover:underline"
+                  variant="ghost"
+                  size="sm"
+                  icon={showKey ? <EyeOff className="w-3 h-3" /> : <Eye className="w-3 h-3" />}
                 >
                   {showKey ? 'Hide' : 'Show'}
-                </button>
+                </Button>
               </div>
             </div>
           )}
@@ -160,21 +163,24 @@ export default function ApiKeysPage() {
           )}
 
           <div className="flex gap-4">
-            <button
+            <Button
               onClick={handleGenerate}
               disabled={generating}
-              className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 disabled:opacity-50"
+              loading={generating}
+              icon={<RefreshCw className="w-4 h-4" />}
             >
-              {generating ? 'Generating...' : hasKey ? 'Regenerate Key' : 'Generate API Key'}
-            </button>
+              {hasKey ? 'Regenerate Key' : 'Generate API Key'}
+            </Button>
             {hasKey && (
-              <button
+              <Button
                 onClick={handleRevoke}
                 disabled={revoking}
-                className="bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 disabled:opacity-50"
+                loading={revoking}
+                variant="danger"
+                icon={<Trash2 className="w-4 h-4" />}
               >
-                {revoking ? 'Revoking...' : 'Revoke Key'}
-              </button>
+                Revoke Key
+              </Button>
             )}
           </div>
         </div>

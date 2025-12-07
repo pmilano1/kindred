@@ -214,7 +214,7 @@ export default function FamilyTree({ rootPersonId, showAncestors, onPersonClick,
     await updateStatus({ variables: { personId, status } });
   };
 
-  // Handle resize
+  // Handle resize - use ResizeObserver to detect container size changes (e.g., sidebar collapse)
   useEffect(() => {
     const updateDimensions = () => {
       if (containerRef.current) {
@@ -225,8 +225,19 @@ export default function FamilyTree({ rootPersonId, showAncestors, onPersonClick,
       }
     };
     updateDimensions();
+
+    // ResizeObserver detects container size changes from sidebar collapse
+    const resizeObserver = new ResizeObserver(updateDimensions);
+    if (containerRef.current) {
+      resizeObserver.observe(containerRef.current);
+    }
+
+    // Also listen to window resize as fallback
     window.addEventListener('resize', updateDimensions);
-    return () => window.removeEventListener('resize', updateDimensions);
+    return () => {
+      resizeObserver.disconnect();
+      window.removeEventListener('resize', updateDimensions);
+    };
   }, []);
 
   // Build descendant chain for collateral branches (e.g., Renée -> ... -> Joséphine)

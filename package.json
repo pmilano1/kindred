@@ -7,7 +7,7 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint",
+    "lint": "eslint --cache --cache-location .eslintcache",
     "test": "jest --coverage",
     "test:fast": "jest --no-coverage",
     "test:watch": "jest --watch --no-coverage",

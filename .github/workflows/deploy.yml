@@ -57,6 +57,7 @@ jobs:
             NEXTAUTH_URL=${{ secrets.NEXTAUTH_URL }}
           cache-from: type=registry,ref=${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_REPOSITORY }}:buildcache
           cache-to: type=registry,ref=${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_REPOSITORY }}:buildcache,mode=max
+          provenance: false
 
       - name: Validate Docker image
         if: ${{ github.event.inputs.validate_image == 'true' }}

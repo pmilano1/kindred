@@ -317,7 +317,7 @@ body {
   border-bottom: 2px solid color-mix(in srgb, var(--primary-color) 40%, transparent); flex-shrink: 0;
 }
 .banner-title { font-size: 2.5rem; font-weight: 800; color: white; margin: 0; }
-.gradient-text { background: linear-gradient(135deg, #4ade80, #22c55e); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+.gradient-text { background: linear-gradient(135deg, var(--primary-light), var(--primary-color)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
 .banner-subtitle { color: rgba(255,255,255,0.8); font-size: 1rem; margin: 0.5rem 0 0; }
 
 /* Page Header (new design system) */

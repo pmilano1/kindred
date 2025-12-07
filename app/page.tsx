@@ -18,7 +18,7 @@ export default async function Home() {
 
   return (
     <>
-      <Hero title="Milanese Family" subtitle="Exploring Our Heritage Through Generations" />
+      <Hero />
       <div className="content-wrapper">
         <div className="stats-grid">
           <StatsCard label="Total People" value={stats.total_people} icon="👥" />

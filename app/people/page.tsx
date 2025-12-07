@@ -4,7 +4,8 @@ import { useState, useMemo, useEffect, useCallback } from 'react';
 import { useQuery } from '@apollo/client/react';
 import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
-import Hero from '@/components/Hero';
+import { Users, UserPlus } from 'lucide-react';
+import { PageHeader, Button } from '@/components/ui';
 import LoadingSpinner from '@/components/LoadingSpinner';
 import PersonCard from '@/components/PersonCard';
 import CreatePersonModal from '@/components/CreatePersonModal';
@@ -66,7 +67,19 @@ export default function PeoplePage() {
 
   return (
     <>
-      <Hero title="People" subtitle={`${people.length} individuals in the database`} />
+      <PageHeader
+        title="People"
+        subtitle={`${people.length} individuals in the database`}
+        icon={Users}
+        actions={canEdit && (
+          <Button
+            onClick={() => setShowCreateModal(true)}
+            icon={<UserPlus className="w-4 h-4" />}
+          >
+            Add Person
+          </Button>
+        )}
+      />
       <div className="content-wrapper">
         <div className="flex flex-col md:flex-row gap-4 mb-6">
           <input
@@ -86,14 +99,6 @@ export default function PeoplePage() {
             <option value="male">Male Only</option>
             <option value="female">Female Only</option>
           </select>
-          {canEdit && (
-            <button
-              onClick={() => setShowCreateModal(true)}
-              className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors flex items-center gap-2"
-            >
-              <span>➕</span> Add Person
-            </button>
-          )}
         </div>
 
         {loading ? (

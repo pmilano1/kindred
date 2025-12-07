@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef, Suspense } from 'react';
+import { useState, useEffect, useRef, Suspense, useMemo } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { useLazyQuery } from '@apollo/client/react';
 
@@ -11,10 +11,17 @@ import { SEARCH_PEOPLE } from '@/lib/graphql/queries';
 
 interface SearchResult {
   search: {
-    edges: Array<{ node: Person }>;
-    totalCount: number;
+    edges: Array<{ node: Person; cursor: string }>;
+    pageInfo: {
+      totalCount: number;
+      hasNextPage: boolean;
+      endCursor: string | null;
+    };
   };
 }
+
+type SortOption = 'relevance' | 'name' | 'birth_year_asc' | 'birth_year_desc';
+type LivingFilter = 'all' | 'living' | 'deceased';
 
 function SearchContent() {
   const searchParams = useSearchParams();
@@ -24,7 +31,54 @@ function SearchContent() {
   const [executeSearch, { data, loading }] = useLazyQuery<SearchResult>(SEARCH_PEOPLE);
   const hasAutoSearched = useRef(false);
 
-  const results = data?.search?.edges?.map(e => e.node) || [];
+  // Filter and sort state
+  const [sortBy, setSortBy] = useState<SortOption>('relevance');
+  const [livingFilter, setLivingFilter] = useState<LivingFilter>('all');
+  const [surnameFilter, setSurnameFilter] = useState<string>('');
+
+  const rawResults = data?.search?.edges?.map(e => e.node) || [];
+  const totalCount = data?.search?.pageInfo?.totalCount || 0;
+
+  // Extract unique surnames for filter dropdown
+  const uniqueSurnames = useMemo(() => {
+    const surnames = rawResults
+      .map(p => p.name_surname)
+      .filter((s): s is string => !!s);
+    return [...new Set(surnames)].sort();
+  }, [rawResults]);
+
+  // Apply client-side filters and sorting
+  const results = useMemo(() => {
+    let filtered = [...rawResults];
+
+    // Apply living filter
+    if (livingFilter === 'living') {
+      filtered = filtered.filter(p => p.living === true);
+    } else if (livingFilter === 'deceased') {
+      filtered = filtered.filter(p => p.living === false || p.death_year);
+    }
+
+    // Apply surname filter
+    if (surnameFilter) {
+      filtered = filtered.filter(p => p.name_surname === surnameFilter);
+    }
+
+    // Apply sorting
+    switch (sortBy) {
+      case 'name':
+        filtered.sort((a, b) => (a.name_full || '').localeCompare(b.name_full || ''));
+        break;
+      case 'birth_year_asc':
+        filtered.sort((a, b) => (a.birth_year || 9999) - (b.birth_year || 9999));
+        break;
+      case 'birth_year_desc':
+        filtered.sort((a, b) => (b.birth_year || 0) - (a.birth_year || 0));
+        break;
+      // 'relevance' is the default order from the server
+    }
+
+    return filtered;
+  }, [rawResults, sortBy, livingFilter, surnameFilter]);
 
   // Auto-search if query param provided
   useEffect(() => {
@@ -40,6 +94,8 @@ function SearchContent() {
 
     executeSearch({ variables: { query, first: 100 } });
     setSearched(true);
+    // Reset filters on new search
+    setSurnameFilter('');
   };
 
   return (
@@ -67,17 +123,90 @@ function SearchContent() {
 
         {searched && (
           <div>
-            <p className="text-sm text-gray-500 mb-4 text-center">
-              Found {results.length} result{results.length !== 1 ? 's' : ''} for &ldquo;{query}&rdquo;
+            {/* Results summary */}
+            <p className="text-sm text-[var(--text-muted)] mb-4 text-center">
+              Found {totalCount} result{totalCount !== 1 ? 's' : ''} for &ldquo;{query}&rdquo;
+              {results.length !== totalCount && ` (showing ${results.length} after filters)`}
             </p>
+
+            {/* Filter and Sort Controls */}
+            {rawResults.length > 0 && (
+              <div className="card p-4 mb-6">
+                <div className="flex flex-wrap gap-4 items-center">
+                  {/* Sort */}
+                  <div className="flex items-center gap-2">
+                    <label className="text-sm font-medium text-[var(--text-muted)]">Sort:</label>
+                    <select
+                      value={sortBy}
+                      onChange={(e) => setSortBy(e.target.value as SortOption)}
+                      className="input-field text-sm py-1 px-2"
+                    >
+                      <option value="relevance">Relevance</option>
+                      <option value="name">Name (A-Z)</option>
+                      <option value="birth_year_asc">Birth Year (oldest)</option>
+                      <option value="birth_year_desc">Birth Year (newest)</option>
+                    </select>
+                  </div>
+
+                  {/* Living Filter */}
+                  <div className="flex items-center gap-2">
+                    <label className="text-sm font-medium text-[var(--text-muted)]">Status:</label>
+                    <select
+                      value={livingFilter}
+                      onChange={(e) => setLivingFilter(e.target.value as LivingFilter)}
+                      className="input-field text-sm py-1 px-2"
+                    >
+                      <option value="all">All</option>
+                      <option value="living">Living</option>
+                      <option value="deceased">Deceased</option>
+                    </select>
+                  </div>
+
+                  {/* Surname Filter */}
+                  {uniqueSurnames.length > 1 && (
+                    <div className="flex items-center gap-2">
+                      <label className="text-sm font-medium text-[var(--text-muted)]">Surname:</label>
+                      <select
+                        value={surnameFilter}
+                        onChange={(e) => setSurnameFilter(e.target.value)}
+                        className="input-field text-sm py-1 px-2"
+                      >
+                        <option value="">All surnames</option>
+                        {uniqueSurnames.map(surname => (
+                          <option key={surname} value={surname}>{surname}</option>
+                        ))}
+                      </select>
+                    </div>
+                  )}
+
+                  {/* Clear filters */}
+                  {(livingFilter !== 'all' || surnameFilter || sortBy !== 'relevance') && (
+                    <button
+                      onClick={() => {
+                        setLivingFilter('all');
+                        setSurnameFilter('');
+                        setSortBy('relevance');
+                      }}
+                      className="text-sm text-[var(--accent)] hover:underline"
+                    >
+                      Clear filters
+                    </button>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* Results grid */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               {results.map((person) => (
                 <PersonCard key={person.id} person={person} showDetails />
               ))}
             </div>
             {results.length === 0 && (
-              <div className="text-center py-12 text-gray-500">
-                No results found. Try a different search term.
+              <div className="text-center py-12 text-[var(--text-muted)]">
+                {rawResults.length > 0
+                  ? 'No results match your filters. Try adjusting them.'
+                  : 'No results found. Try a different search term.'}
               </div>
             )}
           </div>

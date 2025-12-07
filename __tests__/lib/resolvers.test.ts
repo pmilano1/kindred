@@ -148,19 +148,21 @@ describe('GraphQL Resolvers', () => {
   });
 
   describe('Query.search', () => {
-    it('searches people by name with accent normalization', async () => {
+    it('searches people using PostgreSQL full-text search', async () => {
       const mockPeople = [
-        { id: 'p1', name_full: 'René Beauharnais' },
-        { id: 'p2', name_full: 'Rene Test' },
+        { id: 'p1', name_full: 'René Beauharnais', relevance_score: 1.5 },
+        { id: 'p2', name_full: 'Rene Test', relevance_score: 1.2 },
       ];
-      mockedQuery
-        .mockResolvedValueOnce({ rows: [{ count: '2' }] })
-        .mockResolvedValueOnce({ rows: mockPeople });
+      // New search uses a single query with full-text search
+      mockedQuery.mockResolvedValueOnce({ rows: mockPeople });
 
       const result = await resolvers.Query.search(null, { query: 'Rene' });
 
-      // Both René and Rene should match when searching for 'Rene'
-      expect(result.edges.length).toBeGreaterThanOrEqual(0);
+      // Results should be returned with pagination info
+      expect(result.edges.length).toBe(2);
+      expect(result.edges[0].node.id).toBe('p1');
+      expect(result.edges[1].node.id).toBe('p2');
+      expect(result.pageInfo.totalCount).toBe(2);
     });
   });
 

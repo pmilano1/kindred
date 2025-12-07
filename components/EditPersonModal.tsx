@@ -5,7 +5,7 @@ import { useMutation } from '@apollo/client/react';
 import { UPDATE_PERSON, GET_PERSON } from '@/lib/graphql/queries';
 import { useSession } from 'next-auth/react';
 import { Person } from '@/lib/types';
-import { Button } from '@/components/ui';
+import { Button, Input, Label, Textarea, Checkbox, Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui';
 import { X } from 'lucide-react';
 
 interface EditPersonModalProps {
@@ -153,20 +153,23 @@ export default function EditPersonModal({ person, isOpen, onClose, onSuccess }: 
           {/* Demographics */}
           <Section title="Demographics">
             <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Sex</label>
-                <select value={formData.sex} onChange={(e) => setFormData(p => ({ ...p, sex: e.target.value }))}
-                  className="w-full border rounded-lg px-3 py-2">
-                  <option value="">Unknown</option>
-                  <option value="M">Male</option>
-                  <option value="F">Female</option>
-                </select>
+              <div className="space-y-2">
+                <Label>Sex</Label>
+                <Select value={formData.sex} onValueChange={(v) => setFormData(p => ({ ...p, sex: v }))}>
+                  <SelectTrigger className="w-full">
+                    <SelectValue placeholder="Unknown" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="">Unknown</SelectItem>
+                    <SelectItem value="M">Male</SelectItem>
+                    <SelectItem value="F">Female</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
               <div className="flex items-center gap-2 pt-6">
-                <input type="checkbox" id="living" checked={formData.living}
-                  onChange={(e) => setFormData(p => ({ ...p, living: e.target.checked }))}
-                  className="w-4 h-4 rounded" />
-                <label htmlFor="living" className="text-sm font-medium text-gray-700">Living</label>
+                <Checkbox id="edit-living" checked={formData.living}
+                  onCheckedChange={(checked) => setFormData(p => ({ ...p, living: checked === true }))} />
+                <Label htmlFor="edit-living" className="cursor-pointer">Living</Label>
               </div>
             </div>
             <Field label="Religion" value={formData.religion}
@@ -228,11 +231,11 @@ export default function EditPersonModal({ person, isOpen, onClose, onSuccess }: 
           </Section>
 
           {/* Notes */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Description / Notes</label>
-            <textarea value={formData.description}
+          <div className="space-y-2">
+            <Label>Description / Notes</Label>
+            <Textarea value={formData.description}
               onChange={(e) => setFormData(p => ({ ...p, description: e.target.value }))}
-              className="w-full border rounded-lg px-3 py-2 h-24" placeholder="Additional information..." />
+              className="h-24" placeholder="Additional information..." />
           </div>
 
           {/* Actions */}
@@ -260,10 +263,9 @@ function Field({ label, value, onChange, required, type = 'text', placeholder }:
   required?: boolean; type?: string; placeholder?: string;
 }) {
   return (
-    <div>
-      <label className="block text-sm font-medium text-gray-700 mb-1">{label}</label>
-      <input type={type} required={required} value={value} onChange={(e) => onChange(e.target.value)}
-        className="w-full border rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500"
+    <div className="space-y-2">
+      <Label>{label}</Label>
+      <Input type={type} required={required} value={value} onChange={(e) => onChange(e.target.value)}
         placeholder={placeholder} />
     </div>
   );

@@ -5,7 +5,7 @@ import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import { useQuery, useMutation } from '@apollo/client/react';
 import { Send, UserPlus, Trash2, Copy, Mail, RefreshCw } from 'lucide-react';
-import { PageHeader, Button } from '@/components/ui';
+import { PageHeader, Button, Input, Label, Checkbox, Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui';
 import LoadingSpinner from '@/components/LoadingSpinner';
 import {
   GET_USERS,
@@ -264,18 +264,23 @@ export default function AdminPage() {
           {!showCreateUser ? (
             <>
               <div className="flex gap-4 items-end">
-                <div className="flex-1">
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
-                  <input type="email" value={newEmail} onChange={e => setNewEmail(e.target.value)}
-                    className="w-full border rounded-lg px-3 py-2" placeholder="email@example.com" />
+                <div className="flex-1 space-y-2">
+                  <Label>Email</Label>
+                  <Input type="email" value={newEmail} onChange={e => setNewEmail(e.target.value)}
+                    placeholder="email@example.com" />
                 </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Role</label>
-                  <select value={newRole} onChange={e => setNewRole(e.target.value)} className="border rounded-lg px-3 py-2">
-                    <option value="viewer">Viewer</option>
-                    <option value="editor">Editor</option>
-                    <option value="admin">Admin</option>
-                  </select>
+                <div className="space-y-2">
+                  <Label>Role</Label>
+                  <Select value={newRole} onValueChange={setNewRole}>
+                    <SelectTrigger className="w-32">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="viewer">Viewer</SelectItem>
+                      <SelectItem value="editor">Editor</SelectItem>
+                      <SelectItem value="admin">Admin</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
                 <Button onClick={handleInvite} icon={<Send className="w-4 h-4" />}>
                   Send Invite
@@ -295,33 +300,38 @@ export default function AdminPage() {
                 <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm">{createUserError}</div>
               )}
               <div className="grid grid-cols-2 gap-4 mb-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
-                  <input type="email" value={createUserEmail} onChange={e => setCreateUserEmail(e.target.value)}
-                    className="w-full border rounded-lg px-3 py-2" placeholder="email@example.com" />
+                <div className="space-y-2">
+                  <Label>Email</Label>
+                  <Input type="email" value={createUserEmail} onChange={e => setCreateUserEmail(e.target.value)}
+                    placeholder="email@example.com" />
                 </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Name</label>
-                  <input type="text" value={createUserName} onChange={e => setCreateUserName(e.target.value)}
-                    className="w-full border rounded-lg px-3 py-2" placeholder="Full Name" />
+                <div className="space-y-2">
+                  <Label>Name</Label>
+                  <Input type="text" value={createUserName} onChange={e => setCreateUserName(e.target.value)}
+                    placeholder="Full Name" />
                 </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Role</label>
-                  <select value={createUserRole} onChange={e => setCreateUserRole(e.target.value)} className="w-full border rounded-lg px-3 py-2">
-                    <option value="viewer">Viewer</option>
-                    <option value="editor">Editor</option>
-                    <option value="admin">Admin</option>
-                  </select>
+                <div className="space-y-2">
+                  <Label>Role</Label>
+                  <Select value={createUserRole} onValueChange={setCreateUserRole}>
+                    <SelectTrigger className="w-full">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="viewer">Viewer</SelectItem>
+                      <SelectItem value="editor">Editor</SelectItem>
+                      <SelectItem value="admin">Admin</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Temporary Password</label>
+                <div className="space-y-2">
+                  <Label>Temporary Password</Label>
                   <div className="flex gap-2">
                     <div className="relative flex-1">
-                      <input
+                      <Input
                         type={showPassword ? 'text' : 'password'}
                         value={createUserPassword}
                         onChange={e => { setCreateUserPassword(e.target.value); setShowPassword(false); }}
-                        className="w-full border rounded-lg px-3 py-2 pr-16"
+                        className="pr-16"
                         placeholder="Min 8 characters"
                       />
                       {createUserPassword && (
@@ -363,11 +373,13 @@ export default function AdminPage() {
                 </div>
               </div>
               <div className="flex items-center justify-between">
-                <label className="flex items-center gap-2 text-sm text-gray-700">
-                  <input type="checkbox" checked={requirePasswordChange} onChange={e => setRequirePasswordChange(e.target.checked)}
-                    className="rounded border-gray-300" />
-                  Require password change on first login
-                </label>
+                <div className="flex items-center gap-2">
+                  <Checkbox id="require-password-change" checked={requirePasswordChange}
+                    onCheckedChange={(checked) => setRequirePasswordChange(checked === true)} />
+                  <Label htmlFor="require-password-change" className="cursor-pointer">
+                    Require password change on first login
+                  </Label>
+                </div>
                 <Button onClick={handleCreateLocalUser} icon={<UserPlus className="w-4 h-4" />}>
                   Create User
                 </Button>
@@ -435,12 +447,17 @@ export default function AdminPage() {
                     <div className="text-sm text-gray-500">{user.email}</div>
                   </td>
                   <td className="py-3">
-                    <select value={user.role} onChange={e => handleRoleChange(user.id, e.target.value)}
-                      disabled={user.id === session?.user?.id} className="border rounded px-2 py-1 text-sm">
-                      <option value="viewer">Viewer</option>
-                      <option value="editor">Editor</option>
-                      <option value="admin">Admin</option>
-                    </select>
+                    <Select value={user.role} onValueChange={(v) => handleRoleChange(user.id, v)}
+                      disabled={user.id === session?.user?.id}>
+                      <SelectTrigger className="w-28 text-sm">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="viewer">Viewer</SelectItem>
+                        <SelectItem value="editor">Editor</SelectItem>
+                        <SelectItem value="admin">Admin</SelectItem>
+                      </SelectContent>
+                    </Select>
                   </td>
                   <td className="py-3 text-sm text-gray-500">
                     {user.last_login ? new Date(user.last_login).toLocaleString() : 'Never'}
@@ -506,24 +523,28 @@ export default function AdminPage() {
               ) : (
                 <div className="space-y-4">
                   <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Name *</label>
-                      <input type="text" value={serviceAccountName} onChange={e => setServiceAccountName(e.target.value)}
-                        className="w-full border rounded-lg px-3 py-2" placeholder="e.g., Backup Script" />
+                    <div className="space-y-2">
+                      <Label>Name *</Label>
+                      <Input type="text" value={serviceAccountName} onChange={e => setServiceAccountName(e.target.value)}
+                        placeholder="e.g., Backup Script" />
                     </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Role</label>
-                      <select value={serviceAccountRole} onChange={e => setServiceAccountRole(e.target.value)}
-                        className="w-full border rounded-lg px-3 py-2">
-                        <option value="viewer">Viewer (read-only)</option>
-                        <option value="editor">Editor (read/write)</option>
-                      </select>
+                    <div className="space-y-2">
+                      <Label>Role</Label>
+                      <Select value={serviceAccountRole} onValueChange={setServiceAccountRole}>
+                        <SelectTrigger className="w-full">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="viewer">Viewer (read-only)</SelectItem>
+                          <SelectItem value="editor">Editor (read/write)</SelectItem>
+                        </SelectContent>
+                      </Select>
                     </div>
                   </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
-                    <input type="text" value={serviceAccountDescription} onChange={e => setServiceAccountDescription(e.target.value)}
-                      className="w-full border rounded-lg px-3 py-2" placeholder="What is this service account for?" />
+                  <div className="space-y-2">
+                    <Label>Description</Label>
+                    <Input type="text" value={serviceAccountDescription} onChange={e => setServiceAccountDescription(e.target.value)}
+                      placeholder="What is this service account for?" />
                   </div>
                   <Button onClick={handleCreateServiceAccount} icon={<UserPlus className="w-4 h-4" />}>
                     Create Service Account

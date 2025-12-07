@@ -6,7 +6,7 @@ import { useQuery, useMutation } from '@apollo/client/react';
 import { gql } from '@apollo/client/core';
 import * as d3 from 'd3';
 import { UPDATE_RESEARCH_STATUS, UPDATE_RESEARCH_PRIORITY } from '@/lib/graphql/queries';
-import { Button } from '@/components/ui';
+import { Button, Label, Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui';
 import { ChevronDown, ChevronRight, Crown } from 'lucide-react';
 
 // GraphQL query - component asks for exactly what it needs
@@ -1344,22 +1344,26 @@ export default function FamilyTree({ rootPersonId, showAncestors, onPersonClick,
           </div>
 
           <div>
-            <label className="text-xs font-medium text-gray-600 flex items-center gap-1">
+            <Label className="text-xs font-medium text-gray-600 flex items-center gap-1">
               Status
               <span className="text-gray-400 cursor-help" title="Tracks research progress: Not Started → In Progress → Partial/Verified. Use Brick Wall when stuck.">ⓘ</span>
-            </label>
-            <select
+            </Label>
+            <Select
               value={priorityPopup.status}
-              onChange={(e) => {
-                setPriorityPopup({ ...priorityPopup, status: e.target.value });
-                handleStatusChange(priorityPopup.personId, e.target.value);
+              onValueChange={(v) => {
+                setPriorityPopup({ ...priorityPopup, status: v });
+                handleStatusChange(priorityPopup.personId, v);
               }}
-              className="w-full mt-1 text-sm rounded border-gray-300 p-1"
             >
-              {STATUS_OPTIONS.map(s => (
-                <option key={s.value} value={s.value} title={s.desc}>{s.label}</option>
-              ))}
-            </select>
+              <SelectTrigger className="w-full mt-1 text-sm">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {STATUS_OPTIONS.map(s => (
+                  <SelectItem key={s.value} value={s.value} title={s.desc}>{s.label}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
             <div className="text-[10px] text-gray-400 mt-0.5">
               {STATUS_OPTIONS.find(s => s.value === priorityPopup.status)?.desc}
             </div>

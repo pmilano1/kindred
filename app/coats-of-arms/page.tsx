@@ -5,7 +5,7 @@ import Image from 'next/image';
 import { useSession } from 'next-auth/react';
 import { useQuery, useMutation } from '@apollo/client/react';
 import { Plus } from 'lucide-react';
-import { PageHeader, Button } from '@/components/ui';
+import { PageHeader, Button, Input, Label, Textarea } from '@/components/ui';
 import LoadingSpinner from '@/components/LoadingSpinner';
 import { GET_SURNAME_CRESTS, SET_SURNAME_CREST, REMOVE_SURNAME_CREST } from '@/lib/graphql/queries';
 
@@ -90,16 +90,28 @@ export default function CoatsOfArmsPage() {
           <form onSubmit={handleSubmit} className="card p-6 mb-6 space-y-4">
             <h3 className="text-lg font-semibold">Add Coat of Arms for Surname</h3>
             <p className="text-sm text-gray-600">All people with this surname will automatically display this crest.</p>
-            <input type="text" placeholder="Surname (e.g., Milanese)" value={surname}
-              onChange={(e) => setSurname(e.target.value)} className="w-full border rounded-lg px-3 py-2" required />
-            <input type="text" placeholder="Origin (e.g., Northern Italy)" value={origin}
-              onChange={(e) => setOrigin(e.target.value)} className="w-full border rounded-lg px-3 py-2" />
-            <input type="text" placeholder="Motto" value={motto}
-              onChange={(e) => setMotto(e.target.value)} className="w-full border rounded-lg px-3 py-2" />
-            <textarea placeholder="Description" value={description}
-              onChange={(e) => setDescription(e.target.value)} className="w-full border rounded-lg px-3 py-2" rows={2} />
-            <div>
-              <label className="block text-sm font-medium mb-1">Upload Image</label>
+            <div className="space-y-2">
+              <Label>Surname *</Label>
+              <Input type="text" placeholder="e.g., Milanese" value={surname}
+                onChange={(e) => setSurname(e.target.value)} required />
+            </div>
+            <div className="space-y-2">
+              <Label>Origin</Label>
+              <Input type="text" placeholder="e.g., Northern Italy" value={origin}
+                onChange={(e) => setOrigin(e.target.value)} />
+            </div>
+            <div className="space-y-2">
+              <Label>Motto</Label>
+              <Input type="text" placeholder="Family motto" value={motto}
+                onChange={(e) => setMotto(e.target.value)} />
+            </div>
+            <div className="space-y-2">
+              <Label>Description</Label>
+              <Textarea placeholder="Description of the coat of arms" value={description}
+                onChange={(e) => setDescription(e.target.value)} rows={2} />
+            </div>
+            <div className="space-y-2">
+              <Label>Upload Image *</Label>
               <input type="file" accept="image/*" onChange={handleFileChange} className="w-full" required />
             </div>
             {imageData && (

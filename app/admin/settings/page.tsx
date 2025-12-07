@@ -276,7 +276,7 @@ export default function SettingsPage() {
   );
 }
 
-// Theme Preset Picker (no custom colors - presets only)
+// Theme Preset Picker - condensed to 8 curated themes
 function ThemePresetPicker({
   value,
   onSelectPreset
@@ -287,58 +287,27 @@ function ThemePresetPicker({
   const currentPreset = getPresetByPrimaryColor(value);
 
   return (
-    <div className="space-y-3">
-      {/* Current theme indicator */}
-      {currentPreset && (
-        <div className="flex items-center gap-3 p-2 bg-gray-50 rounded-lg border">
-          <div className="flex gap-1">
-            {currentPreset.preview.map((color, i) => (
-              <div
-                key={i}
-                className="w-5 h-5 rounded-full border border-gray-200"
-                style={{ backgroundColor: color }}
-              />
-            ))}
-          </div>
-          <span className="text-sm font-medium">{currentPreset.name}</span>
-          <span className="text-xs text-gray-500">Current theme</span>
-        </div>
-      )}
-
-      {/* Theme Presets Grid */}
-      <div className="border rounded-lg p-4 bg-gray-50">
-        <p className="text-sm text-gray-600 mb-3">
-          Colors from <a href="https://yeun.github.io/open-color/" target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">Open Color</a> - MIT Licensed
-        </p>
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-          {themePresets.map(preset => {
-            const isSelected = currentPreset?.id === preset.id;
-            return (
-              <Button
-                key={preset.id}
-                type="button"
-                variant="outline"
-                onClick={() => onSelectPreset(preset)}
-                className={`p-3 h-auto bg-white border-2 rounded-lg hover:border-blue-400 hover:shadow-md transition-all text-left flex-col items-start ${
-                  isSelected ? 'border-blue-500 ring-2 ring-blue-200' : 'border-gray-200'
-                }`}
-              >
-                <div className="flex gap-1 mb-2">
-                  {preset.preview.map((color, i) => (
-                    <div
-                      key={i}
-                      className="w-6 h-6 rounded-full border border-gray-200"
-                      style={{ backgroundColor: color }}
-                    />
-                  ))}
-                </div>
-                <div className="font-medium text-sm">{preset.name}</div>
-                <div className="text-xs text-gray-500">{preset.description}</div>
-              </Button>
-            );
-          })}
-        </div>
-      </div>
+    <div className="grid grid-cols-4 gap-2">
+      {themePresets.map(preset => {
+        const isSelected = currentPreset?.id === preset.id;
+        return (
+          <button
+            key={preset.id}
+            type="button"
+            onClick={() => onSelectPreset(preset)}
+            className={`flex items-center gap-2 p-2 rounded-lg border-2 transition-all hover:border-blue-400 ${
+              isSelected ? 'border-blue-500 bg-blue-50' : 'border-gray-200 bg-white'
+            }`}
+            title={preset.description}
+          >
+            <div
+              className="w-6 h-6 rounded-full border border-gray-300"
+              style={{ backgroundColor: preset.colors.primary }}
+            />
+            <span className="text-sm font-medium">{preset.name}</span>
+          </button>
+        );
+      })}
     </div>
   );
 }

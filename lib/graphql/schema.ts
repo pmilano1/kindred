@@ -168,7 +168,7 @@ export const typeDefs = `#graphql
     email: String!
     name: String
     role: String!
-    account_type: String!
+    account_type: String
     description: String
     created_at: String!
     last_login: String

@@ -5,8 +5,8 @@ on:
     branches: [main]
   workflow_dispatch:
     inputs:
-      skip_tests:
-        description: 'Skip tests (use for hotfixes only)'
+      validate_image:
+        description: 'Run container validation (normally skipped - PR CI validates)'
         required: false
         default: false
         type: boolean
@@ -31,19 +31,6 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-          cache: 'npm'
-
-      - name: Install dependencies
-        run: npm ci
-
-      - name: Run tests
-        if: ${{ github.event.inputs.skip_tests != 'true' }}
-        run: npm test -- --passWithNoTests
-
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
@@ -55,27 +42,30 @@ jobs:
         id: login-ecr
         uses: aws-actions/amazon-ecr-login@v2
 
-      - name: Build Docker image
-        id: build-image
-        env:
-          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
-          IMAGE_TAG: ${{ github.sha }}
-        run: |
-          # Note: DATABASE_URL is NOT passed at build time - it would be inlined by Next.js
-          # and the runtime SSL check wouldn't work. Only NEXTAUTH_URL is needed for client.
-          docker build \
-            --build-arg NEXTAUTH_URL="${{ secrets.NEXTAUTH_URL }}" \
-            -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG \
-            -t $ECR_REGISTRY/$ECR_REPOSITORY:latest \
-            .
-          echo "image=$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG" >> $GITHUB_OUTPUT
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          push: true
+          tags: |
+            ${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_REPOSITORY }}:${{ github.sha }}
+            ${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_REPOSITORY }}:latest
+          build-args: |
+            NEXTAUTH_URL=${{ secrets.NEXTAUTH_URL }}
+          cache-from: type=registry,ref=${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_REPOSITORY }}:buildcache
+          cache-to: type=registry,ref=${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_REPOSITORY }}:buildcache,mode=max
 
       - name: Validate Docker image
+        if: ${{ github.event.inputs.validate_image == 'true' }}
         env:
           ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
           IMAGE_TAG: ${{ github.sha }}
         run: |
           echo "Starting container for health check validation..."
+          docker pull $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
           CONTAINER_ID=$(docker run -d -p 3000:3000 \
             -e DATABASE_URL="postgresql://test:test@localhost:5432/test" \
             -e NEXTAUTH_URL="http://localhost:3000" \
@@ -92,29 +82,15 @@ jobs:
             exit 1
           fi
 
-          # Check health endpoint (will fail to connect to DB but should return something)
           echo "Testing health endpoint..."
           HEALTH_STATUS=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:3000/api/health || echo "000")
+          docker stop $CONTAINER_ID > /dev/null && docker rm $CONTAINER_ID > /dev/null
 
-          # Clean up container
-          docker stop $CONTAINER_ID > /dev/null
-          docker rm $CONTAINER_ID > /dev/null
-
-          # Accept 200 or 500 (DB connection failure is expected without real DB)
           if [ "$HEALTH_STATUS" = "000" ]; then
-            echo "Health check failed - container not responding on port 3000"
+            echo "Health check failed - container not responding"
             exit 1
           fi
-
           echo "Image validation passed (health endpoint returned $HEALTH_STATUS)"
-
-      - name: Push image to Amazon ECR
-        env:
-          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
-          IMAGE_TAG: ${{ github.sha }}
-        run: |
-          docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
-          docker push $ECR_REGISTRY/$ECR_REPOSITORY:latest
 
       - name: Deploy to App Runner
         run: |
@@ -228,13 +204,28 @@ jobs:
           echo "❌ Timeout waiting for deployment to complete"
           exit 1
 
+  # Cleanup runs as a separate job to not block deployment
+  cleanup:
+    runs-on: ubuntu-latest
+    needs: build-and-deploy
+    if: success()
+    permissions:
+      id-token: write
+      contents: read
+
+    steps:
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: us-east-1
+
       - name: Cleanup old ECR images
         run: |
           echo "Cleaning up old ECR images (keeping last 10)..."
-
-          # Get all image digests sorted by push date (oldest first), skip the 10 most recent
           IMAGES_TO_DELETE=$(aws ecr describe-images \
-            --repository-name $ECR_REPOSITORY \
+            --repository-name genealogy-frontend \
             --query 'sort_by(imageDetails,&imagePushedAt)[:-10].imageDigest' \
             --output text)
 
@@ -244,7 +235,7 @@ jobs:
             for DIGEST in $IMAGES_TO_DELETE; do
               echo "Deleting image: $DIGEST"
               aws ecr batch-delete-image \
-                --repository-name $ECR_REPOSITORY \
+                --repository-name genealogy-frontend \
                 --image-ids imageDigest=$DIGEST \
                 || echo "Failed to delete $DIGEST (may be in use)"
             done

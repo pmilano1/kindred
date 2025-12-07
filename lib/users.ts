@@ -4,7 +4,7 @@ import crypto from 'crypto';
 
 export async function getUsers(): Promise<AppUser[]> {
   const result = await pool.query(
-    'SELECT * FROM users ORDER BY created_at DESC'
+    `SELECT *, COALESCE(account_type, 'user') as account_type FROM users ORDER BY created_at DESC`
   );
   return result.rows;
 }

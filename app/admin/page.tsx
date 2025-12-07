@@ -1,10 +1,10 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import { useQuery, useMutation } from '@apollo/client/react';
-import { Settings, Send, UserPlus, Trash2, Copy, Mail } from 'lucide-react';
+import { Settings, Send, UserPlus, Trash2, Copy, Mail, RefreshCw } from 'lucide-react';
 import { PageHeader, Button } from '@/components/ui';
 import LoadingSpinner from '@/components/LoadingSpinner';
 import {
@@ -49,8 +49,24 @@ export default function AdminPage() {
   const [createUserName, setCreateUserName] = useState('');
   const [createUserRole, setCreateUserRole] = useState('viewer');
   const [createUserPassword, setCreateUserPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [requirePasswordChange, setRequirePasswordChange] = useState(true);
   const [createUserError, setCreateUserError] = useState('');
+
+  // Generate a secure random password
+  const generatePassword = useCallback(() => {
+    const chars = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*';
+    const length = 16;
+    let password = '';
+    const array = new Uint32Array(length);
+    crypto.getRandomValues(array);
+    for (let i = 0; i < length; i++) {
+      password += chars[array[i] % chars.length];
+    }
+    setCreateUserPassword(password);
+    setShowPassword(true);
+    setRequirePasswordChange(true); // Always require change for generated passwords
+  }, []);
 
   const { data: usersData, loading: usersLoading, refetch: refetchUsers } = useQuery<{ users: User[] }>(GET_USERS);
   const { data: invitationsData, loading: invitationsLoading, refetch: refetchInvitations } = useQuery<{ invitations: Invitation[] }>(GET_INVITATIONS);
@@ -252,8 +268,49 @@ export default function AdminPage() {
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Temporary Password</label>
-                  <input type="password" value={createUserPassword} onChange={e => setCreateUserPassword(e.target.value)}
-                    className="w-full border rounded-lg px-3 py-2" placeholder="Min 8 characters" />
+                  <div className="flex gap-2">
+                    <div className="relative flex-1">
+                      <input
+                        type={showPassword ? 'text' : 'password'}
+                        value={createUserPassword}
+                        onChange={e => { setCreateUserPassword(e.target.value); setShowPassword(false); }}
+                        className="w-full border rounded-lg px-3 py-2 pr-16"
+                        placeholder="Min 8 characters"
+                      />
+                      {createUserPassword && (
+                        <button
+                          type="button"
+                          onClick={() => setShowPassword(!showPassword)}
+                          className="absolute right-2 top-1/2 -translate-y-1/2 text-xs text-gray-500 hover:text-gray-700"
+                        >
+                          {showPassword ? 'Hide' : 'Show'}
+                        </button>
+                      )}
+                    </div>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={generatePassword}
+                      icon={<RefreshCw className="w-4 h-4" />}
+                      title="Generate secure password"
+                    >
+                      Generate
+                    </Button>
+                  </div>
+                  {showPassword && createUserPassword && (
+                    <div className="mt-2 p-2 bg-green-50 border border-green-200 rounded-lg flex items-center justify-between">
+                      <code className="text-sm text-green-800 font-mono">{createUserPassword}</code>
+                      <Button
+                        variant="ghost"
+                        size="icon-sm"
+                        onClick={() => { navigator.clipboard.writeText(createUserPassword); }}
+                        title="Copy password"
+                      >
+                        <Copy className="w-4 h-4" />
+                      </Button>
+                    </div>
+                  )}
                 </div>
               </div>
               <div className="flex items-center justify-between">

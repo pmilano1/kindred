@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" fill="none">
+  <!-- Compact K logo for favicon -->
+  <defs>
+    <linearGradient id="fav-gradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#22c55e"/>
+      <stop offset="100%" style="stop-color:#16a34a"/>
+    </linearGradient>
+  </defs>
+  <!-- Background circle -->
+  <circle cx="16" cy="16" r="15" fill="#1f2937"/>
+  <!-- K stem -->
+  <path d="M10 7 L10 25" stroke="url(#fav-gradient)" stroke-width="3" stroke-linecap="round"/>
+  <!-- K upper -->
+  <path d="M10 16 L21 8" stroke="url(#fav-gradient)" stroke-width="3" stroke-linecap="round"/>
+  <!-- K lower -->
+  <path d="M10 16 L21 24" stroke="url(#fav-gradient)" stroke-width="3" stroke-linecap="round"/>
+  <!-- Leaf dot -->
+  <circle cx="23" cy="7" r="2" fill="#4ade80"/>
+</svg>
+

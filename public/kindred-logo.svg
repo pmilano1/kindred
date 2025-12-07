@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" fill="none">
+  <!-- Stylized K with tree/branch motif -->
+  <defs>
+    <linearGradient id="kindred-gradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#22c55e"/>
+      <stop offset="100%" style="stop-color:#16a34a"/>
+    </linearGradient>
+  </defs>
+  <!-- Tree trunk / K stem -->
+  <path d="M14 8 L14 40" stroke="url(#kindred-gradient)" stroke-width="4" stroke-linecap="round"/>
+  <!-- Upper branch / K diagonal -->
+  <path d="M14 24 L30 10" stroke="url(#kindred-gradient)" stroke-width="4" stroke-linecap="round"/>
+  <!-- Lower branch / K diagonal -->
+  <path d="M14 24 L30 38" stroke="url(#kindred-gradient)" stroke-width="4" stroke-linecap="round"/>
+  <!-- Leaf accents -->
+  <circle cx="32" cy="8" r="3" fill="#22c55e"/>
+  <circle cx="34" cy="40" r="3" fill="#16a34a"/>
+  <circle cx="38" cy="24" r="2" fill="#4ade80" opacity="0.7"/>
+</svg>
+

@@ -83,7 +83,7 @@ export default function Sidebar() {
           {settings.logo_url ? (
             <Image src={settings.logo_url} alt="Logo" width={32} height={32} className="w-8 h-8 object-contain" unoptimized />
           ) : (
-            <TreeDeciduous className={`text-green-400 ${isCollapsed ? 'w-6 h-6' : 'w-8 h-8'}`} />
+            <Image src="/kindred-logo.svg" alt="Kindred" width={32} height={32} className={`${isCollapsed ? 'w-6 h-6' : 'w-8 h-8'}`} unoptimized />
           )}
         </div>
         {!isCollapsed && (

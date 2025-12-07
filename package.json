@@ -8,9 +8,10 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "test": "jest",
-    "test:watch": "jest --watch",
-    "test:ci": "jest --ci --coverage"
+    "test": "jest --coverage",
+    "test:fast": "jest --no-coverage",
+    "test:watch": "jest --watch --no-coverage",
+    "test:ci": "jest --ci --coverage --maxWorkers=2"
   },
   "dependencies": {
     "@apollo/client": "^4.0.9",

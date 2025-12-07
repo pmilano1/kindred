@@ -265,6 +265,58 @@ describe('GraphQL Resolvers', () => {
       );
       expect(result.pageInfo.hasPreviousPage).toBe(true);
     });
+
+    it('handles before cursor for backward pagination', async () => {
+      mockedQuery.mockReset();
+      mockedQuery.mockResolvedValueOnce({ rows: [{ count: '100' }] });
+      mockedQuery.mockResolvedValueOnce({ rows: [{ id: 'p1', name_full: 'Person 1' }] });
+
+      const beforeCursor = Buffer.from('p2').toString('base64');
+      const result = await resolvers.Query.people(null, { last: 10, before: beforeCursor });
+
+      expect(mockedQuery).toHaveBeenCalledWith(
+        expect.stringContaining('WHERE id <'),
+        expect.arrayContaining(['p2'])
+      );
+      expect(result.edges).toBeDefined();
+    });
+
+    it('handles default pagination without cursors', async () => {
+      mockedQuery.mockReset();
+      mockedQuery.mockResolvedValueOnce({ rows: [{ count: '50' }] });
+      mockedQuery.mockResolvedValueOnce({ rows: [{ id: 'p1', name_full: 'Person 1' }] });
+
+      const result = await resolvers.Query.people(null, {});
+
+      expect(result.pageInfo.hasNextPage).toBeDefined();
+      expect(result.pageInfo.hasPreviousPage).toBe(false);
+    });
+  });
+
+  describe('Query.users (admin)', () => {
+    it('returns users list for admin', async () => {
+      const context = { user: { id: 'admin-1', email: 'admin@test.com', role: 'admin' } };
+      const result = await resolvers.Query.users(null, {}, context);
+      expect(result).toEqual([]);
+    });
+
+    it('throws for non-admin', async () => {
+      const context = { user: { id: 'user-1', email: 'user@test.com', role: 'viewer' } };
+      await expect(resolvers.Query.users(null, {}, context)).rejects.toThrow('Admin access required');
+    });
+  });
+
+  describe('Query.invitations (admin)', () => {
+    it('returns invitations list for admin', async () => {
+      const context = { user: { id: 'admin-1', email: 'admin@test.com', role: 'admin' } };
+      const result = await resolvers.Query.invitations(null, {}, context);
+      expect(result).toEqual([]);
+    });
+
+    it('throws for non-admin', async () => {
+      const context = { user: { id: 'user-1', email: 'user@test.com', role: 'editor' } };
+      await expect(resolvers.Query.invitations(null, {}, context)).rejects.toThrow('Admin access required');
+    });
   });
 
   describe('Query.recentPeople', () => {
@@ -554,6 +606,23 @@ describe('GraphQL Resolvers', () => {
 
       // If caching works, second call should not increase query count
       expect(secondCallCount).toBe(firstCallCount);
+    });
+
+    it('different parameters bypass cache', async () => {
+      mockedQuery.mockReset();
+      clearQueryCache();
+
+      const mockAncestors = [{ id: 'a1', name_full: 'Grandfather', gen: 1 }];
+      mockedQuery.mockResolvedValue({ rows: mockAncestors });
+
+      await resolvers.Query.ancestors(null, { personId: 'person-a', generations: 3 });
+      const firstCallCount = mockedQuery.mock.calls.length;
+
+      // Different person - should hit database again
+      await resolvers.Query.ancestors(null, { personId: 'person-b', generations: 3 });
+      const secondCallCount = mockedQuery.mock.calls.length;
+
+      expect(secondCallCount).toBeGreaterThan(firstCallCount);
     });
 
     it('descendants query uses caching', async () => {

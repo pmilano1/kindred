@@ -13,11 +13,19 @@ export async function generateMetadata(): Promise<Metadata> {
     return {
       title: `${settings.family_name} ${settings.site_name}`,
       description: settings.site_tagline,
+      icons: {
+        icon: '/favicon.svg',
+        apple: '/kindred-logo.svg',
+      },
     };
   } catch {
     return {
       title: "Family Genealogy",
       description: "Explore the family tree and ancestry",
+      icons: {
+        icon: '/favicon.svg',
+        apple: '/kindred-logo.svg',
+      },
     };
   }
 }

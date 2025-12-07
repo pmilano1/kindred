@@ -4,7 +4,7 @@ import { useState, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import LoadingSpinner from '@/components/LoadingSpinner';
-import { Button } from '@/components/ui';
+import { Button, Input, Label } from '@/components/ui';
 
 function ResetPasswordContent() {
   const searchParams = useSearchParams();
@@ -97,16 +97,16 @@ function ResetPasswordContent() {
                 <p className="text-red-200 text-sm text-center">{error}</p>
               </div>
             )}
-            <div>
-              <label htmlFor="password" className="block text-sm font-medium text-slate-300 mb-1">New Password</label>
-              <input type="password" id="password" value={password} onChange={(e) => setPassword(e.target.value)}
-                className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-lg text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-green-500"
+            <div className="space-y-2">
+              <Label htmlFor="password" className="text-slate-300">New Password</Label>
+              <Input type="password" id="password" value={password} onChange={(e) => setPassword(e.target.value)}
+                className="bg-white/10 border-white/20 text-white placeholder-slate-400 focus-visible:ring-green-500"
                 placeholder="••••••••" required minLength={8} />
             </div>
-            <div>
-              <label htmlFor="confirmPassword" className="block text-sm font-medium text-slate-300 mb-1">Confirm Password</label>
-              <input type="password" id="confirmPassword" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)}
-                className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-lg text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-green-500"
+            <div className="space-y-2">
+              <Label htmlFor="confirmPassword" className="text-slate-300">Confirm Password</Label>
+              <Input type="password" id="confirmPassword" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)}
+                className="bg-white/10 border-white/20 text-white placeholder-slate-400 focus-visible:ring-green-500"
                 placeholder="••••••••" required minLength={8} />
             </div>
             <Button type="submit" variant="primary" loading={isLoading}

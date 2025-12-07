@@ -4,7 +4,7 @@ import { useState, useEffect, useRef, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { useLazyQuery } from '@apollo/client/react';
 
-import { PageHeader, Button } from '@/components/ui';
+import { PageHeader, Button, Input } from '@/components/ui';
 import PersonCard from '@/components/PersonCard';
 import { Person } from '@/lib/types';
 import { SEARCH_PEOPLE } from '@/lib/graphql/queries';
@@ -52,10 +52,10 @@ function SearchContent() {
       <div className="content-wrapper">
         <form onSubmit={handleSearch} className="max-w-2xl mx-auto mb-8">
           <div className="flex gap-2">
-            <input
+            <Input
               type="text"
               placeholder="Search for a person, place, or year..."
-              className="search-box flex-1"
+              className="flex-1"
               value={query}
               onChange={(e) => setQuery(e.target.value)}
             />

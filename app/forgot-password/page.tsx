@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
-import { Button } from '@/components/ui';
+import { Button, Input, Label } from '@/components/ui';
 
 export default function ForgotPasswordPage() {
   const [email, setEmail] = useState('');
@@ -67,16 +67,16 @@ export default function ForgotPasswordPage() {
               </div>
             )}
 
-            <div>
-              <label htmlFor="email" className="block text-sm font-medium text-slate-300 mb-1">
+            <div className="space-y-2">
+              <Label htmlFor="email" className="text-slate-300">
                 Email Address
-              </label>
-              <input
+              </Label>
+              <Input
                 type="email"
                 id="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-lg text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-green-500"
+                className="bg-white/10 border-white/20 text-white placeholder-slate-400 focus-visible:ring-green-500"
                 placeholder="you@example.com"
                 required
               />

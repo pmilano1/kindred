@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { useLazyQuery } from '@apollo/client/react';
-import { Search as SearchIcon } from 'lucide-react';
+
 import { PageHeader, Button } from '@/components/ui';
 import PersonCard from '@/components/PersonCard';
 import { Person } from '@/lib/types';
@@ -47,7 +47,7 @@ function SearchContent() {
       <PageHeader
         title="Search"
         subtitle="Find ancestors by name, place, or date"
-        icon={SearchIcon}
+        icon="Search"
       />
       <div className="content-wrapper">
         <form onSubmit={handleSearch} className="max-w-2xl mx-auto mb-8">

@@ -4,7 +4,7 @@ import { useState } from 'react';
 import Image from 'next/image';
 import { useSession } from 'next-auth/react';
 import { useQuery, useMutation } from '@apollo/client/react';
-import { Shield, Plus } from 'lucide-react';
+import { Plus } from 'lucide-react';
 import { PageHeader, Button } from '@/components/ui';
 import LoadingSpinner from '@/components/LoadingSpinner';
 import { GET_SURNAME_CRESTS, SET_SURNAME_CREST, REMOVE_SURNAME_CREST } from '@/lib/graphql/queries';
@@ -74,7 +74,7 @@ export default function CoatsOfArmsPage() {
       <PageHeader
         title="Coats of Arms"
         subtitle="Assign crests by surname - all people with matching surname inherit automatically"
-        icon={Shield}
+        icon="Shield"
         actions={isEditor && (
           <Button
             onClick={() => setShowForm(!showForm)}

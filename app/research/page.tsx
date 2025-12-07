@@ -1,4 +1,3 @@
-import { ClipboardList } from 'lucide-react';
 import { PageHeader } from '@/components/ui';
 import ResearchQueueClient from '@/components/ResearchQueueClient';
 import { query } from '@/lib/graphql/server';
@@ -24,7 +23,7 @@ export default async function ResearchQueuePage() {
       <PageHeader
         title="Research Queue"
         subtitle={`${researchQueue.length} people prioritized for research`}
-        icon={ClipboardList}
+        icon="ClipboardList"
       />
       <div className="content-wrapper">
         <ResearchQueueClient initialQueue={researchQueue} />

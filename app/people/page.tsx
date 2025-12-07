@@ -4,7 +4,7 @@ import { useState, useMemo, useEffect, useCallback } from 'react';
 import { useQuery } from '@apollo/client/react';
 import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
-import { Users, UserPlus } from 'lucide-react';
+import { UserPlus } from 'lucide-react';
 import { PageHeader, Button } from '@/components/ui';
 import LoadingSpinner from '@/components/LoadingSpinner';
 import PersonCard from '@/components/PersonCard';
@@ -70,7 +70,7 @@ export default function PeoplePage() {
       <PageHeader
         title="People"
         subtitle={`${people.length} individuals in the database`}
-        icon={Users}
+        icon="Users"
         actions={canEdit && (
           <Button
             onClick={() => setShowCreateModal(true)}

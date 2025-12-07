@@ -641,7 +641,29 @@ export const resolvers = {
       );
       return rows[0];
     },
-    
+
+    updateSource: async (_: unknown, { id, input }: { id: string; input: { source_type?: string; source_name?: string; source_url?: string; action?: string; content?: string; confidence?: string } }, context: Context) => {
+      requireAuth(context, 'editor');
+      const { rows } = await pool.query(
+        `UPDATE sources SET
+         source_type = COALESCE($2, source_type),
+         source_name = COALESCE($3, source_name),
+         source_url = COALESCE($4, source_url),
+         action = COALESCE($5, action),
+         content = COALESCE($6, content),
+         confidence = COALESCE($7, confidence)
+         WHERE id = $1 RETURNING *`,
+        [id, input.source_type, input.source_name, input.source_url, input.action, input.content, input.confidence]
+      );
+      return rows[0] || null;
+    },
+
+    deleteSource: async (_: unknown, { id }: { id: string }, context: Context) => {
+      requireAuth(context, 'editor');
+      await pool.query('DELETE FROM sources WHERE id = $1', [id]);
+      return true;
+    },
+
     updateResearchStatus: async (_: unknown, { personId, status }: { personId: string; status: string }, context: Context) => {
       requireAuth(context, 'editor');
       await pool.query(

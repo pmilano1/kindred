@@ -13,7 +13,8 @@ import EditPersonModal from '@/components/EditPersonModal';
 import LifeEventsEditor from '@/components/LifeEventsEditor';
 import FactsEditor from '@/components/FactsEditor';
 import FamilyEditor from '@/components/FamilyEditor';
-import { Person, Family, LifeEvent, Fact } from '@/lib/types';
+import SourcesEditor from '@/components/SourcesEditor';
+import { Person, Family, LifeEvent, Fact, Source } from '@/lib/types';
 
 interface PersonData {
   person: Person & {
@@ -28,6 +29,7 @@ interface PersonData {
     })[];
     lifeEvents: LifeEvent[];
     facts: Fact[];
+    sources: Source[];
   } | null;
 }
 
@@ -332,6 +334,9 @@ export default function PersonPageClient({ personId }: Props) {
 
         {/* Facts */}
         <FactsEditor personId={personId} facts={person.facts} canEdit={canEdit} />
+
+        {/* Sources & Research */}
+        <SourcesEditor personId={personId} sources={person.sources || []} canEdit={canEdit} />
 
         <Link href="/people" className="inline-block tree-btn">
           ← Back to People

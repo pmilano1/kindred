@@ -4,7 +4,8 @@ import { useEffect, useState } from 'react';
 import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import { useQuery, useMutation } from '@apollo/client/react';
-import Hero from '@/components/Hero';
+import { Key } from 'lucide-react';
+import { PageHeader } from '@/components/ui';
 import LoadingSpinner from '@/components/LoadingSpinner';
 import Link from 'next/link';
 import { GET_ME, GENERATE_API_KEY, REVOKE_API_KEY } from '@/lib/graphql/queries';
@@ -84,7 +85,7 @@ export default function ApiKeysPage() {
   if (loading) {
     return (
       <>
-        <Hero title="API Keys" subtitle="Manage your API access" />
+        <PageHeader title="API Keys" subtitle="Manage your API access" icon={Key} />
         <div className="content-wrapper flex justify-center py-12">
           <LoadingSpinner size="lg" message="Loading API key data..." />
         </div>
@@ -94,7 +95,7 @@ export default function ApiKeysPage() {
 
   return (
     <>
-      <Hero title="API Keys" subtitle="Manage your API access" />
+      <PageHeader title="API Keys" subtitle="Manage your API access" icon={Key} />
       <div className="content-wrapper">
         {/* Navigation */}
         <div className="flex gap-4 mb-8">

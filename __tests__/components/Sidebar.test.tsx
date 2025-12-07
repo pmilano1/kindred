@@ -33,6 +33,15 @@ jest.mock('@/components/SettingsProvider', () => ({
   })),
 }));
 
+// Mock SidebarContext
+jest.mock('@/components/SidebarContext', () => ({
+  useSidebar: jest.fn(() => ({
+    isCollapsed: false,
+    toggleCollapse: jest.fn(),
+    setCollapsed: jest.fn(),
+  })),
+}));
+
 import { usePathname } from 'next/navigation';
 import { useSession } from 'next-auth/react';
 import { useSettings } from '@/components/SettingsProvider';

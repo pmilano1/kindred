@@ -28,6 +28,7 @@
     "family-chart": "^0.9.0",
     "graphql": "^16.12.0",
     "graphql-depth-limit": "^1.1.0",
+    "lucide-react": "^0.556.0",
     "next": "^16.0.7",
     "next-auth": "^5.0.0-beta.30",
     "pg": "^8.16.3",

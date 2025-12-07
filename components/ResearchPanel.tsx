@@ -7,7 +7,7 @@ import { Source, ResearchStatus, ResearchActionType, ResearchSource, ResearchCon
 
 interface ResearchPanelProps {
   personId: string;
-  personName: string;
+  personName?: string;  // Optional - not used but callers may pass it
   compact?: boolean;
 }
 
@@ -61,7 +61,7 @@ const STATUS_OPTIONS: { value: ResearchStatus; label: string; color: string; des
   { value: 'brick_wall', label: 'Brick Wall', color: 'bg-red-200', desc: 'Cannot find more info' },
 ];
 
-export default function ResearchPanel({ personId, personName, compact = false }: ResearchPanelProps) {
+export default function ResearchPanel({ personId, compact = false }: ResearchPanelProps) {
   const [showForm, setShowForm] = useState(false);
 
   // Form state

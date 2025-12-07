@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback, Suspense } from 'react';
+import { useState, useEffect, useCallback, useMemo, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import dynamic from 'next/dynamic';
 import { useQuery } from '@apollo/client/react';
@@ -17,7 +17,7 @@ function TreePageContent() {
   const { data, loading } = useQuery<{ peopleList: Person[] }>(GET_PEOPLE_LIST, {
     variables: { limit: 1000 },
   });
-  const people = data?.peopleList || [];
+  const people = useMemo(() => data?.peopleList || [], [data?.peopleList]);
   const [selectedPerson, setSelectedPerson] = useState<string>('');
   const [showAncestors, setShowAncestors] = useState(true);
 

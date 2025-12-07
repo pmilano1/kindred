@@ -18,17 +18,19 @@ interface TimelineData {
 
 export default function TimelinePage() {
   const { data, loading } = useQuery<TimelineData>(GET_TIMELINE);
-  const timeline = data?.timeline || [];
   const [filter, setFilter] = useState<'all' | 'births' | 'deaths'>('all');
 
-  const filteredTimeline = useMemo(() => timeline.map(t => ({
-    ...t,
-    events: t.events.filter(e =>
-      filter === 'all' ||
-      (filter === 'births' && e.type === 'birth') ||
-      (filter === 'deaths' && e.type === 'death')
-    )
-  })).filter(t => t.events.length > 0), [timeline, filter]);
+  const filteredTimeline = useMemo(() => {
+    const timeline = data?.timeline || [];
+    return timeline.map(t => ({
+      ...t,
+      events: t.events.filter(e =>
+        filter === 'all' ||
+        (filter === 'births' && e.type === 'birth') ||
+        (filter === 'deaths' && e.type === 'death')
+      )
+    })).filter(t => t.events.length > 0);
+  }, [data?.timeline, filter]);
 
   return (
     <>

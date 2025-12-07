@@ -3,7 +3,7 @@
  * This allows server components to query GraphQL without HTTP overhead
  */
 
-import { graphql, GraphQLSchema, buildSchema, print, DocumentNode } from 'graphql';
+import { graphql, GraphQLSchema, print, DocumentNode } from 'graphql';
 import { makeExecutableSchema } from '@graphql-tools/schema';
 import { typeDefs } from './schema';
 import { resolvers } from './resolvers';

@@ -867,9 +867,6 @@ export default function FamilyTree({ rootPersonId, showAncestors, onPersonClick,
       visited.add(nodeKey);
 
       // Both parents should be at the SAME Y level (one generation above current node)
-      // Use the assigned generation from our tracking map
-      const expectedParentY = node.y + levelGap; // Parents are above (higher Y in our coordinate system)
-
       // Ensure both parents use the correct Y (their assigned generation)
       const fatherY = node.father?.y;
       const motherY = node.mother?.y;

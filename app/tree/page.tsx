@@ -108,14 +108,14 @@ function TreePageContent() {
           <Button
             variant={showAncestors ? 'primary' : 'secondary'}
             onClick={() => handleViewChange(true)}
-            icon={ArrowUp}
+            icon={<ArrowUp className="w-4 h-4" />}
           >
             Ancestors
           </Button>
           <Button
             variant={!showAncestors ? 'primary' : 'secondary'}
             onClick={() => handleViewChange(false)}
-            icon={ArrowDown}
+            icon={<ArrowDown className="w-4 h-4" />}
           >
             Descendants
           </Button>

@@ -107,7 +107,7 @@ export default function CoatsOfArmsPage() {
                 <Image src={imageData} alt="Preview" fill className="object-contain" unoptimized />
               </div>
             )}
-            <Button type="submit" icon={Plus}>Add Surname Crest</Button>
+            <Button type="submit" icon={<Plus className="w-4 h-4" />}>Add Surname Crest</Button>
           </form>
         )}
 

@@ -1,6 +1,6 @@
 import { ApolloServer, BaseContext } from '@apollo/server';
 import { startServerAndCreateNextHandler } from '@as-integrations/next';
-import { NextRequest } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 import { pool } from '@/lib/pool';
 import { typeDefs } from '@/lib/graphql/schema';
@@ -8,6 +8,58 @@ import { resolvers } from '@/lib/graphql/resolvers';
 import { createLoaders, Loaders } from '@/lib/graphql/dataloaders';
 import depthLimit from 'graphql-depth-limit';
 import { GraphQLError } from 'graphql';
+
+// Proxy configuration for local development
+const PROXY_URL = process.env.GRAPHQL_PROXY_URL;
+const PROXY_API_KEY = process.env.GRAPHQL_PROXY_API_KEY;
+const USE_PROXY = process.env.USE_LIVE_API === 'true' && PROXY_URL;
+
+// Proxy handler for live API
+async function proxyToLiveApi(request: NextRequest): Promise<NextResponse> {
+  if (!PROXY_URL) {
+    return NextResponse.json(
+      { errors: [{ message: 'GRAPHQL_PROXY_URL not configured' }] },
+      { status: 500 }
+    );
+  }
+
+  const body = await request.text();
+
+  const headers: Record<string, string> = {
+    'Content-Type': 'application/json',
+  };
+
+  // Use API key if provided
+  if (PROXY_API_KEY) {
+    headers['X-API-Key'] = PROXY_API_KEY;
+  }
+
+  console.log(`[GraphQL Proxy] Forwarding request to ${PROXY_URL}`);
+
+  try {
+    const response = await fetch(PROXY_URL, {
+      method: 'POST',
+      headers,
+      body,
+    });
+
+    const data = await response.text();
+
+    return new NextResponse(data, {
+      status: response.status,
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Proxied-From': PROXY_URL,
+      },
+    });
+  } catch (error) {
+    console.error('[GraphQL Proxy] Error:', error);
+    return NextResponse.json(
+      { errors: [{ message: `Proxy error: ${(error as Error).message}` }] },
+      { status: 502 }
+    );
+  }
+}
 
 // Context type for Apollo Server
 interface Context extends BaseContext {
@@ -110,10 +162,16 @@ const handler = startServerAndCreateNextHandler<NextRequest, Context>(server, {
 
 // Export handlers for Next.js App Router
 export async function GET(request: NextRequest) {
+  if (USE_PROXY) {
+    return proxyToLiveApi(request);
+  }
   return handler(request);
 }
 
 export async function POST(request: NextRequest) {
+  if (USE_PROXY) {
+    return proxyToLiveApi(request);
+  }
   return handler(request);
 }
 

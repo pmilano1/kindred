@@ -169,9 +169,10 @@ jobs:
               echo "Attempt $i/$MAX_ATTEMPTS - Service status: $STATUS"
 
               if [ "$STATUS" = "RUNNING" ]; then
-                echo "Service is RUNNING, attempting deployment..."
-                if aws apprunner start-deployment --service-arn "$SERVICE_ARN" 2>&1; then
-                  echo "Deployment started successfully!"
+                echo "Service is RUNNING, starting deployment..."
+                OPERATION_ID=$(aws apprunner start-deployment --service-arn "$SERVICE_ARN" --query 'OperationId' --output text 2>&1)
+                if [ $? -eq 0 ] && [ -n "$OPERATION_ID" ]; then
+                  echo "Deployment started with operation ID: $OPERATION_ID"
                   DEPLOYED=true
                   break
                 else
@@ -188,6 +189,44 @@ jobs:
               exit 1
             fi
           fi
+
+      - name: Wait for deployment to complete
+        run: |
+          SERVICE_ARN=$(aws apprunner list-services --query "ServiceSummaryList[?ServiceName=='genealogy-frontend'].ServiceArn" --output text)
+          echo "Waiting for deployment to complete..."
+
+          MAX_WAIT=60  # 10 minutes max (60 x 10s)
+          for i in $(seq 1 $MAX_WAIT); do
+            STATUS=$(aws apprunner describe-service --service-arn "$SERVICE_ARN" --query 'Service.Status' --output text)
+            echo "[$i/$MAX_WAIT] Service status: $STATUS"
+
+            if [ "$STATUS" = "RUNNING" ]; then
+              echo "✅ Deployment completed successfully!"
+
+              # Verify health endpoint
+              SERVICE_URL=$(aws apprunner describe-service --service-arn "$SERVICE_ARN" --query 'Service.ServiceUrl' --output text)
+              echo "Verifying health at https://$SERVICE_URL/api/health"
+              HEALTH_STATUS=$(curl -s -o /dev/null -w "%{http_code}" "https://$SERVICE_URL/api/health" || echo "000")
+
+              if [ "$HEALTH_STATUS" = "200" ]; then
+                echo "✅ Health check passed!"
+                exit 0
+              else
+                echo "⚠️ Health check returned $HEALTH_STATUS (may still be warming up)"
+                exit 0  # Don't fail - App Runner health checks will handle this
+              fi
+            elif [ "$STATUS" = "OPERATION_IN_PROGRESS" ]; then
+              echo "Deployment in progress..."
+            elif [ "$STATUS" = "CREATE_FAILED" ] || [ "$STATUS" = "DELETE_FAILED" ]; then
+              echo "❌ Deployment failed with status: $STATUS"
+              exit 1
+            fi
+
+            sleep 10
+          done
+
+          echo "❌ Timeout waiting for deployment to complete"
+          exit 1
 
       - name: Cleanup old ECR images
         run: |

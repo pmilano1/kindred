@@ -4,6 +4,7 @@ import { Providers } from "@/components/Providers";
 import Sidebar from "@/components/Sidebar";
 import MainContent from "@/components/MainContent";
 import Footer from "@/components/Footer";
+import DevApiIndicator from "@/components/DevApiIndicator";
 import { getSettings } from "@/lib/settings";
 
 export async function generateMetadata(): Promise<Metadata> {
@@ -63,6 +64,7 @@ export default async function RootLayout({
             {children}
             <Footer />
           </MainContent>
+          <DevApiIndicator />
         </Providers>
       </body>
     </html>

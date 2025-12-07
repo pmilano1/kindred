@@ -510,6 +510,8 @@ export const GET_USERS = gql`
       email
       name
       role
+      account_type
+      description
       created_at
       last_login
       last_accessed
@@ -574,6 +576,32 @@ export const CREATE_LOCAL_USER = gql`
       role
       created_at
     }
+  }
+`;
+
+// ============================================
+// SERVICE ACCOUNTS
+// ============================================
+
+export const CREATE_SERVICE_ACCOUNT = gql`
+  mutation CreateServiceAccount($name: String!, $description: String, $role: String!) {
+    createServiceAccount(name: $name, description: $description, role: $role) {
+      user {
+        id
+        name
+        role
+        account_type
+        description
+        created_at
+      }
+      apiKey
+    }
+  }
+`;
+
+export const REVOKE_SERVICE_ACCOUNT = gql`
+  mutation RevokeServiceAccount($userId: ID!) {
+    revokeServiceAccount(userId: $userId)
   }
 `;
 

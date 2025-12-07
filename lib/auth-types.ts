@@ -21,6 +21,8 @@ export interface AppUser {
   name: string | null;
   image: string | null;
   role: 'admin' | 'editor' | 'viewer';
+  account_type: 'user' | 'service';
+  description: string | null;
   invited_by: string | null;
   invited_at: Date | null;
   created_at: Date;

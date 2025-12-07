@@ -149,6 +149,8 @@ export const typeDefs = `#graphql
     email: String!
     name: String
     role: String!
+    account_type: String!
+    description: String
     created_at: String!
     last_login: String
     last_accessed: String
@@ -164,6 +166,12 @@ export const typeDefs = `#graphql
     expires_at: String!
     accepted_at: String
     created_by: String
+  }
+
+  # Service account creation result (includes API key shown once)
+  type ServiceAccountResult {
+    user: User!
+    apiKey: String!
   }
 
   # ===========================================
@@ -441,6 +449,10 @@ export const typeDefs = `#graphql
     createLocalUser(email: String!, name: String!, role: String!, password: String!, requirePasswordChange: Boolean): User!
     updateUserRole(userId: ID!, role: String!): User
     deleteUser(userId: ID!): Boolean
+
+    # Service account mutations (requires admin role)
+    createServiceAccount(name: String!, description: String, role: String!): ServiceAccountResult!
+    revokeServiceAccount(userId: ID!): Boolean!
 
     # Settings mutations (requires admin role)
     updateSettings(input: SettingsInput!): SiteSettings!

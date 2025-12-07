@@ -168,12 +168,10 @@ export const typeDefs = `#graphql
     email: String!
     name: String
     role: String!
-    account_type: String
-    description: String
+    image: String
     created_at: String!
     last_login: String
     last_accessed: String
-    api_key: String
   }
 
   type Invitation {

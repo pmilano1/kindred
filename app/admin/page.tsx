@@ -22,8 +22,7 @@ interface User {
   email: string;
   name: string | null;
   role: string;
-  account_type?: string;
-  description?: string | null;
+  image?: string | null;
   created_at: string;
   last_login: string | null;
   last_accessed: string | null;

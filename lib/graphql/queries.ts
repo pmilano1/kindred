@@ -736,3 +736,50 @@ export const IMPORT_GEDCOM = gql`
     }
   }
 `;
+
+// ============================================
+// MEDIA
+// ============================================
+
+export const MEDIA_FIELDS = gql`
+  fragment MediaFields on Media {
+    id
+    person_id
+    filename
+    original_filename
+    mime_type
+    file_size
+    storage_path
+    thumbnail_path
+    media_type
+    caption
+    date_taken
+    source_attribution
+    created_at
+    url
+  }
+`;
+
+export const UPLOAD_MEDIA = gql`
+  mutation UploadMedia($personId: ID!, $input: MediaInput!) {
+    uploadMedia(personId: $personId, input: $input) {
+      ...MediaFields
+    }
+  }
+  ${MEDIA_FIELDS}
+`;
+
+export const UPDATE_MEDIA = gql`
+  mutation UpdateMedia($id: ID!, $input: MediaUpdateInput!) {
+    updateMedia(id: $id, input: $input) {
+      ...MediaFields
+    }
+  }
+  ${MEDIA_FIELDS}
+`;
+
+export const DELETE_MEDIA = gql`
+  mutation DeleteMedia($id: ID!) {
+    deleteMedia(id: $id)
+  }
+`;

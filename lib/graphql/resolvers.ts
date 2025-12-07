@@ -13,7 +13,7 @@ import {
 import { sendInviteEmail, verifyEmailForSandbox } from '../email';
 import { Loaders } from './dataloaders';
 import { getSettings, clearSettingsCache, SiteSettings } from '../settings';
-import { generateGedcom, GedcomPerson, GedcomFamily, GedcomSource, parseGedcom, ParsedPerson, ParsedFamily } from '../gedcom';
+import { generateGedcom, GedcomPerson, GedcomFamily, GedcomSource, parseGedcom } from '../gedcom';
 
 // Strip accents from a string for accent-insensitive search
 function stripAccents(str: string): string {
@@ -1335,6 +1335,52 @@ export const resolvers = {
 
       return { peopleImported, familiesImported, errors, warnings };
     },
+
+    // Media mutations
+    uploadMedia: async (_: unknown, { personId, input }: { personId: string; input: { filename: string; original_filename: string; mime_type: string; file_size: number; storage_path: string; thumbnail_path?: string; media_type: string; caption?: string; date_taken?: string; source_attribution?: string } }, context: Context) => {
+      const user = requireAuth(context, 'editor');
+      const id = crypto.randomBytes(9).toString('base64').replace(/[+/=]/g, '').substring(0, 12);
+
+      const { rows } = await pool.query(`
+        INSERT INTO media (id, person_id, filename, original_filename, mime_type, file_size, storage_path, thumbnail_path, media_type, caption, date_taken, source_attribution, uploaded_by)
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
+        RETURNING *
+      `, [id, personId, input.filename, input.original_filename, input.mime_type, input.file_size, input.storage_path, input.thumbnail_path || null, input.media_type, input.caption || null, input.date_taken || null, input.source_attribution || null, user.id]);
+
+      return rows[0];
+    },
+
+    updateMedia: async (_: unknown, { id, input }: { id: string; input: { caption?: string; date_taken?: string; source_attribution?: string; media_type?: string } }, context: Context) => {
+      requireAuth(context, 'editor');
+      const updates: string[] = [];
+      const values: unknown[] = [];
+      let paramIndex = 1;
+
+      if (input.caption !== undefined) { updates.push(`caption = $${paramIndex++}`); values.push(input.caption); }
+      if (input.date_taken !== undefined) { updates.push(`date_taken = $${paramIndex++}`); values.push(input.date_taken); }
+      if (input.source_attribution !== undefined) { updates.push(`source_attribution = $${paramIndex++}`); values.push(input.source_attribution); }
+      if (input.media_type !== undefined) { updates.push(`media_type = $${paramIndex++}`); values.push(input.media_type); }
+
+      if (updates.length === 0) {
+        const { rows } = await pool.query('SELECT * FROM media WHERE id = $1', [id]);
+        return rows[0] || null;
+      }
+
+      updates.push(`updated_at = NOW()`);
+      values.push(id);
+
+      const { rows } = await pool.query(
+        `UPDATE media SET ${updates.join(', ')} WHERE id = $${paramIndex} RETURNING *`,
+        values
+      );
+      return rows[0] || null;
+    },
+
+    deleteMedia: async (_: unknown, { id }: { id: string }, context: Context) => {
+      requireAuth(context, 'editor');
+      const result = await pool.query('DELETE FROM media WHERE id = $1', [id]);
+      return (result.rowCount ?? 0) > 0;
+    },
   },
 
   // Field resolvers - use DataLoaders for batched queries
@@ -1368,6 +1414,7 @@ export const resolvers = {
     lifeEvents: async (person: { id: string }, _: unknown, ctx: Context) => ctx.loaders.lifeEventsLoader.load(person.id),
     facts: (person: { id: string }, _: unknown, ctx: Context) => ctx.loaders.factsLoader.load(person.id),
     sources: (person: { id: string }, _: unknown, ctx: Context) => ctx.loaders.sourcesLoader.load(person.id),
+    media: (person: { id: string }, _: unknown, ctx: Context) => ctx.loaders.mediaLoader.load(person.id),
     // Coat of arms: check person override first, then surname lookup
     coatOfArms: async (person: { id: string; name_surname?: string }) => {
       // 1. Check for person-specific override in facts table
@@ -1490,6 +1537,18 @@ export const resolvers = {
       inv.expires_at ? new Date(inv.expires_at).toISOString() : null,
     accepted_at: (inv: { accepted_at: Date | string | null }) =>
       inv.accepted_at ? new Date(inv.accepted_at).toISOString() : null,
+  },
+
+  // Media type resolver
+  Media: {
+    url: (media: { storage_path: string }) => {
+      // Return the storage path as URL - in production this would be an S3 presigned URL
+      return `/api/media/${media.storage_path}`;
+    },
+    created_at: (media: { created_at: Date | string | null }) =>
+      media.created_at ? new Date(media.created_at).toISOString() : null,
+    date_taken: (media: { date_taken: Date | string | null }) =>
+      media.date_taken ? new Date(media.date_taken).toISOString().split('T')[0] : null,
   },
 };
 

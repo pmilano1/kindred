@@ -112,3 +112,22 @@ export interface ResearchQueueItem {
   research_notes_count: number;
   latest_note: string | null;
 }
+
+export type MediaType = 'photo' | 'document' | 'certificate' | 'other';
+
+export interface Media {
+  id: string;
+  person_id: string;
+  filename: string;
+  original_filename: string;
+  mime_type: string;
+  file_size: number;
+  storage_path: string;
+  thumbnail_path: string | null;
+  media_type: MediaType;
+  caption: string | null;
+  date_taken: string | null;
+  source_attribution: string | null;
+  uploaded_by: string | null;
+  created_at: string;
+}

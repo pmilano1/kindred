@@ -1,6 +1,6 @@
 import DataLoader from 'dataloader';
 import { pool } from '../pool';
-import { Person, Family, Fact, Source, LifeEvent } from '../types';
+import { Person, Family, Fact, Source, LifeEvent, Media } from '../types';
 
 // ============================================
 // BATCH LOADERS - Single SQL query per batch
@@ -130,6 +130,18 @@ async function batchSources(personIds: readonly string[]): Promise<Source[][]> {
   return personIds.map(id => map.get(id) || []);
 }
 
+// Batch load media by person IDs
+async function batchMedia(personIds: readonly string[]): Promise<Media[][]> {
+  if (!personIds.length) return [];
+  const { rows } = await pool.query(
+    `SELECT * FROM media WHERE person_id = ANY($1) ORDER BY created_at DESC`,
+    [personIds as string[]]
+  );
+  const map = new Map<string, Media[]>(personIds.map(id => [id, []]));
+  for (const m of rows) map.get(m.person_id)!.push(m);
+  return personIds.map(id => map.get(id) || []);
+}
+
 // ============================================
 // LOADER FACTORY - Fresh loaders per request
 // ============================================
@@ -144,6 +156,7 @@ export function createLoaders() {
     lifeEventsLoader: new DataLoader(batchLifeEvents, { cache: true }),
     factsLoader: new DataLoader(batchFacts, { cache: true }),
     sourcesLoader: new DataLoader(batchSources, { cache: true }),
+    mediaLoader: new DataLoader(batchMedia, { cache: true }),
   };
 }
 

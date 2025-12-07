@@ -14,9 +14,7 @@ import {
   DELETE_INVITATION,
   UPDATE_USER_ROLE,
   DELETE_USER,
-  CREATE_LOCAL_USER,
-  CREATE_SERVICE_ACCOUNT,
-  REVOKE_SERVICE_ACCOUNT
+  CREATE_LOCAL_USER
 } from '@/lib/graphql/queries';
 
 interface User {
@@ -57,13 +55,7 @@ export default function AdminPage() {
   const [requirePasswordChange, setRequirePasswordChange] = useState(true);
   const [createUserError, setCreateUserError] = useState('');
 
-  // Service account state
-  const [showServiceAccount, setShowServiceAccount] = useState(false);
-  const [serviceAccountName, setServiceAccountName] = useState('');
-  const [serviceAccountDescription, setServiceAccountDescription] = useState('');
-  const [serviceAccountRole, setServiceAccountRole] = useState('viewer');
-  const [newServiceAccountKey, setNewServiceAccountKey] = useState('');
-  const [serviceAccountError, setServiceAccountError] = useState('');
+
 
   // Generate a secure random password
   const generatePassword = useCallback(() => {
@@ -88,12 +80,8 @@ export default function AdminPage() {
   const [updateUserRole] = useMutation(UPDATE_USER_ROLE);
   const [deleteUser] = useMutation(DELETE_USER);
   const [createLocalUser] = useMutation(CREATE_LOCAL_USER);
-  const [createServiceAccount] = useMutation(CREATE_SERVICE_ACCOUNT);
-  const [revokeServiceAccount] = useMutation(REVOKE_SERVICE_ACCOUNT);
 
-  const allUsers = usersData?.users || [];
-  const users = allUsers.filter(u => u.account_type !== 'service');
-  const serviceAccounts = allUsers.filter(u => u.account_type === 'service');
+  const users = usersData?.users || [];
   const invitations = invitationsData?.invitations || [];
   const loading = usersLoading || invitationsLoading;
 
@@ -178,41 +166,6 @@ export default function AdminPage() {
       refetchUsers();
     } catch (err) {
       setCreateUserError(err instanceof Error ? err.message : 'Failed to create user');
-    }
-  };
-
-  const handleCreateServiceAccount = async () => {
-    if (!serviceAccountName.trim()) {
-      setServiceAccountError('Name is required');
-      return;
-    }
-    setServiceAccountError('');
-    try {
-      const result = await createServiceAccount({
-        variables: {
-          name: serviceAccountName,
-          description: serviceAccountDescription || null,
-          role: serviceAccountRole
-        }
-      });
-      const data = result.data as { createServiceAccount: { apiKey: string } };
-      setNewServiceAccountKey(data.createServiceAccount.apiKey);
-      setServiceAccountName('');
-      setServiceAccountDescription('');
-      setServiceAccountRole('viewer');
-      refetchUsers();
-    } catch (err) {
-      setServiceAccountError(err instanceof Error ? err.message : 'Failed to create service account');
-    }
-  };
-
-  const handleRevokeServiceAccount = async (userId: string) => {
-    if (!confirm('Are you sure you want to revoke this service account? This cannot be undone.')) return;
-    try {
-      await revokeServiceAccount({ variables: { userId } });
-      refetchUsers();
-    } catch (err) {
-      console.error('Failed to revoke service account:', err);
     }
   };
 
@@ -478,107 +431,7 @@ export default function AdminPage() {
           </table>
         </div>
 
-        {/* Service Accounts Section */}
-        <div className="bg-white rounded-xl shadow-sm border p-6 mt-8">
-          <div className="flex justify-between items-center mb-4">
-            <h2 className="text-xl font-semibold">Service Accounts ({serviceAccounts.length})</h2>
-            <Button
-              onClick={() => { setShowServiceAccount(!showServiceAccount); setNewServiceAccountKey(''); }}
-              variant={showServiceAccount ? 'primary' : 'secondary'}
-              size="sm"
-              icon={<UserPlus className="w-4 h-4" />}
-            >
-              {showServiceAccount ? 'Cancel' : 'Create Service Account'}
-            </Button>
-          </div>
 
-          {showServiceAccount && (
-            <div className="bg-gray-50 rounded-lg p-4 mb-6">
-              {serviceAccountError && (
-                <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-2 rounded-lg mb-4">
-                  {serviceAccountError}
-                </div>
-              )}
-              {newServiceAccountKey ? (
-                <div className="space-y-4">
-                  <div className="bg-green-50 border border-green-200 rounded-lg p-4">
-                    <p className="text-green-800 font-medium mb-2">✓ Service account created!</p>
-                    <p className="text-sm text-green-700 mb-3">Copy the API key now. It will not be shown again.</p>
-                    <div className="flex items-center gap-2 bg-white rounded p-2 border">
-                      <code className="text-sm font-mono flex-1 break-all">{newServiceAccountKey}</code>
-                      <Button
-                        onClick={() => { navigator.clipboard.writeText(newServiceAccountKey); }}
-                        variant="ghost"
-                        size="sm"
-                        icon={<Copy className="w-4 h-4" />}
-                      >
-                        Copy
-                      </Button>
-                    </div>
-                  </div>
-                  <Button onClick={() => { setShowServiceAccount(false); setNewServiceAccountKey(''); }} variant="secondary">
-                    Done
-                  </Button>
-                </div>
-              ) : (
-                <div className="space-y-4">
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label>Name *</Label>
-                      <Input type="text" value={serviceAccountName} onChange={e => setServiceAccountName(e.target.value)}
-                        placeholder="e.g., Backup Script" />
-                    </div>
-                    <div className="space-y-2">
-                      <Label>Role</Label>
-                      <Select value={serviceAccountRole} onValueChange={setServiceAccountRole}>
-                        <SelectTrigger className="w-full">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="viewer">Viewer (read-only)</SelectItem>
-                          <SelectItem value="editor">Editor (read/write)</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Description</Label>
-                    <Input type="text" value={serviceAccountDescription} onChange={e => setServiceAccountDescription(e.target.value)}
-                      placeholder="What is this service account for?" />
-                  </div>
-                  <Button onClick={handleCreateServiceAccount} icon={<UserPlus className="w-4 h-4" />}>
-                    Create Service Account
-                  </Button>
-                </div>
-              )}
-            </div>
-          )}
-
-          {serviceAccounts.length === 0 ? (
-            <p className="text-gray-500">No service accounts</p>
-          ) : (
-            <table className="w-full">
-              <thead><tr className="text-left text-sm text-gray-500 border-b">
-                <th className="pb-2">Name</th><th className="pb-2">Role</th><th className="pb-2">Description</th><th className="pb-2">Created</th><th></th>
-              </tr></thead>
-              <tbody>
-                {serviceAccounts.map(sa => (
-                  <tr key={sa.id} className="border-b">
-                    <td className="py-3 font-medium">{sa.name}</td>
-                    <td className="py-3 capitalize">{sa.role}</td>
-                    <td className="py-3 text-gray-500 text-sm">{sa.description || '-'}</td>
-                    <td className="py-3 text-sm text-gray-500">{new Date(sa.created_at).toLocaleDateString()}</td>
-                    <td className="py-3 text-right">
-                      <Button onClick={() => handleRevokeServiceAccount(sa.id)} variant="danger" size="sm" icon={<Trash2 className="w-3 h-3" />}>
-                        Revoke
-                      </Button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          )}
-        </div>
       </div>
     </>
   );

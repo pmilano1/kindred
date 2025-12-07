@@ -565,6 +565,18 @@ export const DELETE_USER = gql`
   }
 `;
 
+export const CREATE_LOCAL_USER = gql`
+  mutation CreateLocalUser($email: String!, $name: String!, $role: String!, $password: String!, $requirePasswordChange: Boolean) {
+    createLocalUser(email: $email, name: $name, role: $role, password: $password, requirePasswordChange: $requirePasswordChange) {
+      id
+      email
+      name
+      role
+      created_at
+    }
+  }
+`;
+
 // ============================================
 // API KEY MANAGEMENT
 // ============================================

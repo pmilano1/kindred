@@ -12,7 +12,8 @@ import {
   CREATE_INVITATION,
   DELETE_INVITATION,
   UPDATE_USER_ROLE,
-  DELETE_USER
+  DELETE_USER,
+  CREATE_LOCAL_USER
 } from '@/lib/graphql/queries';
 
 interface User {
@@ -41,6 +42,15 @@ export default function AdminPage() {
   const [newRole, setNewRole] = useState('viewer');
   const [inviteUrl, setInviteUrl] = useState('');
 
+  // Create local user state
+  const [showCreateUser, setShowCreateUser] = useState(false);
+  const [createUserEmail, setCreateUserEmail] = useState('');
+  const [createUserName, setCreateUserName] = useState('');
+  const [createUserRole, setCreateUserRole] = useState('viewer');
+  const [createUserPassword, setCreateUserPassword] = useState('');
+  const [requirePasswordChange, setRequirePasswordChange] = useState(true);
+  const [createUserError, setCreateUserError] = useState('');
+
   const { data: usersData, loading: usersLoading, refetch: refetchUsers } = useQuery<{ users: User[] }>(GET_USERS);
   const { data: invitationsData, loading: invitationsLoading, refetch: refetchInvitations } = useQuery<{ invitations: Invitation[] }>(GET_INVITATIONS);
 
@@ -48,6 +58,7 @@ export default function AdminPage() {
   const [deleteInvitation] = useMutation(DELETE_INVITATION);
   const [updateUserRole] = useMutation(UPDATE_USER_ROLE);
   const [deleteUser] = useMutation(DELETE_USER);
+  const [createLocalUser] = useMutation(CREATE_LOCAL_USER);
 
   const users = usersData?.users || [];
   const invitations = invitationsData?.invitations || [];
@@ -105,6 +116,38 @@ export default function AdminPage() {
     }
   };
 
+  const handleCreateLocalUser = async () => {
+    if (!createUserEmail || !createUserName || !createUserPassword) {
+      setCreateUserError('All fields are required');
+      return;
+    }
+    if (createUserPassword.length < 8) {
+      setCreateUserError('Password must be at least 8 characters');
+      return;
+    }
+    setCreateUserError('');
+    try {
+      await createLocalUser({
+        variables: {
+          email: createUserEmail,
+          name: createUserName,
+          role: createUserRole,
+          password: createUserPassword,
+          requirePasswordChange
+        }
+      });
+      setCreateUserEmail('');
+      setCreateUserName('');
+      setCreateUserPassword('');
+      setCreateUserRole('viewer');
+      setRequirePasswordChange(true);
+      setShowCreateUser(false);
+      refetchUsers();
+    } catch (err) {
+      setCreateUserError(err instanceof Error ? err.message : 'Failed to create user');
+    }
+  };
+
   if (loading) return (
     <>
       <Hero title="Admin Panel" subtitle="Manage users and site settings" />
@@ -130,32 +173,95 @@ export default function AdminPage() {
           </a>
         </div>
 
-        {/* Invite Section */}
+        {/* Add User Section */}
         <div className="bg-white rounded-xl shadow-sm border p-6 mb-8">
-          <h2 className="text-xl font-semibold mb-4">Invite New User</h2>
-          <div className="flex gap-4 items-end">
-            <div className="flex-1">
-              <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
-              <input type="email" value={newEmail} onChange={e => setNewEmail(e.target.value)}
-                className="w-full border rounded-lg px-3 py-2" placeholder="email@example.com" />
+          <div className="flex justify-between items-center mb-4">
+            <h2 className="text-xl font-semibold">Add New User</h2>
+            <div className="flex gap-2">
+              <button
+                onClick={() => { setShowCreateUser(false); setCreateUserError(''); }}
+                className={`px-3 py-1 rounded-lg text-sm ${!showCreateUser ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-700'}`}
+              >
+                Send Invite
+              </button>
+              <button
+                onClick={() => setShowCreateUser(true)}
+                className={`px-3 py-1 rounded-lg text-sm ${showCreateUser ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-700'}`}
+              >
+                Create Directly
+              </button>
             </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Role</label>
-              <select value={newRole} onChange={e => setNewRole(e.target.value)} className="border rounded-lg px-3 py-2">
-                <option value="viewer">Viewer</option>
-                <option value="editor">Editor</option>
-                <option value="admin">Admin</option>
-              </select>
-            </div>
-            <button onClick={handleInvite} className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700">
-              Send Invite
-            </button>
           </div>
-          {inviteUrl && (
-            <div className="mt-4 p-3 bg-green-50 border border-green-200 rounded-lg">
-              <p className="text-sm text-green-800 mb-1">Share this link:</p>
-              <code className="text-xs bg-green-100 p-1 rounded break-all">{inviteUrl}</code>
-            </div>
+
+          {!showCreateUser ? (
+            <>
+              <div className="flex gap-4 items-end">
+                <div className="flex-1">
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
+                  <input type="email" value={newEmail} onChange={e => setNewEmail(e.target.value)}
+                    className="w-full border rounded-lg px-3 py-2" placeholder="email@example.com" />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Role</label>
+                  <select value={newRole} onChange={e => setNewRole(e.target.value)} className="border rounded-lg px-3 py-2">
+                    <option value="viewer">Viewer</option>
+                    <option value="editor">Editor</option>
+                    <option value="admin">Admin</option>
+                  </select>
+                </div>
+                <button onClick={handleInvite} className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700">
+                  Send Invite
+                </button>
+              </div>
+              {inviteUrl && (
+                <div className="mt-4 p-3 bg-green-50 border border-green-200 rounded-lg">
+                  <p className="text-sm text-green-800 mb-1">Share this link:</p>
+                  <code className="text-xs bg-green-100 p-1 rounded break-all">{inviteUrl}</code>
+                </div>
+              )}
+            </>
+          ) : (
+            <>
+              <p className="text-sm text-gray-600 mb-4">Create a local user account directly without sending an invitation email.</p>
+              {createUserError && (
+                <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm">{createUserError}</div>
+              )}
+              <div className="grid grid-cols-2 gap-4 mb-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
+                  <input type="email" value={createUserEmail} onChange={e => setCreateUserEmail(e.target.value)}
+                    className="w-full border rounded-lg px-3 py-2" placeholder="email@example.com" />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Name</label>
+                  <input type="text" value={createUserName} onChange={e => setCreateUserName(e.target.value)}
+                    className="w-full border rounded-lg px-3 py-2" placeholder="Full Name" />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Role</label>
+                  <select value={createUserRole} onChange={e => setCreateUserRole(e.target.value)} className="w-full border rounded-lg px-3 py-2">
+                    <option value="viewer">Viewer</option>
+                    <option value="editor">Editor</option>
+                    <option value="admin">Admin</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Temporary Password</label>
+                  <input type="password" value={createUserPassword} onChange={e => setCreateUserPassword(e.target.value)}
+                    className="w-full border rounded-lg px-3 py-2" placeholder="Min 8 characters" />
+                </div>
+              </div>
+              <div className="flex items-center justify-between">
+                <label className="flex items-center gap-2 text-sm text-gray-700">
+                  <input type="checkbox" checked={requirePasswordChange} onChange={e => setRequirePasswordChange(e.target.checked)}
+                    className="rounded border-gray-300" />
+                  Require password change on first login
+                </label>
+                <button onClick={handleCreateLocalUser} className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700">
+                  Create User
+                </button>
+              </div>
+            </>
           )}
         </div>
 

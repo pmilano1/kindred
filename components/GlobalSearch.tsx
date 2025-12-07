@@ -103,7 +103,7 @@ export default function GlobalSearch() {
               ))}
               {data?.search?.totalCount && data.search.totalCount > 8 && (
                 <button
-                  onClick={() => { router.push(`/search?q=${encodeURIComponent(query)}`); setIsOpen(false); }}
+                  onClick={() => { router.push(`/search?q=${encodeURIComponent(query)}`); setIsFocused(false); }}
                   className="w-full px-4 py-2 text-center text-sm text-blue-600 hover:bg-blue-50"
                 >
                   View all {data.search.totalCount} results →

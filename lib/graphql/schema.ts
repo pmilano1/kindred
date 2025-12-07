@@ -376,11 +376,34 @@ export const typeDefs = `#graphql
     confidence: String
   }
 
+  input LifeEventInput {
+    event_type: String!
+    event_date: String
+    event_year: Int
+    event_place: String
+    event_value: String
+  }
+
+  input FactInput {
+    fact_type: String!
+    fact_value: String
+  }
+
   type Mutation {
     # Person mutations
     createPerson(input: PersonInput!): Person!
     updatePerson(id: ID!, input: PersonInput!): Person
     deletePerson(id: ID!): Boolean!
+
+    # Life event mutations (requires editor role)
+    addLifeEvent(personId: ID!, input: LifeEventInput!): LifeEvent!
+    updateLifeEvent(id: Int!, input: LifeEventInput!): LifeEvent
+    deleteLifeEvent(id: Int!): Boolean!
+
+    # Fact mutations (requires editor role)
+    addFact(personId: ID!, input: FactInput!): Fact!
+    updateFact(id: Int!, input: FactInput!): Fact
+    deleteFact(id: Int!): Boolean!
 
     # Source mutations
     addSource(personId: ID!, input: SourceInput!): Source

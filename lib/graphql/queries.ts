@@ -260,6 +260,68 @@ export const DELETE_PERSON = gql`
   }
 `;
 
+// Life Event mutations
+export const ADD_LIFE_EVENT = gql`
+  mutation AddLifeEvent($personId: ID!, $input: LifeEventInput!) {
+    addLifeEvent(personId: $personId, input: $input) {
+      id
+      person_id
+      event_type
+      event_date
+      event_year
+      event_place
+      event_value
+    }
+  }
+`;
+
+export const UPDATE_LIFE_EVENT = gql`
+  mutation UpdateLifeEvent($id: Int!, $input: LifeEventInput!) {
+    updateLifeEvent(id: $id, input: $input) {
+      id
+      event_type
+      event_date
+      event_year
+      event_place
+      event_value
+    }
+  }
+`;
+
+export const DELETE_LIFE_EVENT = gql`
+  mutation DeleteLifeEvent($id: Int!) {
+    deleteLifeEvent(id: $id)
+  }
+`;
+
+// Fact mutations
+export const ADD_FACT = gql`
+  mutation AddFact($personId: ID!, $input: FactInput!) {
+    addFact(personId: $personId, input: $input) {
+      id
+      person_id
+      fact_type
+      fact_value
+    }
+  }
+`;
+
+export const UPDATE_FACT = gql`
+  mutation UpdateFact($id: Int!, $input: FactInput!) {
+    updateFact(id: $id, input: $input) {
+      id
+      fact_type
+      fact_value
+    }
+  }
+`;
+
+export const DELETE_FACT = gql`
+  mutation DeleteFact($id: Int!) {
+    deleteFact(id: $id)
+  }
+`;
+
 export const UPDATE_NOTABLE_STATUS = gql`
   mutation UpdateNotableStatus($id: ID!, $isNotable: Boolean!, $notableDescription: String) {
     updatePerson(id: $id, input: { is_notable: $isNotable, notable_description: $notableDescription }) {

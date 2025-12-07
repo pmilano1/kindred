@@ -1,6 +1,6 @@
 import { ApolloServer, BaseContext } from '@apollo/server';
 import { startServerAndCreateNextHandler } from '@as-integrations/next';
-import { NextRequest } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 import { pool } from '@/lib/pool';
 import { typeDefs } from '@/lib/graphql/schema';
@@ -8,6 +8,11 @@ import { resolvers } from '@/lib/graphql/resolvers';
 import { createLoaders, Loaders } from '@/lib/graphql/dataloaders';
 import depthLimit from 'graphql-depth-limit';
 import { GraphQLError } from 'graphql';
+
+// Proxy configuration for local development
+const PROXY_URL = process.env.GRAPHQL_PROXY_URL;
+const PROXY_API_KEY = process.env.GRAPHQL_PROXY_API_KEY;
+const USE_PROXY = process.env.USE_LIVE_API === 'true' && PROXY_URL;
 
 // Context type for Apollo Server
 interface Context extends BaseContext {

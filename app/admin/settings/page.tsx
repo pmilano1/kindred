@@ -3,7 +3,8 @@
 import { useEffect, useState, useCallback } from 'react';
 import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
-import Hero from '@/components/Hero';
+import { Sliders } from 'lucide-react';
+import { PageHeader } from '@/components/ui';
 import LoadingSpinner from '@/components/LoadingSpinner';
 import Link from 'next/link';
 import { useSettingsRefetch } from '@/components/SettingsProvider';
@@ -147,7 +148,7 @@ export default function SettingsPage() {
   if (loading) {
     return (
       <>
-        <Hero title="Site Settings" subtitle="Configure your genealogy site" />
+        <PageHeader title="Site Settings" subtitle="Configure your genealogy site" icon={Sliders} />
         <div className="content-wrapper flex justify-center py-12">
           <LoadingSpinner size="lg" message="Loading settings..." />
         </div>
@@ -157,7 +158,7 @@ export default function SettingsPage() {
 
   return (
     <>
-      <Hero title="Site Settings" subtitle="Configure your genealogy site" />
+      <PageHeader title="Site Settings" subtitle="Configure your genealogy site" icon={Sliders} />
       <div className="content-wrapper">
         {/* Navigation */}
         <div className="flex gap-4 mb-8">

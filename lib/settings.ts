@@ -68,7 +68,12 @@ export async function getSettings(): Promise<SiteSettings> {
     settingsCache = { settings, timestamp: Date.now() };
     return settings;
   } catch (error) {
-    console.error('Failed to load settings, using defaults:', error);
+    // During build/SSG, database isn't available - this is expected
+    const isConnectionError = error instanceof Error &&
+      ('code' in error && (error as NodeJS.ErrnoException).code === 'ECONNREFUSED');
+    if (!isConnectionError) {
+      console.error('Failed to load settings, using defaults:', error);
+    }
     return DEFAULT_SETTINGS;
   }
 }

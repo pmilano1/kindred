@@ -4,7 +4,8 @@ import { useState, useEffect, useCallback, useMemo, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import dynamic from 'next/dynamic';
 import { useQuery } from '@apollo/client/react';
-import Hero from '@/components/Hero';
+import { TreeDeciduous } from 'lucide-react';
+import { PageHeader } from '@/components/ui';
 import LoadingSpinner from '@/components/LoadingSpinner';
 import { Person } from '@/lib/types';
 import { GET_PEOPLE_LIST } from '@/lib/graphql/queries';
@@ -84,7 +85,11 @@ function TreePageContent() {
 
   return (
     <>
-      <Hero title="Family Tree" subtitle="Interactive visualization of family connections" />
+      <PageHeader
+        title="Family Tree"
+        subtitle="Interactive visualization of family connections"
+        icon={TreeDeciduous}
+      />
       <div className="content-wrapper">
         <div className="tree-controls">
           <select className="tree-select" value={selectedPerson} onChange={(e) => handlePersonChange(e.target.value)}>
@@ -138,7 +143,11 @@ export default function TreePage() {
   return (
     <Suspense fallback={
       <>
-        <Hero title="Family Tree" subtitle="Interactive visualization of family connections" />
+        <PageHeader
+          title="Family Tree"
+          subtitle="Interactive visualization of family connections"
+          icon={TreeDeciduous}
+        />
         <div className="content-wrapper">
           <div className="tree-container flex items-center justify-center">
             <LoadingSpinner size="lg" message="Loading family tree..." />

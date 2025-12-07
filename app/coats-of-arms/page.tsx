@@ -4,7 +4,8 @@ import { useState } from 'react';
 import Image from 'next/image';
 import { useSession } from 'next-auth/react';
 import { useQuery, useMutation } from '@apollo/client/react';
-import Hero from '@/components/Hero';
+import { Shield, Plus } from 'lucide-react';
+import { PageHeader, Button } from '@/components/ui';
 import LoadingSpinner from '@/components/LoadingSpinner';
 import { GET_SURNAME_CRESTS, SET_SURNAME_CREST, REMOVE_SURNAME_CREST } from '@/lib/graphql/queries';
 
@@ -70,15 +71,20 @@ export default function CoatsOfArmsPage() {
 
   return (
     <>
-      <Hero title="Coats of Arms" subtitle="Assign crests by surname - all people with matching surname inherit automatically" />
-      <div className="content-wrapper">
-        {isEditor && (
-          <div className="mb-6">
-            <button onClick={() => setShowForm(!showForm)} className="tree-btn">
-              {showForm ? 'Cancel' : '+ Add Surname Crest'}
-            </button>
-          </div>
+      <PageHeader
+        title="Coats of Arms"
+        subtitle="Assign crests by surname - all people with matching surname inherit automatically"
+        icon={Shield}
+        actions={isEditor && (
+          <Button
+            onClick={() => setShowForm(!showForm)}
+            icon={showForm ? null : <Plus className="w-4 h-4" />}
+          >
+            {showForm ? 'Cancel' : 'Add Surname Crest'}
+          </Button>
         )}
+      />
+      <div className="content-wrapper">
 
         {showForm && isEditor && (
           <form onSubmit={handleSubmit} className="card p-6 mb-6 space-y-4">

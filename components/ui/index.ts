@@ -8,3 +8,5 @@ export { default as Card } from './Card';
 
 export { default as Input } from './Input';
 
+export { default as PageHeader } from './PageHeader';
+export type { PageHeaderProps } from './PageHeader';

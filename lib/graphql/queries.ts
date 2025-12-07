@@ -159,6 +159,15 @@ export const GET_PERSON = gql`
         fact_type
         fact_value
       }
+      media {
+        id
+        filename
+        original_filename
+        mime_type
+        media_type
+        caption
+        url
+      }
     }
   }
 `;

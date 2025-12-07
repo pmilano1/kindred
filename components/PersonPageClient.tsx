@@ -17,7 +17,8 @@ import LifeEventsEditor from '@/components/LifeEventsEditor';
 import FactsEditor from '@/components/FactsEditor';
 import FamilyEditor from '@/components/FamilyEditor';
 import SourcesEditor from '@/components/SourcesEditor';
-import { Person, Family, LifeEvent, Fact, Source } from '@/lib/types';
+import MediaGallery from '@/components/MediaGallery';
+import { Person, Family, LifeEvent, Fact, Source, Media } from '@/lib/types';
 
 interface PersonData {
   person: Person & {
@@ -33,6 +34,7 @@ interface PersonData {
     lifeEvents: LifeEvent[];
     facts: Fact[];
     sources: Source[];
+    media: Media[];
   } | null;
 }
 
@@ -345,6 +347,9 @@ export default function PersonPageClient({ personId }: Props) {
 
         {/* Facts */}
         <FactsEditor personId={personId} facts={person.facts} canEdit={canEdit} />
+
+        {/* Media Gallery */}
+        <MediaGallery personId={personId} media={person.media || []} canEdit={canEdit} />
 
         {/* Sources & Research */}
         <SourcesEditor personId={personId} sources={person.sources || []} canEdit={canEdit} />

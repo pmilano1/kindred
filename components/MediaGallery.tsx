@@ -13,7 +13,7 @@ interface MediaItem {
   mime_type: string;
   media_type: string;
   caption: string | null;
-  url: string;
+  url?: string;
 }
 
 interface MediaGalleryProps {
@@ -90,6 +90,8 @@ export default function MediaGallery({ personId, media, canEdit, onMediaChange }
     return <FileText className="w-8 h-8" />;
   };
 
+  const getMediaUrl = (item: MediaItem) => item.url || `/api/media/${item.filename}`;
+
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
@@ -128,7 +130,7 @@ export default function MediaGallery({ personId, media, canEdit, onMediaChange }
             >
               {item.mime_type.startsWith('image/') ? (
                 <img
-                  src={item.url}
+                  src={getMediaUrl(item)}
                   alt={item.caption || item.original_filename}
                   className="w-full h-32 object-cover"
                 />
@@ -156,9 +158,9 @@ export default function MediaGallery({ personId, media, canEdit, onMediaChange }
               <X className="w-8 h-8" />
             </button>
             {selectedMedia.mime_type.startsWith('image/') ? (
-              <img src={selectedMedia.url} alt={selectedMedia.caption || ''} className="max-h-[80vh] rounded-lg" />
+              <img src={getMediaUrl(selectedMedia)} alt={selectedMedia.caption || ''} className="max-h-[80vh] rounded-lg" />
             ) : (
-              <iframe src={selectedMedia.url} className="w-[80vw] h-[80vh] bg-white rounded-lg" />
+              <iframe src={getMediaUrl(selectedMedia)} className="w-[80vw] h-[80vh] bg-white rounded-lg" />
             )}
             <div className="mt-2 text-white text-center">
               <p>{selectedMedia.caption || selectedMedia.original_filename}</p>

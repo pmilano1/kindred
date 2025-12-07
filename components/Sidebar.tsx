@@ -1,11 +1,11 @@
 'use client';
 
-import { useState, useEffect } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useSession, signOut } from 'next-auth/react';
 import { useSettings } from './SettingsProvider';
+import { useSidebar } from './SidebarContext';
 import {
   LayoutDashboard,
   TreeDeciduous,
@@ -65,27 +65,8 @@ export default function Sidebar() {
   const pathname = usePathname();
   const { data: session, status } = useSession();
   const settings = useSettings();
+  const { isCollapsed, toggleCollapse } = useSidebar();
   const isAdmin = session?.user?.role === 'admin';
-
-  // Persist collapsed state in localStorage
-  const [isCollapsed, setIsCollapsed] = useState(() => {
-    // Initialize from localStorage (only runs on client)
-    if (typeof window !== 'undefined') {
-      return localStorage.getItem('sidebar-collapsed') === 'true';
-    }
-    return false;
-  });
-
-  // Sync body class with collapsed state
-  useEffect(() => {
-    document.body.classList.toggle('sidebar-is-collapsed', isCollapsed);
-  }, [isCollapsed]);
-
-  const toggleCollapse = () => {
-    const newState = !isCollapsed;
-    setIsCollapsed(newState);
-    localStorage.setItem('sidebar-collapsed', String(newState));
-  };
 
   // Don't show sidebar on login page or when not authenticated
   if (pathname === '/login' || status === 'unauthenticated') {

@@ -5,6 +5,7 @@ import { ApolloClient, InMemoryCache, HttpLink } from '@apollo/client/core';
 import { ApolloProvider } from '@apollo/client/react';
 import { useMemo } from 'react';
 import { SettingsProvider, SiteSettings } from './SettingsProvider';
+import { SidebarProvider } from './SidebarContext';
 
 function ApolloWrapper({ children }: { children: React.ReactNode }) {
   const client = useMemo(() => {
@@ -47,7 +48,9 @@ export function Providers({ children, settings }: ProvidersProps) {
     <SessionProvider refetchOnWindowFocus={false} refetchInterval={0}>
       <ApolloWrapper>
         <SettingsProvider settings={settings}>
-          {children}
+          <SidebarProvider>
+            {children}
+          </SidebarProvider>
         </SettingsProvider>
       </ApolloWrapper>
     </SessionProvider>

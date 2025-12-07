@@ -12,6 +12,7 @@ import Hero from '@/components/Hero';
 import EditPersonModal from '@/components/EditPersonModal';
 import LifeEventsEditor from '@/components/LifeEventsEditor';
 import FactsEditor from '@/components/FactsEditor';
+import FamilyEditor from '@/components/FamilyEditor';
 import { Person, Family, LifeEvent, Fact } from '@/lib/types';
 
 interface PersonData {
@@ -261,45 +262,13 @@ export default function PersonPageClient({ personId }: Props) {
           )}
         </div>
 
-        {/* Spouse & Children */}
-        {familiesAsSpouse.length > 0 && familiesAsSpouse.map((family, i) => {
-          const spouse = family.husband_id === personId ? family.wife : family.husband;
-          return (
-            <div key={family.id} className="card p-6 mb-6">
-              <h3 className="section-title">Family {familiesAsSpouse.length > 1 ? i + 1 : ''}</h3>
-              {spouse && (
-                <div className="mb-4">
-                  <p className="text-sm text-gray-500 mb-2">Spouse</p>
-                  <div className={`p-4 rounded-lg border-l-4 ${spouse.sex === 'F' ? 'border-l-pink-400 bg-pink-50' : 'border-l-blue-400 bg-blue-50'} hover:shadow-md transition flex justify-between items-start`}>
-                    <Link href={`/person/${spouse.id}`} className="flex-1">
-                      <p className="font-semibold">{spouse.name_full}</p>
-                      <p className="text-sm text-gray-500">
-                        {family.marriage_place && `Married in ${family.marriage_place}`}
-                        {family.marriage_year && ` (${family.marriage_year})`}
-                      </p>
-                    </Link>
-                    <TreeLink personId={spouse.id} />
-                  </div>
-                </div>
-              )}
-              {family.children.length > 0 && (
-                <div>
-                  <p className="text-sm text-gray-500 mb-2">Children ({family.children.length})</p>
-                  <div className="grid md:grid-cols-2 gap-2">
-                    {family.children.map(child => (
-                      <div key={child.id} className={`p-3 rounded border-l-4 ${child.sex === 'F' ? 'border-l-pink-300 bg-pink-50/50' : 'border-l-blue-300 bg-blue-50/50'} hover:shadow-sm transition text-sm flex justify-between items-center`}>
-                        <Link href={`/person/${child.id}`} className="flex-1">
-                          {child.name_full} {child.birth_year ? `(b. ${child.birth_year})` : ''}
-                        </Link>
-                        <TreeLink personId={child.id} className="text-sm" />
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </div>
-          );
-        })}
+        {/* Spouse & Children - Editable */}
+        <FamilyEditor
+          personId={personId}
+          personSex={person.sex || 'M'}
+          families={familiesAsSpouse}
+          canEdit={canEdit}
+        />
 
         {/* Parents */}
         {person.parents.length > 0 && (

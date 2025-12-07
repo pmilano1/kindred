@@ -389,6 +389,14 @@ export const typeDefs = `#graphql
     fact_value: String
   }
 
+  input FamilyInput {
+    husband_id: ID
+    wife_id: ID
+    marriage_date: String
+    marriage_year: Int
+    marriage_place: String
+  }
+
   type Mutation {
     # Person mutations
     createPerson(input: PersonInput!): Person!
@@ -404,6 +412,13 @@ export const typeDefs = `#graphql
     addFact(personId: ID!, input: FactInput!): Fact!
     updateFact(id: Int!, input: FactInput!): Fact
     deleteFact(id: Int!): Boolean!
+
+    # Family mutations (requires editor role)
+    createFamily(input: FamilyInput!): Family!
+    updateFamily(id: ID!, input: FamilyInput!): Family
+    deleteFamily(id: ID!): Boolean!
+    addChildToFamily(familyId: ID!, personId: ID!): Boolean!
+    removeChildFromFamily(familyId: ID!, personId: ID!): Boolean!
 
     # Source mutations
     addSource(personId: ID!, input: SourceInput!): Source

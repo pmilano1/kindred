@@ -576,6 +576,61 @@ export const resolvers = {
       return true;
     },
 
+    // Family mutations
+    createFamily: async (_: unknown, { input }: { input: { husband_id?: string; wife_id?: string; marriage_date?: string; marriage_year?: number; marriage_place?: string } }, context: Context) => {
+      requireAuth(context, 'editor');
+      const id = crypto.randomUUID().replace(/-/g, '').slice(0, 12);
+      const { rows } = await pool.query(
+        `INSERT INTO families (id, husband_id, wife_id, marriage_date, marriage_year, marriage_place)
+         VALUES ($1, $2, $3, $4, $5, $6) RETURNING *`,
+        [id, input.husband_id || null, input.wife_id || null, input.marriage_date || null, input.marriage_year || null, input.marriage_place || null]
+      );
+      return rows[0];
+    },
+
+    updateFamily: async (_: unknown, { id, input }: { id: string; input: { husband_id?: string; wife_id?: string; marriage_date?: string; marriage_year?: number; marriage_place?: string } }, context: Context) => {
+      requireAuth(context, 'editor');
+      const { rows } = await pool.query(
+        `UPDATE families SET husband_id = COALESCE($2, husband_id), wife_id = COALESCE($3, wife_id),
+         marriage_date = COALESCE($4, marriage_date), marriage_year = COALESCE($5, marriage_year),
+         marriage_place = COALESCE($6, marriage_place) WHERE id = $1 RETURNING *`,
+        [id, input.husband_id, input.wife_id, input.marriage_date, input.marriage_year, input.marriage_place]
+      );
+      return rows[0] || null;
+    },
+
+    deleteFamily: async (_: unknown, { id }: { id: string }, context: Context) => {
+      requireAuth(context, 'admin');
+      // Delete children links first
+      await pool.query('DELETE FROM children WHERE family_id = $1', [id]);
+      await pool.query('DELETE FROM families WHERE id = $1', [id]);
+      return true;
+    },
+
+    addChildToFamily: async (_: unknown, { familyId, personId }: { familyId: string; personId: string }, context: Context) => {
+      requireAuth(context, 'editor');
+      // Check if already exists
+      const { rows: existing } = await pool.query(
+        'SELECT 1 FROM children WHERE family_id = $1 AND person_id = $2',
+        [familyId, personId]
+      );
+      if (existing.length > 0) return true;
+      await pool.query(
+        'INSERT INTO children (family_id, person_id) VALUES ($1, $2)',
+        [familyId, personId]
+      );
+      return true;
+    },
+
+    removeChildFromFamily: async (_: unknown, { familyId, personId }: { familyId: string; personId: string }, context: Context) => {
+      requireAuth(context, 'editor');
+      await pool.query(
+        'DELETE FROM children WHERE family_id = $1 AND person_id = $2',
+        [familyId, personId]
+      );
+      return true;
+    },
+
     addSource: async (_: unknown, { personId, input }: { personId: string; input: { source_type?: string; source_name?: string; source_url?: string; action: string; content?: string; confidence?: string } }, context: Context) => {
       requireAuth(context, 'editor');
 

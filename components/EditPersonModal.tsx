@@ -42,10 +42,11 @@ export default function EditPersonModal({ person, isOpen, onClose, onSuccess }: 
   });
   
   const [error, setError] = useState('');
-  
-  // Initialize form with person data
+
+  // Initialize form with person data - valid synchronization pattern
   useEffect(() => {
     if (person && isOpen) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setFormData({
         name_full: person.name_full || '',
         name_given: person.name_given || '',

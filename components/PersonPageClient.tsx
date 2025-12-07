@@ -5,12 +5,11 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { useQuery, useMutation } from '@apollo/client/react';
 import { useSession } from 'next-auth/react';
-import { ArrowLeft, Star, Pencil, Trash2 } from 'lucide-react';
+import { ArrowLeft, Star, Pencil, Trash2, User } from 'lucide-react';
 import { GET_PERSON, UPDATE_NOTABLE_STATUS } from '@/lib/graphql/queries';
-import { Button, ButtonLink, Textarea } from '@/components/ui';
+import { Button, ButtonLink, Textarea, PageHeader } from '@/components/ui';
 import ResearchPanel from '@/components/ResearchPanel';
 import TreeLink from '@/components/TreeLink';
-import Hero from '@/components/Hero';
 import EditPersonModal from '@/components/EditPersonModal';
 import DeletePersonDialog from '@/components/DeletePersonDialog';
 import LifeEventsEditor from '@/components/LifeEventsEditor';
@@ -114,9 +113,10 @@ export default function PersonPageClient({ personId }: Props) {
 
   return (
     <>
-      <Hero
+      <PageHeader
         title={person.name_full}
         subtitle={person.is_notable ? `⭐ ${subtitle} • Notable Figure` : subtitle}
+        icon={User}
       />
       <div className="content-wrapper">
         <div className="flex flex-col lg:flex-row gap-6">

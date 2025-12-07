@@ -65,6 +65,16 @@
   --font-size-3xl: 2rem;
   --font-size-4xl: 2.5rem;
 
+  /* Typography aliases (short form) */
+  --text-xs: var(--font-size-xs);
+  --text-sm: var(--font-size-sm);
+  --text-base: var(--font-size-base);
+  --text-lg: var(--font-size-lg);
+  --text-xl: var(--font-size-xl);
+  --text-2xl: var(--font-size-2xl);
+  --text-3xl: var(--font-size-3xl);
+  --text-4xl: var(--font-size-4xl);
+
   /* Spacing */
   --space-1: 0.25rem;
   --space-2: 0.5rem;
@@ -357,6 +367,7 @@ body {
   font-weight: 700;
   margin: 0;
   line-height: 1.2;
+  color: white;
 }
 
 .page-header-subtitle {

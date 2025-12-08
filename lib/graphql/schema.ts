@@ -34,6 +34,18 @@ export const typeDefs = `#graphql
     is_notable: Boolean
     notable_description: String
 
+    # Estimated dates and placeholder support (Issue #195)
+    birth_date_accuracy: String
+    birth_year_min: Int
+    birth_year_max: Int
+    death_date_accuracy: String
+    death_year_min: Int
+    death_year_max: Int
+    is_placeholder: Boolean
+
+    # Computed research tip for queue prioritization
+    research_tip: String
+
     # Relationships (batched via DataLoader)
     parents: [Person!]!
     siblings: [Person!]!
@@ -404,6 +416,14 @@ export const typeDefs = `#graphql
     research_priority: Int
     is_notable: Boolean
     notable_description: String
+    # Estimated dates and placeholder support (Issue #195)
+    birth_date_accuracy: String
+    birth_year_min: Int
+    birth_year_max: Int
+    death_date_accuracy: String
+    death_year_min: Int
+    death_year_max: Int
+    is_placeholder: Boolean
   }
 
   input SourceInput {

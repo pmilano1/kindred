@@ -397,24 +397,35 @@ describe('GraphQL Resolvers', () => {
   });
 
   describe('Query.researchQueue', () => {
-    it('returns people needing research', async () => {
+    it('returns people needing research with automatic scoring', async () => {
       mockedQuery.mockReset();
       const mockQueue = [
         {
           id: 'p1',
           name_full: 'Needs Research',
           research_status: 'brick_wall',
+          auto_score: 70,
         },
-        { id: 'p2', name_full: 'In Progress', research_status: 'in_progress' },
+        {
+          id: 'p2',
+          name_full: 'In Progress',
+          research_status: 'in_progress',
+          auto_score: 30,
+        },
       ];
       mockedQuery.mockResolvedValueOnce({ rows: mockQueue });
 
       const result = await resolvers.Query.researchQueue(null, { limit: 50 });
 
       expect(result).toEqual(mockQueue);
+      // Check that query filters out verified and placeholder people
       expect(mockedQuery).toHaveBeenCalledWith(
         expect.stringContaining("research_status != 'verified'"),
-        [50],
+        expect.arrayContaining([50]), // limit is first param
+      );
+      expect(mockedQuery).toHaveBeenCalledWith(
+        expect.stringContaining('is_placeholder = false'),
+        expect.any(Array),
       );
     });
 
@@ -424,7 +435,27 @@ describe('GraphQL Resolvers', () => {
 
       await resolvers.Query.researchQueue(null, { limit: 200 });
 
-      expect(mockedQuery).toHaveBeenCalledWith(expect.any(String), [100]);
+      // First param should be capped at 100
+      expect(mockedQuery).toHaveBeenCalledWith(
+        expect.any(String),
+        expect.arrayContaining([100]),
+      );
+    });
+
+    it('uses configurable weights from settings', async () => {
+      mockedQuery.mockReset();
+      mockedQuery.mockResolvedValueOnce({ rows: [] });
+
+      await resolvers.Query.researchQueue(null, { limit: 50 });
+
+      // Query should include scoring with weight parameters
+      expect(mockedQuery).toHaveBeenCalledWith(
+        expect.stringContaining('auto_score'),
+        // Should have 7 params: limit + 6 weights
+        expect.any(Array),
+      );
+      const callArgs = mockedQuery.mock.calls[0][1];
+      expect(callArgs.length).toBe(7);
     });
   });
 
@@ -1064,6 +1095,195 @@ describe('GraphQL Resolvers', () => {
         expect.stringContaining('require_password_change'),
         expect.arrayContaining([true]),
       );
+    });
+  });
+
+  describe('Person.research_tip', () => {
+    const mockContext = {
+      loaders: {
+        familiesAsChildLoader: {
+          load: vi.fn(),
+        },
+        personLoader: {
+          loadMany: vi.fn(),
+        },
+      },
+    };
+
+    beforeEach(() => {
+      vi.clearAllMocks();
+    });
+
+    it('returns null for placeholder people', async () => {
+      const person = {
+        id: 'p1',
+        is_placeholder: true,
+        birth_year: null,
+        birth_place: null,
+        death_year: null,
+        death_place: null,
+        birth_date_accuracy: null,
+        death_date_accuracy: null,
+        source_count: 0,
+        living: false,
+      };
+
+      const result = await resolvers.Person.research_tip(
+        person,
+        {},
+        mockContext,
+      );
+      expect(result).toBeNull();
+    });
+
+    it('suggests identifying placeholder parent when present', async () => {
+      const person = {
+        id: 'p1',
+        is_placeholder: false,
+        birth_year: 1900,
+        birth_place: 'New York',
+        death_year: 1980,
+        death_place: 'Boston',
+        birth_date_accuracy: 'EXACT',
+        death_date_accuracy: 'EXACT',
+        source_count: 5,
+        living: false,
+      };
+
+      mockContext.loaders.familiesAsChildLoader.load.mockResolvedValue([
+        { id: 'f1', husband_id: 'father1', wife_id: 'mother1' },
+      ]);
+      mockContext.loaders.personLoader.loadMany.mockResolvedValue([
+        { id: 'father1', is_placeholder: true, sex: 'M' },
+        { id: 'mother1', is_placeholder: false, sex: 'F' },
+      ]);
+
+      const result = await resolvers.Person.research_tip(
+        person,
+        {},
+        mockContext,
+      );
+      expect(result).toContain('Identify unknown father');
+    });
+
+    it('suggests finding birth record when birth year is missing', async () => {
+      const person = {
+        id: 'p1',
+        is_placeholder: false,
+        birth_year: null,
+        birth_place: 'New York',
+        death_year: 1980,
+        death_place: 'Boston',
+        birth_date_accuracy: null,
+        death_date_accuracy: 'EXACT',
+        source_count: 5,
+        living: false,
+      };
+
+      mockContext.loaders.familiesAsChildLoader.load.mockResolvedValue([]);
+
+      const result = await resolvers.Person.research_tip(
+        person,
+        {},
+        mockContext,
+      );
+      expect(result).toContain('birth record');
+    });
+
+    it('suggests finding death record when death year is missing for deceased', async () => {
+      const person = {
+        id: 'p1',
+        is_placeholder: false,
+        birth_year: 1900,
+        birth_place: 'New York',
+        death_year: null,
+        death_place: null,
+        birth_date_accuracy: 'EXACT',
+        death_date_accuracy: null,
+        source_count: 5,
+        living: false,
+      };
+
+      mockContext.loaders.familiesAsChildLoader.load.mockResolvedValue([]);
+
+      const result = await resolvers.Person.research_tip(
+        person,
+        {},
+        mockContext,
+      );
+      expect(result).toContain('death record');
+    });
+
+    it('suggests refining estimated birth date', async () => {
+      const person = {
+        id: 'p1',
+        is_placeholder: false,
+        birth_year: 1900,
+        birth_place: 'New York',
+        death_year: 1980,
+        death_place: 'Boston',
+        birth_date_accuracy: 'ESTIMATED',
+        death_date_accuracy: 'EXACT',
+        source_count: 5,
+        living: false,
+      };
+
+      mockContext.loaders.familiesAsChildLoader.load.mockResolvedValue([]);
+
+      const result = await resolvers.Person.research_tip(
+        person,
+        {},
+        mockContext,
+      );
+      expect(result).toContain('Refine estimated birth date');
+    });
+
+    it('suggests attaching sources when source_count is 0', async () => {
+      const person = {
+        id: 'p1',
+        is_placeholder: false,
+        birth_year: 1900,
+        birth_place: 'New York',
+        death_year: 1980,
+        death_place: 'Boston',
+        birth_date_accuracy: 'EXACT',
+        death_date_accuracy: 'EXACT',
+        source_count: 0,
+        living: false,
+      };
+
+      mockContext.loaders.familiesAsChildLoader.load.mockResolvedValue([]);
+
+      const result = await resolvers.Person.research_tip(
+        person,
+        {},
+        mockContext,
+      );
+      expect(result).toContain('Attach at least one high-quality source');
+    });
+
+    it('suggests review when all gaps are filled', async () => {
+      const person = {
+        id: 'p1',
+        is_placeholder: false,
+        birth_year: 1900,
+        birth_place: 'New York',
+        death_year: 1980,
+        death_place: 'Boston',
+        birth_date_accuracy: 'EXACT',
+        death_date_accuracy: 'EXACT',
+        source_count: 5,
+        living: false,
+      };
+
+      mockContext.loaders.familiesAsChildLoader.load.mockResolvedValue([]);
+
+      const result = await resolvers.Person.research_tip(
+        person,
+        {},
+        mockContext,
+      );
+      expect(result).toContain('Review existing sources');
     });
   });
 });

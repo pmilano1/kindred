@@ -14,6 +14,13 @@ export interface SiteSettings {
   show_coats_of_arms: boolean;
   admin_email: string | null;
   footer_text: string | null;
+  // Research queue scoring weights (Issue #195)
+  research_weight_missing_core_dates: number;
+  research_weight_missing_places: number;
+  research_weight_estimated_dates: number;
+  research_weight_placeholder_parent: number;
+  research_weight_low_sources: number;
+  research_weight_manual_priority: number;
 }
 
 const DEFAULT_SETTINGS: SiteSettings = {
@@ -30,6 +37,13 @@ const DEFAULT_SETTINGS: SiteSettings = {
   show_coats_of_arms: true,
   admin_email: null,
   footer_text: null,
+  // Research queue scoring weights (Issue #195)
+  research_weight_missing_core_dates: 30,
+  research_weight_missing_places: 15,
+  research_weight_estimated_dates: 20,
+  research_weight_placeholder_parent: 40,
+  research_weight_low_sources: 25,
+  research_weight_manual_priority: 10,
 };
 
 // Cache settings for 5 minutes
@@ -69,6 +83,25 @@ export async function getSettings(): Promise<SiteSettings> {
       show_coats_of_arms: dbSettings.show_coats_of_arms !== 'false',
       admin_email: dbSettings.admin_email || null,
       footer_text: dbSettings.footer_text || null,
+      // Research queue scoring weights (Issue #195)
+      research_weight_missing_core_dates:
+        parseInt(dbSettings.research_weight_missing_core_dates, 10) ||
+        DEFAULT_SETTINGS.research_weight_missing_core_dates,
+      research_weight_missing_places:
+        parseInt(dbSettings.research_weight_missing_places, 10) ||
+        DEFAULT_SETTINGS.research_weight_missing_places,
+      research_weight_estimated_dates:
+        parseInt(dbSettings.research_weight_estimated_dates, 10) ||
+        DEFAULT_SETTINGS.research_weight_estimated_dates,
+      research_weight_placeholder_parent:
+        parseInt(dbSettings.research_weight_placeholder_parent, 10) ||
+        DEFAULT_SETTINGS.research_weight_placeholder_parent,
+      research_weight_low_sources:
+        parseInt(dbSettings.research_weight_low_sources, 10) ||
+        DEFAULT_SETTINGS.research_weight_low_sources,
+      research_weight_manual_priority:
+        parseInt(dbSettings.research_weight_manual_priority, 10) ||
+        DEFAULT_SETTINGS.research_weight_manual_priority,
     };
 
     settingsCache = { settings, timestamp: Date.now() };

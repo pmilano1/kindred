@@ -1,3 +1,6 @@
+// Date accuracy values for estimated dates (Issue #195)
+export type DateAccuracy = 'EXACT' | 'ESTIMATED' | 'RANGE' | 'UNKNOWN';
+
 export interface Person {
   id: string;
   familysearch_id: string | null;
@@ -28,6 +31,16 @@ export interface Person {
   last_researched: string | null;
   is_notable: boolean;
   notable_description: string | null;
+  // Estimated dates and placeholder support (Issue #195)
+  birth_date_accuracy: DateAccuracy | null;
+  birth_year_min: number | null;
+  birth_year_max: number | null;
+  death_date_accuracy: DateAccuracy | null;
+  death_year_min: number | null;
+  death_year_max: number | null;
+  is_placeholder: boolean;
+  // Computed research tip
+  research_tip?: string | null;
 }
 
 // Unified life event (combines residence, occupation, and other events)

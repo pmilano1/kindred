@@ -25,6 +25,12 @@ export interface UseInfiniteScrollOptions {
    * @default true
    */
   enabled?: boolean;
+  /**
+   * CSS selector for the scroll container (uses .content-wrapper by default)
+   * Set to null to use viewport
+   * @default '.content-wrapper'
+   */
+  scrollContainerSelector?: string | null;
 }
 
 export interface UseInfiniteScrollResult {
@@ -64,6 +70,7 @@ export function useInfiniteScroll({
   onLoadMore,
   threshold = 200,
   enabled = true,
+  scrollContainerSelector = '.content-wrapper',
 }: UseInfiniteScrollOptions): UseInfiniteScrollResult {
   const [isLoading, setIsLoading] = useState(false);
   const observerRef = useRef<IntersectionObserver | null>(null);
@@ -94,6 +101,11 @@ export function useInfiniteScroll({
         return;
       }
 
+      // Find the scroll container
+      const scrollContainer = scrollContainerSelector
+        ? document.querySelector(scrollContainerSelector)
+        : null;
+
       observerRef.current = new IntersectionObserver(
         (entries) => {
           const [entry] = entries;
@@ -103,13 +115,14 @@ export function useInfiniteScroll({
           }
         },
         {
+          root: scrollContainer,
           rootMargin: `${threshold}px`,
         },
       );
 
       observerRef.current.observe(node);
     },
-    [enabled, hasNextPage, loading, threshold],
+    [enabled, hasNextPage, loading, threshold, scrollContainerSelector],
   );
 
   // Cleanup on unmount

@@ -46,7 +46,7 @@ async function executeViaProxy<T>(
     headers['X-API-Key'] = GRAPHQL_PROXY_API_KEY;
   }
 
-  const response = await fetch(GRAPHQL_PROXY_URL!, {
+  const response = await fetch(GRAPHQL_PROXY_URL ?? '', {
     method: 'POST',
     headers,
     body: JSON.stringify({ query: queryString, variables }),

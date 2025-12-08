@@ -168,9 +168,10 @@ export function generateGedcom(
     if (!hasHusband && !hasWife && !hasChildren) continue;
     const xref = generateXref('F', family.id);
     lines.push(`0 ${xref} FAM`);
-    if (hasHusband)
-      lines.push(`1 HUSB ${generateXref('I', family.husband_id!)}`);
-    if (hasWife) lines.push(`1 WIFE ${generateXref('I', family.wife_id!)}`);
+    if (hasHusband && family.husband_id)
+      lines.push(`1 HUSB ${generateXref('I', family.husband_id)}`);
+    if (hasWife && family.wife_id)
+      lines.push(`1 WIFE ${generateXref('I', family.wife_id)}`);
     for (const childId of family.children_ids) {
       if (filteredPeopleIds.has(childId))
         lines.push(`1 CHIL ${generateXref('I', childId)}`);
@@ -374,7 +375,7 @@ export function parseGedcom(content: string): GedcomParseResult {
       currentEvent = null;
       if (tag === 'HUSB') currentFamily.husband_xref = value;
       else if (tag === 'WIFE') currentFamily.wife_xref = value;
-      else if (tag === 'CHIL') currentFamily.children_xrefs!.push(value);
+      else if (tag === 'CHIL') currentFamily.children_xrefs?.push(value);
       else if (tag === 'MARR') currentEvent = { type: 'marriage' };
     }
 

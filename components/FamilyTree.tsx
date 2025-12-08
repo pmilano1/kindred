@@ -480,7 +480,9 @@ export default function FamilyTree({
       const allDescendants: DescendantNode[] = [];
       const collectNodes = (node: DescendantNode) => {
         allDescendants.push(node);
-        node.children.forEach(collectNodes);
+        for (const child of node.children) {
+          collectNodes(child);
+        }
       };
       collectNodes(descendantTree);
 
@@ -510,8 +512,8 @@ export default function FamilyTree({
       }
 
       // Calculate bounds
-      const xs = allDescendants.map((n) => n.x!);
-      const ys = allDescendants.map((n) => n.y!);
+      const xs = allDescendants.map((n) => n.x ?? 0);
+      const ys = allDescendants.map((n) => n.y ?? 0);
       const treeWidth = Math.max(...xs) - Math.min(...xs) + nodeWidth * 2;
       const treeHeight = Math.max(...ys) + nodeHeight + 40;
 
@@ -525,7 +527,7 @@ export default function FamilyTree({
       const g = svg.append('g');
 
       // Draw connections (lines from parent to children)
-      allDescendants.forEach((node) => {
+      for (const node of allDescendants) {
         if (
           node.children.length > 0 &&
           node.x !== undefined &&
@@ -545,7 +547,7 @@ export default function FamilyTree({
             .attr('stroke-width', 1);
 
           // Horizontal line spanning children
-          const childXs = node.children.map((c) => c.x!);
+          const childXs = node.children.map((c) => c.x ?? 0);
           const minChildX = Math.min(...childXs);
           const maxChildX = Math.max(...childXs);
           g.append('line')
@@ -557,22 +559,18 @@ export default function FamilyTree({
             .attr('stroke-width', 1);
 
           // Vertical lines down to each child
-          node.children.forEach((child) => {
+          for (const child of node.children) {
+            const childX = child.x ?? 0;
             g.append('line')
-              .attr('x1', child.x!)
+              .attr('x1', childX)
               .attr('y1', midY)
-              .attr('x2', child.x!)
+              .attr('x2', childX)
               .attr('y2', childY)
               .attr('stroke', '#4a5568')
               .attr('stroke-width', 1);
-          });
+          }
         }
-
-        // Marriage connector line between person and spouse
-        if (node.spouse && node.x !== undefined && node.y !== undefined) {
-          // No marriage line - cleaner look
-        }
-      });
+      }
 
       // Status color map (same as ancestor view)
       const statusColors: Record<string, string> = {
@@ -593,8 +591,8 @@ export default function FamilyTree({
       };
 
       // Draw nodes (person tiles) - MATCHING ANCESTOR VIEW STYLING
-      allDescendants.forEach((node) => {
-        if (node.x === undefined || node.y === undefined) return;
+      for (const node of allDescendants) {
+        if (node.x === undefined || node.y === undefined) continue;
 
         const drawPersonTile = (person: TreePerson, x: number, y: number) => {
           const isNotable = person.isNotable;
@@ -726,7 +724,7 @@ export default function FamilyTree({
           const spouseX = node.x + nodeWidth / 2 + spouseGap / 2;
           drawPersonTile(node.spouse, spouseX, node.y);
         }
-      });
+      }
 
       // Draw parent nodes (-1 level for navigation)
       if (
@@ -770,7 +768,7 @@ export default function FamilyTree({
         }
 
         // Draw parent tiles (dimmed to indicate navigation)
-        parentNodes.forEach((pn) => {
+        for (const pn of parentNodes) {
           const person = pn.person;
           const isNotable = person.isNotable;
           const tileG = g
@@ -839,7 +837,7 @@ export default function FamilyTree({
             .attr('font-size', '10px')
             .attr('fill', '#9ca3af')
             .text('⬆');
-        });
+        }
       }
 
       // Draw siblings at level 0 - positioned on father's side (left of root)
@@ -860,7 +858,8 @@ export default function FamilyTree({
           ? rootCenterX - nodeWidth / 2 - spouseGap
           : rootCenterX - nodeWidth;
 
-        siblingPeople.forEach((sibling, idx) => {
+        for (let idx = 0; idx < siblingPeople.length; idx++) {
+          const sibling = siblingPeople[idx];
           const sibX = fatherX - (idx + 1) * (nodeWidth + nodeGap);
           const sibCenterX = sibX;
 
@@ -943,7 +942,7 @@ export default function FamilyTree({
             .attr('font-size', '10px')
             .attr('fill', '#9ca3af')
             .text('↔');
-        });
+        }
       }
 
       // Fit to view
@@ -1029,7 +1028,9 @@ export default function FamilyTree({
         if (gen < existingGen) {
           assignedGens.set(node.id, gen);
           const allNodes = nodesByPersonId.get(node.id) || [];
-          allNodes.forEach((n) => (n.y = gen * levelGap + 30));
+          for (const n of allNodes) {
+            n.y = gen * levelGap + 30;
+          }
         }
         return; // Don't recurse again
       }
@@ -1064,7 +1065,7 @@ export default function FamilyTree({
         // Leaf node - assign next available X
         node.x = leafX + nodeWidth / 2;
         leafX += nodeWidth + nodeGap;
-        visitedPositions.set(node.id, { x: node.x, y: node.y! });
+        visitedPositions.set(node.id, { x: node.x, y: node.y ?? 0 });
         return { minX: node.x - nodeWidth / 2, maxX: node.x + nodeWidth / 2 };
       }
 
@@ -1090,7 +1091,7 @@ export default function FamilyTree({
 
       // Center this node under its parents
       node.x = (minX + maxX) / 2;
-      visitedPositions.set(node.id, { x: node.x, y: node.y! });
+      visitedPositions.set(node.id, { x: node.x, y: node.y ?? 0 });
 
       return {
         minX: Math.min(minX, node.x - nodeWidth / 2),
@@ -1104,7 +1105,7 @@ export default function FamilyTree({
     if (rootSpouse && pedigree.x !== undefined) {
       const shift = (nodeWidth + spouseGap) / 2;
       pedigree.x -= shift;
-      visitedPositions.set(pedigree.id, { x: pedigree.x, y: pedigree.y! });
+      visitedPositions.set(pedigree.id, { x: pedigree.x, y: pedigree.y ?? 0 });
     }
 
     // Collect all nodes - deduplicate by ID to handle pedigree collapse
@@ -1124,7 +1125,9 @@ export default function FamilyTree({
       (f) => f.husband_id === rootPersonId || f.wife_id === rootPersonId,
     );
     const childIds: string[] = [];
-    childFamilies.forEach((f) => childIds.push(...f.children));
+    for (const f of childFamilies) {
+      childIds.push(...f.children);
+    }
     const childPeople = childIds
       .map((id) => data.people[id])
       .filter(Boolean)
@@ -1234,8 +1237,8 @@ export default function FamilyTree({
     };
 
     // Draw nodes
-    allNodes.forEach((node) => {
-      if (node.x === undefined || node.y === undefined) return;
+    for (const node of allNodes) {
+      if (node.x === undefined || node.y === undefined) continue;
       const person = node.person;
       const isNotable = person.isNotable || node.isNotableBranch;
       const priority = person.research_priority || 0;
@@ -1371,7 +1374,7 @@ export default function FamilyTree({
         .attr('font-size', '10px')
         .attr('fill', '#6b7280')
         .text(years);
-    });
+    }
 
     // Draw root spouse at level 0 (like descendant view) - positioned to the right of root
     if (rootSpouse && pedigree.x !== undefined && pedigree.y !== undefined) {
@@ -1463,8 +1466,9 @@ export default function FamilyTree({
         parentY !== undefined ? rootY + (parentY - rootY) / 2 : rootY - 30;
 
       // All siblings go to the LEFT of root (since spouse is on right)
-      ancestorSiblingPeople.forEach((sibling, idx) => {
-        const sibX = pedigree.x! - (idx + 1) * (nodeWidth + nodeGap);
+      for (let idx = 0; idx < ancestorSiblingPeople.length; idx++) {
+        const sibling = ancestorSiblingPeople[idx];
+        const sibX = (pedigree.x ?? 0) - (idx + 1) * (nodeWidth + nodeGap);
 
         // Draw connecting line from sibling to the parent junction
         g.append('path')
@@ -1565,7 +1569,7 @@ export default function FamilyTree({
           .attr('font-size', '10px')
           .attr('fill', '#9ca3af')
           .text('↔');
-      });
+      }
     }
 
     // Draw children of root (-1 level for navigation) ABOVE the root (since tree goes down to ancestors)
@@ -1605,7 +1609,8 @@ export default function FamilyTree({
           .attr('stroke-width', 1);
       }
 
-      childPeople.forEach((child, idx) => {
+      for (let idx = 0; idx < childPeople.length; idx++) {
+        const child = childPeople[idx];
         const childX = startX + idx * (nodeWidth + nodeGap);
 
         // Line from horizontal bar up to child bottom
@@ -1689,7 +1694,7 @@ export default function FamilyTree({
           .attr('font-size', '10px')
           .attr('fill', '#9ca3af')
           .text('⬇');
-      });
+      }
     }
 
     // Zoom/pan
@@ -1763,6 +1768,13 @@ export default function FamilyTree({
       className="relative w-full h-full"
       ref={containerRef}
       onClick={() => setPriorityPopup(null)}
+      onKeyDown={(e) => {
+        if (e.key === 'Escape') {
+          setPriorityPopup(null);
+        }
+      }}
+      role="application"
+      tabIndex={-1}
     >
       <svg
         ref={svgRef}
@@ -1835,16 +1847,22 @@ export default function FamilyTree({
       {/* Priority/Status Popup */}
       {priorityPopup && (
         <div
+          role="dialog"
+          aria-label="Priority and status settings"
           className="absolute bg-[var(--card)] text-[var(--card-foreground)] rounded-lg shadow-xl border border-[var(--border)] p-3 z-50"
           style={{ left: priorityPopup.x, top: priorityPopup.y }}
           onClick={(e) => e.stopPropagation()}
+          onKeyDown={(e) => e.stopPropagation()}
         >
           <div className="font-semibold text-sm mb-2 truncate max-w-48">
             {priorityPopup.personName}
           </div>
 
           <div className="mb-3">
-            <label className="text-xs font-medium text-[var(--muted-foreground)] flex items-center gap-1">
+            <label
+              htmlFor="priority-slider"
+              className="text-xs font-medium text-[var(--muted-foreground)] flex items-center gap-1"
+            >
               Priority
               <span
                 className="text-[var(--muted-foreground)] cursor-help"
@@ -1855,6 +1873,7 @@ export default function FamilyTree({
             </label>
             <div className="flex items-center gap-2 mt-1">
               <input
+                id="priority-slider"
                 type="range"
                 min="0"
                 max="10"

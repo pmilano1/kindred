@@ -25,29 +25,29 @@
     "rules": {
       "recommended": true,
       "correctness": {
-        "noUnusedVariables": "warn",
-        "noUnusedImports": "warn"
+        "noUnusedVariables": "error",
+        "noUnusedImports": "error"
       },
       "suspicious": {
-        "noExplicitAny": "off",
-        "noImplicitAnyLet": "off",
-        "noArrayIndexKey": "off",
-        "noAssignInExpressions": "off",
-        "useIterableCallbackReturn": "off"
+        "noExplicitAny": "error",
+        "noImplicitAnyLet": "error",
+        "noArrayIndexKey": "error",
+        "noAssignInExpressions": "error",
+        "useIterableCallbackReturn": "error"
       },
       "style": {
-        "noNonNullAssertion": "off"
+        "noNonNullAssertion": "error"
       },
       "a11y": {
-        "noSvgWithoutTitle": "off",
-        "useButtonType": "off",
-        "noLabelWithoutControl": "off",
-        "useKeyWithClickEvents": "off",
-        "noStaticElementInteractions": "off",
-        "useSemanticElements": "off"
+        "noSvgWithoutTitle": "error",
+        "useButtonType": "error",
+        "noLabelWithoutControl": "error",
+        "useKeyWithClickEvents": "error",
+        "noStaticElementInteractions": "error",
+        "useSemanticElements": "error"
       },
       "complexity": {
-        "noForEach": "off"
+        "noForEach": "error"
       }
     }
   },

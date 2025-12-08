@@ -1,94 +1,71 @@
-# Contributing to Genealogy Frontend
+# Contributing to Kindred
 
 ## Git Workflow
 
-This project uses a **Git Flow-lite** branching strategy to ensure code quality and stable releases.
+This project uses **trunk-based development** with short-lived feature branches.
 
 ### Branch Structure
 
 | Branch | Purpose | Protected |
 |--------|---------|-----------|
 | `main` | Production-ready code, deployed automatically | ✅ Yes |
-| `develop` | Integration branch for features | ❌ No |
-| `feature/*` | New features | ❌ No |
+| `feat/*` | New features | ❌ No |
 | `fix/*` | Bug fixes | ❌ No |
-| `hotfix/*` | Urgent production fixes | ❌ No |
+| `refactor/*` | Code refactoring | ❌ No |
+| `docs/*` | Documentation only | ❌ No |
 
 ### Development Workflow
 
-1. **Start from develop**
+1. **Start from main**
    ```bash
-   git checkout develop
-   git pull origin develop
-   git checkout -b feature/your-feature-name
+   git checkout main
+   git pull origin main
+   git checkout -b feat/your-feature-name
    ```
 
 2. **Make your changes**
    - Write code
-   - Add tests
-   - Run `npm run lint` and `npm test`
+   - Add/update tests
+   - Run checks locally:
+     ```bash
+     npm run lint      # Biome linter - must pass with zero warnings
+     npm run test:fast # Vitest - quick test run
+     npm run build     # TypeScript compilation check
+     ```
 
 3. **Push and create PR**
    ```bash
-   git push origin feature/your-feature-name
-   gh pr create --base develop --title "Feature: Your feature name"
+   git push origin feat/your-feature-name
+   gh pr create --base main --title "feat: your feature name"
    ```
 
 4. **PR Review & Merge**
-   - CI checks must pass (lint, tests, build)
-   - Merge to `develop` when ready
-
-5. **Release to Production**
-   - Create PR from `develop` → `main`
-   - All CI checks must pass
-   - Docker build validation runs
-   - Merge triggers automatic deployment
-
-### Hotfix Workflow (Urgent Production Fixes)
-
-1. **Branch from main**
-   ```bash
-   git checkout main
-   git pull origin main
-   git checkout -b hotfix/critical-bug-fix
-   ```
-
-2. **Fix, test, and push**
-   ```bash
-   git push origin hotfix/critical-bug-fix
-   gh pr create --base main --title "Hotfix: Critical bug fix"
-   ```
-
-3. **After merging to main, sync to develop**
-   ```bash
-   git checkout develop
-   git merge main
-   git push origin develop
-   ```
+   - CI checks must pass (lint, test, build)
+   - Docker build validation runs for PRs to main
+   - Squash merge to main, delete branch
 
 ## CI/CD Pipeline
 
 ### Pull Request Checks (`ci.yml`)
-- ✅ Lint check
-- ✅ Unit tests with coverage
-- ✅ Build verification
+- ✅ Lint check (Biome)
+- ✅ Unit tests with coverage (Vitest)
+- ✅ Build verification (Next.js)
 - ✅ Docker build validation (for PRs to main)
+- ⏭️ Skips expensive jobs for docs-only changes
 
 ### Production Deploy (`deploy.yml`)
 Triggered on merge to `main`:
-- Run tests
 - Build Docker image
 - Validate container health
 - Push to ECR
 - Deploy to AWS App Runner
-- Cleanup old images
 
 ## Code Standards
 
 - **TypeScript**: Strict mode enabled
-- **Linting**: ESLint with Next.js config
-- **Testing**: Jest with React Testing Library
-- **Formatting**: Follow existing code style
+- **Linting**: Biome (replaces ESLint + Prettier)
+- **Testing**: Vitest with React Testing Library
+- **Formatting**: Biome handles formatting
 
 ## Commit Messages
 
@@ -103,19 +80,51 @@ test: Add unit tests for tree data structure
 chore: Update dependencies
 ```
 
+## Testing
+
+### Test Commands
+
+| Command | Purpose |
+|---------|---------|
+| `npm run test` | Run all tests with coverage |
+| `npm run test:fast` | Run tests without coverage (faster) |
+| `npm run test:watch` | Watch mode for development |
+| `npm run test:ci` | CI mode with verbose output |
+| `npm run check` | Run lint + fast tests together |
+
+### Writing Tests
+
+Tests are located next to their source files or in `__tests__` directories:
+- Component tests: `components/__tests__/ComponentName.test.tsx`
+- Utility tests: `lib/__tests__/utilityName.test.ts`
+
+Use React Testing Library for component tests:
+```tsx
+import { render, screen } from '@testing-library/react';
+import { describe, it, expect } from 'vitest';
+import MyComponent from '../MyComponent';
+
+describe('MyComponent', () => {
+  it('renders correctly', () => {
+    render(<MyComponent />);
+    expect(screen.getByText('Expected Text')).toBeInTheDocument();
+  });
+});
+```
+
 ## Getting Started
 
 ```bash
 # Clone and install
-git clone git@github.com:pmilano1/genealogy-frontend.git
-cd genealogy-frontend
+git clone git@github.com:pmilano1/kindred.git
+cd kindred
 npm install
 
 # Run development server
 npm run dev
 
-# Run tests
-npm test
+# Run all checks before committing
+npm run check
 
 # Build for production
 npm run build
@@ -127,9 +136,9 @@ Branch protection requires GitHub Pro or a public repository. Once this repo is 
 
 ```bash
 # Run this after making the repo public
-gh api repos/pmilano1/genealogy-frontend/branches/main/protection \
+gh api repos/pmilano1/kindred/branches/main/protection \
   -X PUT \
-  -F required_status_checks='{"strict":true,"contexts":["Lint & Test","Build Check"]}' \
+  -F required_status_checks='{"strict":true,"contexts":["Lint","Test","Build Check"]}' \
   -F enforce_admins=false \
   -F required_pull_request_reviews='{"required_approving_review_count":0}' \
   -F restrictions=null \

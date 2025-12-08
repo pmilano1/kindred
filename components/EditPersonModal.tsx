@@ -125,10 +125,10 @@ export default function EditPersonModal({ person, isOpen, onClose, onSuccess }: 
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-      <div className="bg-white rounded-xl shadow-2xl w-full max-w-3xl max-h-[90vh] overflow-y-auto m-4">
-        <div className="p-6 border-b sticky top-0 bg-white z-10">
+      <div className="bg-[var(--card)] text-[var(--card-foreground)] rounded-xl shadow-2xl w-full max-w-3xl max-h-[90vh] overflow-y-auto m-4">
+        <div className="p-6 border-b border-[var(--border)] sticky top-0 bg-[var(--card)] z-10">
           <div className="flex justify-between items-center">
-            <h2 className="text-2xl font-bold text-gray-900">Edit Person</h2>
+            <h2 className="text-2xl font-bold">Edit Person</h2>
             <Button variant="ghost" size="icon" onClick={onClose}><X className="w-5 h-5" /></Button>
           </div>
         </div>
@@ -252,7 +252,7 @@ export default function EditPersonModal({ person, isOpen, onClose, onSuccess }: 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <div className="space-y-4">
-      <h3 className="font-semibold text-gray-700 border-b pb-2">{title}</h3>
+      <h3 className="font-semibold text-[var(--muted-foreground)] border-b border-[var(--border)] pb-2">{title}</h3>
       {children}
     </div>
   );

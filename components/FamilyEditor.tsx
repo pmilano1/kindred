@@ -159,11 +159,11 @@ export default function FamilyEditor({ personId, personSex, families, canEdit }:
               <>
                 {spouse && (
                   <div className="mb-4">
-                    <p className="text-sm text-gray-500 mb-2">Spouse</p>
-                    <div className={`p-4 rounded-lg border-l-4 ${spouse.sex === 'F' ? 'border-l-pink-400 bg-pink-50' : 'border-l-blue-400 bg-blue-50'} flex justify-between items-start`}>
+                    <p className="text-sm text-[var(--muted-foreground)] mb-2">Spouse</p>
+                    <div className={`p-4 rounded-lg border-l-4 ${spouse.sex === 'F' ? 'border-l-pink-400 bg-pink-50 dark:bg-pink-950' : 'border-l-blue-400 bg-blue-50 dark:bg-blue-950'} flex justify-between items-start`}>
                       <Link href={`/person/${spouse.id}`} className="flex-1">
                         <p className="font-semibold">{spouse.name_full}</p>
-                        <p className="text-sm text-gray-500">
+                        <p className="text-sm text-[var(--muted-foreground)]">
                           {family.marriage_place && `Married in ${family.marriage_place}`}
                           {family.marriage_year && ` (${family.marriage_year})`}
                         </p>
@@ -176,7 +176,7 @@ export default function FamilyEditor({ personId, personSex, families, canEdit }:
                 {/* Children */}
                 <div>
                   <div className="flex justify-between items-center mb-2">
-                    <p className="text-sm text-gray-500">Children ({family.children.length})</p>
+                    <p className="text-sm text-[var(--muted-foreground)]">Children ({family.children.length})</p>
                     {canEdit && (
                       <Button variant="link" size="sm" onClick={() => setAddingChildTo(addingChildTo === family.id ? null : family.id)}>
                         {addingChildTo === family.id ? 'Cancel' : '+ Add Child'}

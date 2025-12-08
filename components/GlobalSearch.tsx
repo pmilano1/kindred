@@ -85,19 +85,19 @@ export default function GlobalSearch() {
 
       {/* Dropdown results */}
       {isOpen && (
-        <div className="absolute top-full mt-2 w-72 bg-white rounded-lg shadow-xl border z-50 max-h-80 overflow-y-auto">
+        <div className="absolute top-full mt-2 w-72 bg-[var(--card)] text-[var(--card-foreground)] rounded-lg shadow-xl border border-[var(--border)] z-50 max-h-80 overflow-y-auto">
           {loading ? (
-            <div className="p-4 text-center text-gray-500 text-sm">Searching...</div>
+            <div className="p-4 text-center text-[var(--muted-foreground)] text-sm">Searching...</div>
           ) : results.length > 0 ? (
             <>
               {results.map((person) => (
                 <button
                   key={person.id}
                   onClick={() => handleSelect(person.id)}
-                  className="w-full px-4 py-3 text-left hover:bg-gray-50 border-b last:border-b-0 transition-colors"
+                  className="w-full px-4 py-3 text-left hover:bg-[var(--accent)] border-b border-[var(--border)] last:border-b-0 transition-colors"
                 >
-                  <div className="font-medium text-gray-900">{person.name_full}</div>
-                  <div className="text-xs text-gray-500">
+                  <div className="font-medium">{person.name_full}</div>
+                  <div className="text-xs text-[var(--muted-foreground)]">
                     {person.birth_year && `b. ${person.birth_year}`}
                     {person.birth_year && person.death_year && ' – '}
                     {person.death_year && `d. ${person.death_year}`}
@@ -108,14 +108,14 @@ export default function GlobalSearch() {
               {data?.search?.totalCount && data.search.totalCount > 8 && (
                 <button
                   onClick={() => { router.push(`/search?q=${encodeURIComponent(query)}`); setIsFocused(false); }}
-                  className="w-full px-4 py-2 text-center text-sm text-blue-600 hover:bg-blue-50"
+                  className="w-full px-4 py-2 text-center text-sm text-blue-600 dark:text-blue-400 hover:bg-[var(--accent)]"
                 >
                   View all {data.search.totalCount} results →
                 </button>
               )}
             </>
           ) : query.length >= 2 ? (
-            <div className="p-4 text-center text-gray-500 text-sm">No results found</div>
+            <div className="p-4 text-center text-[var(--muted-foreground)] text-sm">No results found</div>
           ) : null}
         </div>
       )}

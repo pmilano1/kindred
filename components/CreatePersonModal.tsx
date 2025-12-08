@@ -91,10 +91,10 @@ export default function CreatePersonModal({ isOpen, onClose, onSuccess }: Create
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-      <div className="bg-white rounded-xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto m-4">
-        <div className="p-6 border-b">
+      <div className="bg-[var(--card)] text-[var(--card-foreground)] rounded-xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto m-4">
+        <div className="p-6 border-b border-[var(--border)]">
           <div className="flex justify-between items-center">
-            <h2 className="text-2xl font-bold text-gray-900">Add New Person</h2>
+            <h2 className="text-2xl font-bold">Add New Person</h2>
             <Button variant="ghost" size="icon" onClick={() => { resetForm(); onClose(); }}><X className="w-5 h-5" /></Button>
           </div>
         </div>
@@ -106,7 +106,7 @@ export default function CreatePersonModal({ isOpen, onClose, onSuccess }: Create
           
           {/* Name Section */}
           <div className="space-y-4">
-            <h3 className="font-semibold text-gray-700 border-b pb-2">Name</h3>
+            <h3 className="font-semibold text-[var(--muted-foreground)] border-b border-[var(--border)] pb-2">Name</h3>
             <div className="space-y-2">
               <Label>Full Name *</Label>
               <Input type="text" required value={formData.name_full}
@@ -131,7 +131,7 @@ export default function CreatePersonModal({ isOpen, onClose, onSuccess }: Create
           
           {/* Demographics */}
           <div className="space-y-4">
-            <h3 className="font-semibold text-gray-700 border-b pb-2">Demographics</h3>
+            <h3 className="font-semibold text-[var(--muted-foreground)] border-b border-[var(--border)] pb-2">Demographics</h3>
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label>Sex</Label>
@@ -156,7 +156,7 @@ export default function CreatePersonModal({ isOpen, onClose, onSuccess }: Create
           
           {/* Birth */}
           <div className="space-y-4">
-            <h3 className="font-semibold text-gray-700 border-b pb-2">Birth</h3>
+            <h3 className="font-semibold text-[var(--muted-foreground)] border-b border-[var(--border)] pb-2">Birth</h3>
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label>Birth Year</Label>
@@ -176,7 +176,7 @@ export default function CreatePersonModal({ isOpen, onClose, onSuccess }: Create
           {/* Death (hidden if living) */}
           {!formData.living && (
             <div className="space-y-4">
-              <h3 className="font-semibold text-gray-700 border-b pb-2">Death</h3>
+              <h3 className="font-semibold text-[var(--muted-foreground)] border-b border-[var(--border)] pb-2">Death</h3>
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label>Death Year</Label>

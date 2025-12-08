@@ -1270,13 +1270,13 @@ export default function FamilyTree({ rootPersonId, showAncestors, onPersonClick,
         </div>
       )}
       {loading && !data && (
-        <div className="absolute inset-0 flex items-center justify-center text-gray-500">Loading...</div>
+        <div className="absolute inset-0 flex items-center justify-center text-[var(--muted-foreground)]">Loading...</div>
       )}
 
       {/* Notable Relatives Panel */}
       {data && data.notableRelatives.length > 0 && (
         <div className="absolute top-4 right-4 z-40">
-          <div className="bg-white rounded-lg shadow-lg border border-amber-300 overflow-hidden max-w-xs">
+          <div className="bg-[var(--card)] rounded-lg shadow-lg border border-amber-300 overflow-hidden max-w-xs">
             <Button
               variant="ghost"
               onClick={(e) => { e.stopPropagation(); setNotablePanelOpen(!notablePanelOpen); }}
@@ -1295,8 +1295,8 @@ export default function FamilyTree({ rootPersonId, showAncestors, onPersonClick,
                     className="w-full px-3 py-2 justify-start hover:bg-amber-50 border-t border-amber-100 text-sm rounded-none h-auto"
                   >
                     <div className="text-left">
-                      <div className="font-medium text-gray-800">{rel.person.name_full}</div>
-                      <div className="text-xs text-gray-500">{rel.generation} generation{rel.generation !== 1 ? 's' : ''} away</div>
+                      <div className="font-medium text-[var(--foreground)]">{rel.person.name_full}</div>
+                      <div className="text-xs text-[var(--muted-foreground)]">{rel.generation} generation{rel.generation !== 1 ? 's' : ''} away</div>
                     </div>
                   </Button>
                 ))}
@@ -1309,16 +1309,16 @@ export default function FamilyTree({ rootPersonId, showAncestors, onPersonClick,
       {/* Priority/Status Popup */}
       {priorityPopup && (
         <div
-          className="absolute bg-white rounded-lg shadow-xl border p-3 z-50"
+          className="absolute bg-[var(--card)] text-[var(--card-foreground)] rounded-lg shadow-xl border border-[var(--border)] p-3 z-50"
           style={{ left: priorityPopup.x, top: priorityPopup.y }}
           onClick={(e) => e.stopPropagation()}
         >
           <div className="font-semibold text-sm mb-2 truncate max-w-48">{priorityPopup.personName}</div>
 
           <div className="mb-3">
-            <label className="text-xs font-medium text-gray-600 flex items-center gap-1">
+            <label className="text-xs font-medium text-[var(--muted-foreground)] flex items-center gap-1">
               Priority
-              <span className="text-gray-400 cursor-help" title="0 = No urgency, 10 = Research immediately. Higher priority people appear first in research queue.">ⓘ</span>
+              <span className="text-[var(--muted-foreground)] cursor-help" title="0 = No urgency, 10 = Research immediately. Higher priority people appear first in research queue.">ⓘ</span>
             </label>
             <div className="flex items-center gap-2 mt-1">
               <input
@@ -1335,7 +1335,7 @@ export default function FamilyTree({ rootPersonId, showAncestors, onPersonClick,
               />
               <span className="text-sm font-bold w-6">{priorityPopup.priority}</span>
             </div>
-            <div className="text-[10px] text-gray-400 mt-0.5">
+            <div className="text-[10px] text-[var(--muted-foreground)] mt-0.5">
               {priorityPopup.priority === 0 ? 'Not prioritized' :
                priorityPopup.priority <= 3 ? 'Low priority' :
                priorityPopup.priority <= 6 ? 'Medium priority' :
@@ -1344,9 +1344,9 @@ export default function FamilyTree({ rootPersonId, showAncestors, onPersonClick,
           </div>
 
           <div>
-            <Label className="text-xs font-medium text-gray-600 flex items-center gap-1">
+            <Label className="text-xs font-medium text-[var(--muted-foreground)] flex items-center gap-1">
               Status
-              <span className="text-gray-400 cursor-help" title="Tracks research progress: Not Started → In Progress → Partial/Verified. Use Brick Wall when stuck.">ⓘ</span>
+              <span className="text-[var(--muted-foreground)] cursor-help" title="Tracks research progress: Not Started → In Progress → Partial/Verified. Use Brick Wall when stuck.">ⓘ</span>
             </Label>
             <Select
               value={priorityPopup.status}
@@ -1364,13 +1364,13 @@ export default function FamilyTree({ rootPersonId, showAncestors, onPersonClick,
                 ))}
               </SelectContent>
             </Select>
-            <div className="text-[10px] text-gray-400 mt-0.5">
+            <div className="text-[10px] text-[var(--muted-foreground)] mt-0.5">
               {STATUS_OPTIONS.find(s => s.value === priorityPopup.status)?.desc}
             </div>
           </div>
 
           <div className="mt-2 text-right">
-            <Button variant="link" size="sm" onClick={() => setPriorityPopup(null)} className="text-xs text-gray-500 hover:text-gray-700">
+            <Button variant="link" size="sm" onClick={() => setPriorityPopup(null)} className="text-xs text-[var(--muted-foreground)] hover:text-[var(--foreground)]">
               Close
             </Button>
           </div>
@@ -1383,7 +1383,7 @@ export default function FamilyTree({ rootPersonId, showAncestors, onPersonClick,
           className="absolute pointer-events-none z-50"
           style={{ left: crestPopup.x, top: crestPopup.y }}
         >
-          <div className="bg-white rounded-lg shadow-xl border-2 border-amber-400 p-2">
+          <div className="bg-[var(--card)] rounded-lg shadow-xl border-2 border-amber-400 p-2">
             <div className="relative w-36 h-36">
               <Image
                 src={crestPopup.url}

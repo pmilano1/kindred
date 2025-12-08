@@ -1,7 +1,7 @@
 'use client';
 
 import { useMutation, useQuery } from '@apollo/client/react';
-import { ArrowLeft, Pencil, Star, Trash2 } from 'lucide-react';
+import { ArrowLeft, Pencil, Star, Trash2, UserCheck } from 'lucide-react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { useSession } from 'next-auth/react';
@@ -16,7 +16,11 @@ import ResearchPanel from '@/components/ResearchPanel';
 import SourcesEditor from '@/components/SourcesEditor';
 import TreeLink from '@/components/TreeLink';
 import { Button, ButtonLink, PageHeader, Textarea } from '@/components/ui';
-import { GET_PERSON, UPDATE_NOTABLE_STATUS } from '@/lib/graphql/queries';
+import {
+  GET_PERSON,
+  SET_MY_PERSON,
+  UPDATE_NOTABLE_STATUS,
+} from '@/lib/graphql/queries';
 import type {
   Fact,
   Family,
@@ -51,11 +55,12 @@ interface Props {
 }
 
 export default function PersonPageClient({ personId }: Props) {
-  const { data: session } = useSession();
+  const { data: session, update: updateSession } = useSession();
   const { data, loading, error } = useQuery<PersonData>(GET_PERSON, {
     variables: { id: personId },
   });
   const [updateNotable] = useMutation(UPDATE_NOTABLE_STATUS);
+  const [setMyPerson] = useMutation(SET_MY_PERSON);
   const [notableEditing, setNotableEditing] = useState(false);
   const [notableDesc, setNotableDesc] = useState('');
   const [showEditModal, setShowEditModal] = useState(false);
@@ -64,6 +69,7 @@ export default function PersonPageClient({ personId }: Props) {
   const canEdit =
     session?.user?.role === 'admin' || session?.user?.role === 'editor';
   const isAdmin = session?.user?.role === 'admin';
+  const isMe = session?.user?.personId === personId;
 
   const handleToggleNotable = async () => {
     const person = data?.person;
@@ -92,6 +98,13 @@ export default function PersonPageClient({ personId }: Props) {
       refetchQueries: [{ query: GET_PERSON, variables: { id: personId } }],
     });
     setNotableEditing(false);
+  };
+
+  const handleToggleThisIsMe = async () => {
+    const newPersonId = isMe ? null : personId;
+    await setMyPerson({ variables: { personId: newPersonId } });
+    // Refresh the session to get the updated personId
+    await updateSession();
   };
 
   if (loading) {
@@ -195,6 +208,30 @@ export default function PersonPageClient({ personId }: Props) {
                 </span>
                 {person.living && (
                   <span className="badge badge-living">Living</span>
+                )}
+                {session?.user && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={handleToggleThisIsMe}
+                    className={
+                      isMe
+                        ? 'bg-green-100 text-green-800 border border-green-300 hover:bg-green-200'
+                        : 'bg-gray-100 text-gray-600 border border-gray-300 hover:bg-gray-200'
+                    }
+                    title={
+                      isMe
+                        ? 'Click to unlink yourself from this person'
+                        : 'Click to mark this person as yourself'
+                    }
+                    icon={
+                      <UserCheck
+                        className={`w-3 h-3 ${isMe ? 'text-green-600' : ''}`}
+                      />
+                    }
+                  >
+                    {isMe ? 'This is Me' : 'This is Me?'}
+                  </Button>
                 )}
                 {canEdit && (
                   <>

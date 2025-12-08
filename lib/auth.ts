@@ -127,12 +127,13 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
     async session({ session }) {
       if (session.user?.email) {
         const userResult = await pool.query(
-          'SELECT id, role FROM users WHERE email = $1',
+          'SELECT id, role, person_id FROM users WHERE email = $1',
           [session.user.email],
         );
         if (userResult.rows.length > 0) {
           session.user.id = userResult.rows[0].id;
           session.user.role = userResult.rows[0].role;
+          session.user.personId = userResult.rows[0].person_id;
 
           // Update last_accessed (throttled to once per minute to reduce DB writes)
           pool
@@ -149,12 +150,13 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
     async jwt({ token, user }) {
       if (user?.email) {
         const userResult = await pool.query(
-          'SELECT id, role FROM users WHERE email = $1',
+          'SELECT id, role, person_id FROM users WHERE email = $1',
           [user.email],
         );
         if (userResult.rows.length > 0) {
           token.userId = userResult.rows[0].id;
           token.role = userResult.rows[0].role;
+          token.personId = userResult.rows[0].person_id;
         }
       }
       return token;

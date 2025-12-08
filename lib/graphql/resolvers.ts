@@ -24,6 +24,7 @@ import {
   deleteUser,
   getInvitations,
   getUsers,
+  linkUserToPerson,
   logAudit,
   updateUserRole,
 } from '../users';
@@ -1264,6 +1265,24 @@ export const resolvers = {
       return users.find((u) => u.id === userId);
     },
 
+    linkUserToPerson: async (
+      _: unknown,
+      { userId, personId }: { userId: string; personId: string | null },
+      context: Context,
+    ) => {
+      const user = requireAuth(context, 'admin');
+
+      await linkUserToPerson(userId, personId);
+      await logAudit(user.id, 'link_user_to_person', {
+        targetUserId: userId,
+        personId: personId,
+      });
+
+      // Return updated user
+      const users = await getUsers();
+      return users.find((u) => u.id === userId);
+    },
+
     deleteUser: async (
       _: unknown,
       { userId }: { userId: string },
@@ -1382,6 +1401,21 @@ export const resolvers = {
     runMigrations: async (_: unknown, __: unknown, context: Context) => {
       requireAuth(context, 'admin');
       return runMigrationsFromModule(pool);
+    },
+
+    // User profile mutations - allow users to link themselves to a person
+    setMyPerson: async (
+      _: unknown,
+      { personId }: { personId: string | null },
+      context: Context,
+    ) => {
+      const user = requireAuth(context);
+
+      await linkUserToPerson(user.id, personId);
+      await logAudit(user.id, 'set_my_person', { personId });
+
+      const users = await getUsers();
+      return users.find((u) => u.id === user.id);
     },
 
     // API Key mutations
@@ -2250,7 +2284,7 @@ export const resolvers = {
     },
   },
 
-  // User type resolver to properly format dates
+  // User type resolver to properly format dates and resolve linked_person
   User: {
     created_at: (user: { created_at: Date | string | null }) =>
       user.created_at ? new Date(user.created_at).toISOString() : null,
@@ -2258,6 +2292,14 @@ export const resolvers = {
       user.last_login ? new Date(user.last_login).toISOString() : null,
     last_accessed: (user: { last_accessed: Date | string | null }) =>
       user.last_accessed ? new Date(user.last_accessed).toISOString() : null,
+    linked_person: async (
+      user: { person_id: string | null },
+      _: unknown,
+      ctx: { loaders: Loaders },
+    ) => {
+      if (!user.person_id) return null;
+      return ctx.loaders.personLoader.load(user.person_id);
+    },
   },
 
   // Invitation type resolver to properly format dates

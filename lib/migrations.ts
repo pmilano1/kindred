@@ -300,6 +300,28 @@ export const migrations: Migration[] = [
       return results;
     },
   },
+  {
+    version: 7,
+    name: 'user_person_link',
+    up: async (pool: Pool) => {
+      const results: string[] = [];
+
+      // Add person_id to users table to link users to their person record
+      await pool.query(`
+        ALTER TABLE users
+        ADD COLUMN IF NOT EXISTS person_id VARCHAR(12) REFERENCES people(id) ON DELETE SET NULL
+      `);
+      results.push('Added person_id column to users table');
+
+      // Create index for efficient lookup
+      await pool.query(`
+        CREATE INDEX IF NOT EXISTS idx_users_person_id ON users(person_id)
+      `);
+      results.push('Created index on users.person_id');
+
+      return results;
+    },
+  },
 ];
 
 // Get current database version

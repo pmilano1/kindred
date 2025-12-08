@@ -1,7 +1,7 @@
 'use client';
 
 import { useMutation, useQuery } from '@apollo/client/react';
-import { Copy, Mail, RefreshCw, Send, Trash2, UserPlus } from 'lucide-react';
+import { Copy, Mail, RefreshCw, Send, Trash2, UserPlus, X } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useSession } from 'next-auth/react';
 import { useCallback, useEffect, useState } from 'react';
@@ -26,8 +26,14 @@ import {
   DELETE_USER,
   GET_INVITATIONS,
   GET_USERS,
+  LINK_USER_TO_PERSON,
   UPDATE_USER_ROLE,
 } from '@/lib/graphql/queries';
+
+interface LinkedPerson {
+  id: string;
+  name_full: string;
+}
 
 interface User {
   id: string;
@@ -38,6 +44,8 @@ interface User {
   created_at: string;
   last_login: string | null;
   last_accessed: string | null;
+  person_id: string | null;
+  linked_person: LinkedPerson | null;
 }
 
 interface Invitation {
@@ -102,6 +110,7 @@ export default function AdminPage() {
   const [updateUserRole] = useMutation(UPDATE_USER_ROLE);
   const [deleteUser] = useMutation(DELETE_USER);
   const [createLocalUser] = useMutation(CREATE_LOCAL_USER);
+  const [linkUserToPerson] = useMutation(LINK_USER_TO_PERSON);
 
   const users = usersData?.users || [];
   const invitations = invitationsData?.invitations || [];
@@ -151,6 +160,17 @@ export default function AdminPage() {
       refetchUsers();
     } catch (err) {
       console.error('Failed to delete user:', err);
+    }
+  };
+
+  const handleLinkPerson = async (userId: string, personId: string | null) => {
+    try {
+      await linkUserToPerson({
+        variables: { userId, personId: personId || null },
+      });
+      refetchUsers();
+    } catch (err) {
+      console.error('Failed to link user to person:', err);
     }
   };
 
@@ -498,7 +518,7 @@ export default function AdminPage() {
               <tr className="text-left text-sm text-gray-500 border-b">
                 <th className="pb-2">User</th>
                 <th className="pb-2">Role</th>
-                <th className="pb-2">Last Login</th>
+                <th className="pb-2">Linked Person</th>
                 <th className="pb-2">Last Accessed</th>
                 <th></th>
               </tr>
@@ -526,10 +546,30 @@ export default function AdminPage() {
                       </SelectContent>
                     </Select>
                   </td>
-                  <td className="py-3 text-sm text-gray-500">
-                    {user.last_login
-                      ? new Date(user.last_login).toLocaleString()
-                      : 'Never'}
+                  <td className="py-3">
+                    {user.linked_person ? (
+                      <div className="flex items-center gap-2">
+                        <a
+                          href={`/person/${user.linked_person.id}`}
+                          className="text-blue-600 hover:underline text-sm"
+                        >
+                          {user.linked_person.name_full}
+                        </a>
+                        <Button
+                          variant="ghost"
+                          size="icon-sm"
+                          onClick={() => handleLinkPerson(user.id, '')}
+                          title="Unlink person"
+                          className="text-gray-400 hover:text-red-500"
+                        >
+                          <X className="w-3 h-3" />
+                        </Button>
+                      </div>
+                    ) : (
+                      <span className="text-gray-400 text-sm italic">
+                        Not linked
+                      </span>
+                    )}
                   </td>
                   <td className="py-3 text-sm text-gray-500">
                     {user.last_accessed

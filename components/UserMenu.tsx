@@ -1,6 +1,6 @@
 'use client';
 
-import { Key, LogOut, Settings, Shield, User, Users } from 'lucide-react';
+import { LogOut, Settings } from 'lucide-react';
 import Link from 'next/link';
 import { signOut, useSession } from 'next-auth/react';
 import {
@@ -9,7 +9,6 @@ import {
   AvatarImage,
   DropdownMenu,
   DropdownMenuContent,
-  DropdownMenuGroup,
   DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuSeparator,
@@ -51,70 +50,28 @@ export default function UserMenu() {
           </Avatar>
         </button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent className="w-56" align="end" sideOffset={8}>
-        {/* User Info */}
-        <DropdownMenuLabel className="font-normal">
-          <div className="flex flex-col space-y-1">
-            <p className="text-sm font-medium leading-none">{user.name}</p>
-            <p className="text-xs leading-none text-muted-foreground">
-              {user.email}
-            </p>
-            <p className="text-xs leading-none text-muted-foreground capitalize pt-1">
-              Role: {user.role}
-            </p>
-          </div>
+      <DropdownMenuContent className="w-48" align="end" sideOffset={8}>
+        <DropdownMenuLabel className="font-normal pb-0">
+          <p className="text-sm font-medium truncate">{user.name}</p>
+          <p className="text-xs text-muted-foreground truncate">{user.email}</p>
         </DropdownMenuLabel>
         <DropdownMenuSeparator />
 
-        {/* Admin Links - Only for admins */}
         {isAdmin && (
-          <>
-            <DropdownMenuGroup>
-              <DropdownMenuLabel className="text-xs text-muted-foreground">
-                Administration
-              </DropdownMenuLabel>
-              <DropdownMenuItem asChild>
-                <Link href="/admin" className="cursor-pointer">
-                  <Shield className="mr-2 h-4 w-4" />
-                  <span>Admin Dashboard</span>
-                </Link>
-              </DropdownMenuItem>
-              <DropdownMenuItem asChild>
-                <Link href="/admin#users" className="cursor-pointer">
-                  <Users className="mr-2 h-4 w-4" />
-                  <span>User Management</span>
-                </Link>
-              </DropdownMenuItem>
-              <DropdownMenuItem asChild>
-                <Link href="/admin#invitations" className="cursor-pointer">
-                  <User className="mr-2 h-4 w-4" />
-                  <span>Invitations</span>
-                </Link>
-              </DropdownMenuItem>
-              <DropdownMenuItem asChild>
-                <Link href="/admin/api-keys" className="cursor-pointer">
-                  <Key className="mr-2 h-4 w-4" />
-                  <span>API Keys</span>
-                </Link>
-              </DropdownMenuItem>
-              <DropdownMenuItem asChild>
-                <Link href="/admin/settings" className="cursor-pointer">
-                  <Settings className="mr-2 h-4 w-4" />
-                  <span>Settings</span>
-                </Link>
-              </DropdownMenuItem>
-            </DropdownMenuGroup>
-            <DropdownMenuSeparator />
-          </>
+          <DropdownMenuItem asChild>
+            <Link href="/admin" className="cursor-pointer">
+              <Settings className="mr-2 h-4 w-4" />
+              Admin
+            </Link>
+          </DropdownMenuItem>
         )}
 
-        {/* Sign Out */}
         <DropdownMenuItem
           className="cursor-pointer text-red-600 focus:text-red-600 focus:bg-red-50"
           onClick={() => signOut({ callbackUrl: '/login' })}
         >
           <LogOut className="mr-2 h-4 w-4" />
-          <span>Sign Out</span>
+          Sign Out
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>

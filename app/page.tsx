@@ -26,6 +26,48 @@ interface DashboardStats {
   latest_birth: number | null;
   living_count: number;
   incomplete_count: number;
+  average_completeness: number;
+  complete_count: number;
+  partial_count: number;
+}
+
+function CompletenessRing({ score }: { score: number }) {
+  const getColor = () => {
+    if (score >= 80) return 'text-green-500';
+    if (score >= 50) return 'text-amber-500';
+    return 'text-red-500';
+  };
+
+  return (
+    <div className="relative inline-flex items-center justify-center">
+      <svg
+        className="w-24 h-24 transform -rotate-90"
+        viewBox="0 0 36 36"
+        role="img"
+        aria-label={`${score}% average completeness`}
+      >
+        <path
+          className="text-gray-200"
+          d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="3"
+        />
+        <path
+          className={getColor()}
+          d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="3"
+          strokeDasharray={`${score}, 100`}
+          strokeLinecap="round"
+        />
+      </svg>
+      <span className="absolute text-2xl font-bold text-gray-700">
+        {score}%
+      </span>
+    </div>
+  );
 }
 
 interface ActivityEntry {
@@ -116,6 +158,36 @@ export default async function Home() {
             icon="📚"
           />
           <StatsCard label="Generations" value={generations} icon="🌳" />
+        </div>
+
+        {/* Tree Completeness Widget */}
+        <div className="card p-6 mb-8">
+          <h2 className="section-title">Tree Completeness</h2>
+          <div className="flex flex-col md:flex-row items-center gap-6">
+            <CompletenessRing score={dashboardStats.average_completeness} />
+            <div className="flex-1 grid grid-cols-3 gap-4 text-center">
+              <div>
+                <div className="text-2xl font-bold text-green-600">
+                  {dashboardStats.complete_count}
+                </div>
+                <div className="text-sm text-gray-500">Complete (80%+)</div>
+              </div>
+              <div>
+                <div className="text-2xl font-bold text-amber-600">
+                  {dashboardStats.partial_count}
+                </div>
+                <div className="text-sm text-gray-500">Partial (50-79%)</div>
+              </div>
+              <div>
+                <div className="text-2xl font-bold text-red-600">
+                  {dashboardStats.incomplete_count}
+                </div>
+                <div className="text-sm text-gray-500">
+                  Incomplete (&lt;50%)
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">

@@ -138,6 +138,7 @@ export default function GlobalSearch() {
         />
         {query && (
           <button
+            type="button"
             onClick={() => handleQueryChange('')}
             className="pr-3 text-white/60 hover:text-white"
           >
@@ -157,6 +158,7 @@ export default function GlobalSearch() {
                   <Clock className="w-3 h-3" /> Recent Searches
                 </span>
                 <button
+                  type="button"
                   onClick={(e) => {
                     e.stopPropagation();
                     clearSearches();
@@ -168,6 +170,7 @@ export default function GlobalSearch() {
               </div>
               {recentSearches.map((search, index) => (
                 <button
+                  type="button"
                   key={search.timestamp}
                   onClick={() => handleRecentClick(search.query)}
                   className={`w-full px-4 py-2 text-left border-b border-[var(--border)] last:border-b-0 transition-colors flex items-center gap-2 ${
@@ -192,6 +195,7 @@ export default function GlobalSearch() {
               <>
                 {results.map((person, index) => (
                   <button
+                    type="button"
                     key={person.id}
                     onClick={() => {
                       addSearch(query);
@@ -214,6 +218,7 @@ export default function GlobalSearch() {
                 ))}
                 {data?.search?.totalCount && data.search.totalCount > 8 && (
                   <button
+                    type="button"
                     onClick={() => {
                       addSearch(query);
                       router.push(`/search?q=${encodeURIComponent(query)}`);

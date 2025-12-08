@@ -327,10 +327,14 @@ export default function FamilyEditor({
             <div className="space-y-3">
               <h3 className="section-title">Add New Family</h3>
               <div>
-                <label className="text-sm text-muted-foreground">
+                <label
+                  htmlFor="spouse-search"
+                  className="text-sm text-muted-foreground"
+                >
                   Spouse (optional)
                 </label>
                 <Input
+                  id="spouse-search"
                   type="text"
                   placeholder="Search for spouse..."
                   value={searchQuery}

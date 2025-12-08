@@ -18,17 +18,18 @@ export default function LoadingSpinner({
   };
 
   return (
-    <div
+    <output
       className={`flex flex-col items-center justify-center gap-3 ${className}`}
+      aria-live="polite"
+      aria-label={message || 'Loading'}
     >
       <div
         className={`${sizeClasses[size]} border-gray-200 border-t-green-600 rounded-full animate-spin`}
-        role="status"
-        aria-label="Loading"
+        aria-hidden="true"
       />
       {message && (
         <p className="text-gray-500 text-sm animate-pulse">{message}</p>
       )}
-    </div>
+    </output>
   );
 }

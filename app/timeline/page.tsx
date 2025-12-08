@@ -74,9 +74,9 @@ export default function TimelinePage() {
                     {year}
                   </h3>
                   <div className="space-y-2">
-                    {events.map((event, i) => (
+                    {events.map((event) => (
                       <Link
-                        key={i}
+                        key={`${event.person.id}-${event.type}`}
                         href={`/person/${event.person.id}`}
                         className="flex items-center gap-2 text-sm hover:text-green-700"
                       >

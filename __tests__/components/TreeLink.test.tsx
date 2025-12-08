@@ -72,6 +72,8 @@ describe('TreeLink', () => {
     const parentClickHandler = jest.fn();
 
     render(
+      // biome-ignore lint/a11y/useKeyWithClickEvents: Test wrapper for event propagation testing
+      // biome-ignore lint/a11y/noStaticElementInteractions: Test wrapper for event propagation testing
       <div onClick={parentClickHandler}>
         <TreeLink personId="test-id" />
       </div>,

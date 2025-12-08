@@ -39,7 +39,7 @@ async function batchChildrenByFamily(
   const map = new Map<string, string[]>();
   for (const { family_id, person_id } of rows) {
     if (!map.has(family_id)) map.set(family_id, []);
-    map.get(family_id)!.push(person_id);
+    map.get(family_id)?.push(person_id);
   }
   return familyIds.map((id) => map.get(id) || []);
 }
@@ -54,8 +54,8 @@ async function batchFamiliesAsSpouse(
   );
   const map = new Map<string, Family[]>(personIds.map((id) => [id, []]));
   for (const f of rows) {
-    if (f.husband_id && map.has(f.husband_id)) map.get(f.husband_id)!.push(f);
-    if (f.wife_id && map.has(f.wife_id)) map.get(f.wife_id)!.push(f);
+    if (f.husband_id && map.has(f.husband_id)) map.get(f.husband_id)?.push(f);
+    if (f.wife_id && map.has(f.wife_id)) map.get(f.wife_id)?.push(f);
   }
   return personIds.map((id) => map.get(id) || []);
 }
@@ -73,7 +73,7 @@ async function batchFamiliesAsChild(
   for (const row of rows) {
     const childId = row._child_id;
     delete row._child_id;
-    map.get(childId)!.push(row);
+    map.get(childId)?.push(row);
   }
   return personIds.map((id) => map.get(id) || []);
 }
@@ -108,7 +108,7 @@ async function batchLifeEvents(
   const map = new Map<string, LifeEvent[]>(personIds.map((id) => [id, []]));
 
   for (const row of [...residences.rows, ...occupations.rows, ...events.rows]) {
-    map.get(row.person_id)!.push(row);
+    map.get(row.person_id)?.push(row);
   }
 
   // Sort by year/date
@@ -127,7 +127,7 @@ async function batchFacts(personIds: readonly string[]): Promise<Fact[][]> {
     [personIds as string[]],
   );
   const map = new Map<string, Fact[]>(personIds.map((id) => [id, []]));
-  for (const f of rows) map.get(f.person_id)!.push(f);
+  for (const f of rows) map.get(f.person_id)?.push(f);
   return personIds.map((id) => map.get(id) || []);
 }
 
@@ -139,7 +139,7 @@ async function batchSources(personIds: readonly string[]): Promise<Source[][]> {
     [personIds as string[]],
   );
   const map = new Map<string, Source[]>(personIds.map((id) => [id, []]));
-  for (const s of rows) map.get(s.person_id)!.push(s);
+  for (const s of rows) map.get(s.person_id)?.push(s);
   return personIds.map((id) => map.get(id) || []);
 }
 
@@ -151,7 +151,7 @@ async function batchMedia(personIds: readonly string[]): Promise<Media[][]> {
     [personIds as string[]],
   );
   const map = new Map<string, Media[]>(personIds.map((id) => [id, []]));
-  for (const m of rows) map.get(m.person_id)!.push(m);
+  for (const m of rows) map.get(m.person_id)?.push(m);
   return personIds.map((id) => map.get(id) || []);
 }
 

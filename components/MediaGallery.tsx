@@ -133,9 +133,10 @@ export default function MediaGallery({
       ) : (
         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
           {media.map((item) => (
-            <div
+            <button
               key={item.id}
-              className="relative group cursor-pointer rounded-lg overflow-hidden border border-border hover:border-primary transition-colors bg-muted"
+              type="button"
+              className="relative group cursor-pointer rounded-lg overflow-hidden border border-border hover:border-primary transition-colors bg-muted text-left"
               onClick={() => setSelectedMedia(item)}
             >
               {item.mime_type.startsWith('image/') ? (
@@ -155,7 +156,7 @@ export default function MediaGallery({
               <div className="absolute bottom-0 left-0 right-0 bg-black/60 text-white text-xs p-2 truncate">
                 {item.caption || item.original_filename}
               </div>
-            </div>
+            </button>
           ))}
         </div>
       )}
@@ -163,9 +164,19 @@ export default function MediaGallery({
       {/* Lightbox */}
       {selectedMedia && (
         <div
+          role="dialog"
+          aria-modal="true"
+          aria-label="Media lightbox"
           className="fixed inset-0 bg-background/95 backdrop-blur-sm z-50 flex items-center justify-center p-4"
           onClick={() => setSelectedMedia(null)}
+          onKeyDown={(e) => {
+            if (e.key === 'Escape') {
+              setSelectedMedia(null);
+            }
+          }}
         >
+          {/* biome-ignore lint/a11y/useKeyWithClickEvents: Inner container just stops propagation */}
+          {/* biome-ignore lint/a11y/noStaticElementInteractions: Inner container just stops propagation */}
           <div
             className="relative max-w-4xl max-h-full"
             onClick={(e) => e.stopPropagation()}

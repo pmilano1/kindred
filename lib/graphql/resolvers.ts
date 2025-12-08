@@ -442,11 +442,11 @@ export const resolvers = {
       for (const person of rows) {
         if (person.birth_year) {
           if (!events.has(person.birth_year)) events.set(person.birth_year, []);
-          events.get(person.birth_year)!.push({ type: 'birth', person });
+          events.get(person.birth_year)?.push({ type: 'birth', person });
         }
         if (person.death_year && !person.living) {
           if (!events.has(person.death_year)) events.set(person.death_year, []);
-          events.get(person.death_year)!.push({ type: 'death', person });
+          events.get(person.death_year)?.push({ type: 'death', person });
         }
       }
 
@@ -619,7 +619,7 @@ export const resolvers = {
       for (const src of sourcesResult.rows) {
         if (!sourcesByPerson.has(src.person_id))
           sourcesByPerson.set(src.person_id, []);
-        sourcesByPerson.get(src.person_id)!.push(src);
+        sourcesByPerson.get(src.person_id)?.push(src);
       }
 
       const people: GedcomPerson[] = peopleResult.rows.map((p) => ({
@@ -639,7 +639,7 @@ export const resolvers = {
       for (const c of childrenResult.rows) {
         if (!childrenByFamily.has(c.family_id))
           childrenByFamily.set(c.family_id, []);
-        childrenByFamily.get(c.family_id)!.push(c.person_id);
+        childrenByFamily.get(c.family_id)?.push(c.person_id);
       }
 
       const families: GedcomFamily[] = familiesResult.rows.map((f) => ({

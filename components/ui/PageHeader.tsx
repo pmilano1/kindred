@@ -104,10 +104,11 @@ export function PageHeader({
 
       {stats && stats.length > 0 && (
         <div className="page-header-stats">
-          {stats.map((stat, index) => {
+          {stats.map((stat) => {
             const StatIcon = stat.icon ? iconMap[stat.icon] : null;
+            const key = `${stat.label}-${stat.value}`;
             return (
-              <div key={index} className="page-header-stat">
+              <div key={key} className="page-header-stat">
                 {StatIcon && <StatIcon className="w-4 h-4 text-white/60" />}
                 <span className="page-header-stat-value">{stat.value}</span>
                 <span className="page-header-stat-label">{stat.label}</span>

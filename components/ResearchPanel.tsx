@@ -210,10 +210,10 @@ export default function ResearchPanel({
       variables: {
         personId,
         input: {
-          action_type: actionType,
+          action: actionType,
           content,
-          source_checked: sourceChecked || undefined,
-          external_url: externalUrl || undefined,
+          source_type: sourceChecked || undefined,
+          source_url: externalUrl || undefined,
           confidence: confidenceField || undefined,
         },
       },

@@ -145,8 +145,15 @@ const handler = startServerAndCreateNextHandler<NextRequest, Context>(server, {
 
     // Fall back to NextAuth session
     const session = await auth();
+
+    // Allow unauthenticated access - some mutations like registerWithInvitation,
+    // requestPasswordReset, and resetPassword don't require authentication.
+    // The resolvers themselves check auth where needed via requireAuth().
     if (!session?.user) {
-      throw new Error('Authentication required');
+      return {
+        user: { id: '', email: '', role: 'anonymous' },
+        loaders,
+      };
     }
 
     return {

@@ -26,11 +26,74 @@ export async function register() {
       } else {
         console.error('[Instrumentation] Migration failed:', result.message);
       }
+
+      // Bootstrap admin user if INITIAL_ADMIN_PASSWORD is set and no admin exists
+      await bootstrapAdminUser(pool);
     } catch (error) {
       // Don't crash the server if migrations fail - log and continue
       // The app may still work for read operations
       console.error('[Instrumentation] Migration error:', error);
     }
+  }
+}
+
+/**
+ * Bootstrap initial admin user from environment variables.
+ * Only creates user if:
+ * - INITIAL_ADMIN_PASSWORD env var is set
+ * - No admin user exists in database
+ *
+ * Default email: admin@kindred.local (override with INITIAL_ADMIN_EMAIL)
+ */
+async function bootstrapAdminUser(
+  pool: import('pg').Pool,
+): Promise<void> {
+  const initialPassword = process.env.INITIAL_ADMIN_PASSWORD;
+  if (!initialPassword) {
+    return; // No bootstrap requested
+  }
+
+  const adminEmail = process.env.INITIAL_ADMIN_EMAIL || 'admin@kindred.local';
+
+  try {
+    // Check if any admin exists
+    const adminCheck = await pool.query(
+      "SELECT id FROM users WHERE role = 'admin' LIMIT 1",
+    );
+
+    if (adminCheck.rows.length > 0) {
+      console.log('[Bootstrap] Admin user already exists, skipping bootstrap');
+      return;
+    }
+
+    // Check if this specific email already exists
+    const emailCheck = await pool.query(
+      'SELECT id FROM users WHERE email = $1',
+      [adminEmail],
+    );
+
+    if (emailCheck.rows.length > 0) {
+      console.log('[Bootstrap] User with bootstrap email already exists');
+      return;
+    }
+
+    // Create admin user
+    const bcrypt = await import('bcryptjs');
+    const crypto = await import('node:crypto');
+
+    const passwordHash = await bcrypt.hash(initialPassword, 12);
+    const userId = crypto.randomBytes(8).toString('hex');
+
+    await pool.query(
+      `INSERT INTO users (id, email, name, role, password_hash, auth_provider, require_password_change, created_at)
+       VALUES ($1, $2, $3, 'admin', $4, 'local', true, NOW())`,
+      [userId, adminEmail, 'Admin', passwordHash],
+    );
+
+    console.log(`[Bootstrap] Created initial admin user: ${adminEmail}`);
+    console.log('[Bootstrap] Password change required on first login');
+  } catch (error) {
+    console.error('[Bootstrap] Failed to create admin user:', error);
   }
 }
 

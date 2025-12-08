@@ -102,14 +102,14 @@ export default function FactsEditor({ personId, facts, canEdit }: Props) {
       )}
 
       {displayFacts.length === 0 && !showForm ? (
-        <p className="text-gray-500 text-sm">No additional facts recorded.</p>
+        <p className="text-[var(--muted-foreground)] text-sm">No additional facts recorded.</p>
       ) : (
         <div className="space-y-2">
           {displayFacts.map((fact) => (
             <div key={fact.id} className="flex items-center justify-between text-sm group">
               <div>
-                <span className="text-gray-600 font-medium">{getIcon(fact.fact_type)} {fact.fact_type?.replace(/_/g, ' ') || 'Fact'}:</span>{' '}
-                <span className="text-gray-800">{fact.fact_value}</span>
+                <span className="text-[var(--muted-foreground)] font-medium">{getIcon(fact.fact_type)} {fact.fact_type?.replace(/_/g, ' ') || 'Fact'}:</span>{' '}
+                <span className="text-[var(--foreground)]">{fact.fact_value}</span>
               </div>
               {canEdit && (
                 <div className="opacity-0 group-hover:opacity-100 flex gap-1">

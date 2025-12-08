@@ -1,12 +1,18 @@
-import { SESClient, SendEmailCommand, VerifyEmailIdentityCommand, GetIdentityVerificationAttributesCommand } from '@aws-sdk/client-ses';
-import nodemailer from 'nodemailer';
+import {
+  GetIdentityVerificationAttributesCommand,
+  SESClient,
+  SendEmailCommand,
+  VerifyEmailIdentityCommand,
+} from '@aws-sdk/client-ses';
 import type { Transporter } from 'nodemailer';
+import nodemailer from 'nodemailer';
 import { pool } from './pool';
 
 // Configurable app name and URLs - set via environment variables
 const APP_NAME = process.env.APP_NAME || 'Kindred';
 const APP_URL = process.env.NEXTAUTH_URL || 'http://localhost:3000';
-const EMAIL_FROM = process.env.EMAIL_FROM || `${APP_NAME} <noreply@example.com>`;
+const EMAIL_FROM =
+  process.env.EMAIL_FROM || `${APP_NAME} <noreply@example.com>`;
 
 // Email transport configuration
 type EmailTransportType = 'ses' | 'smtp' | 'none';
@@ -23,13 +29,16 @@ interface EmailConfig {
  */
 export function getEmailConfig(): EmailConfig {
   // Check for AWS SES configuration
-  if (process.env.EMAIL_FROM && process.env.EMAIL_FROM !== `${APP_NAME} <noreply@example.com>`) {
+  if (
+    process.env.EMAIL_FROM &&
+    process.env.EMAIL_FROM !== `${APP_NAME} <noreply@example.com>`
+  ) {
     // If EMAIL_FROM is set to a real value, assume SES is intended
     // SES will use AWS credentials from environment or IAM role
     return {
       type: 'ses',
       configured: true,
-      details: `AWS SES (from: ${process.env.EMAIL_FROM})`
+      details: `AWS SES (from: ${process.env.EMAIL_FROM})`,
     };
   }
 
@@ -41,14 +50,15 @@ export function getEmailConfig(): EmailConfig {
       configured: smtpConfigured,
       details: smtpConfigured
         ? `SMTP (${process.env.SMTP_HOST}:${process.env.SMTP_PORT})`
-        : 'SMTP host configured but missing port'
+        : 'SMTP host configured but missing port',
     };
   }
 
   return {
     type: 'none',
     configured: false,
-    details: 'No email transport configured. Set EMAIL_FROM for AWS SES or SMTP_HOST for SMTP.'
+    details:
+      'No email transport configured. Set EMAIL_FROM for AWS SES or SMTP_HOST for SMTP.',
   };
 }
 
@@ -63,7 +73,9 @@ export function isEmailConfigured(): boolean {
 let sesClient: SESClient | null = null;
 function getSESClient(): SESClient {
   if (!sesClient) {
-    sesClient = new SESClient({ region: process.env.AWS_REGION || 'us-east-1' });
+    sesClient = new SESClient({
+      region: process.env.AWS_REGION || 'us-east-1',
+    });
   }
   return sesClient;
 }
@@ -76,10 +88,12 @@ function getSMTPTransporter(): Transporter {
       host: process.env.SMTP_HOST,
       port: parseInt(process.env.SMTP_PORT || '587', 10),
       secure: process.env.SMTP_SECURE === 'true',
-      auth: process.env.SMTP_USER ? {
-        user: process.env.SMTP_USER,
-        pass: process.env.SMTP_PASSWORD || '',
-      } : undefined,
+      auth: process.env.SMTP_USER
+        ? {
+            user: process.env.SMTP_USER,
+            pass: process.env.SMTP_PASSWORD || '',
+          }
+        : undefined,
     });
   }
   return smtpTransporter;
@@ -107,18 +121,20 @@ async function sendEmail(message: EmailMessage): Promise<boolean> {
   try {
     if (config.type === 'ses') {
       const ses = getSESClient();
-      await ses.send(new SendEmailCommand({
-        Source: EMAIL_FROM,
-        ReplyToAddresses: message.replyTo ? [message.replyTo] : undefined,
-        Destination: { ToAddresses: [message.to] },
-        Message: {
-          Subject: { Data: message.subject },
-          Body: {
-            Html: { Data: message.html },
-            Text: { Data: message.text }
-          }
-        }
-      }));
+      await ses.send(
+        new SendEmailCommand({
+          Source: EMAIL_FROM,
+          ReplyToAddresses: message.replyTo ? [message.replyTo] : undefined,
+          Destination: { ToAddresses: [message.to] },
+          Message: {
+            Subject: { Data: message.subject },
+            Body: {
+              Html: { Data: message.html },
+              Text: { Data: message.text },
+            },
+          },
+        }),
+      );
       console.log(`[Email] Sent via SES to ${message.to}`);
       return true;
     } else if (config.type === 'smtp') {
@@ -143,7 +159,12 @@ async function sendEmail(message: EmailMessage): Promise<boolean> {
 }
 
 // Email types for logging
-export type EmailType = 'invite' | 'welcome' | 'password_reset' | 'verification' | 'notification';
+export type EmailType =
+  | 'invite'
+  | 'welcome'
+  | 'password_reset'
+  | 'verification'
+  | 'notification';
 
 /**
  * Log an email send attempt to the database
@@ -153,13 +174,13 @@ async function logEmail(
   recipient: string,
   subject: string,
   success: boolean,
-  errorMessage?: string
+  errorMessage?: string,
 ): Promise<void> {
   try {
     await pool.query(
       `INSERT INTO email_log (email_type, recipient, subject, success, error_message, sent_at)
        VALUES ($1, $2, $3, $4, $5, NOW())`,
-      [emailType, recipient, subject, success, errorMessage || null]
+      [emailType, recipient, subject, success, errorMessage || null],
     );
   } catch (error) {
     console.error('[Email] Failed to log email:', error);
@@ -174,18 +195,23 @@ async function logEmail(
 export async function verifyEmailForSandbox(email: string): Promise<boolean> {
   const config = getEmailConfig();
   if (config.type !== 'ses') {
-    console.log(`[Email] Skipping SES verification - using ${config.type} transport`);
+    console.log(
+      `[Email] Skipping SES verification - using ${config.type} transport`,
+    );
     return true; // No verification needed for SMTP
   }
 
   try {
     const ses = getSESClient();
     // Check if already verified
-    const checkResponse = await ses.send(new GetIdentityVerificationAttributesCommand({
-      Identities: [email]
-    }));
+    const checkResponse = await ses.send(
+      new GetIdentityVerificationAttributesCommand({
+        Identities: [email],
+      }),
+    );
 
-    const status = checkResponse.VerificationAttributes?.[email]?.VerificationStatus;
+    const status =
+      checkResponse.VerificationAttributes?.[email]?.VerificationStatus;
     if (status === 'Success') {
       console.log(`[Email] ${email} already verified in SES`);
       return true;
@@ -209,7 +235,13 @@ interface SendInviteEmailParams {
   inviterEmail: string;
 }
 
-export async function sendInviteEmail({ to, inviteUrl, role, inviterName, inviterEmail }: SendInviteEmailParams): Promise<boolean> {
+export async function sendInviteEmail({
+  to,
+  inviteUrl,
+  role,
+  inviterName,
+  inviterEmail,
+}: SendInviteEmailParams): Promise<boolean> {
   const subject = `${inviterName} invited you to ${APP_NAME}`;
 
   const htmlBody = `
@@ -287,7 +319,10 @@ interface SendWelcomeEmailParams {
   userName: string;
 }
 
-export async function sendWelcomeEmail({ to, userName }: SendWelcomeEmailParams): Promise<boolean> {
+export async function sendWelcomeEmail({
+  to,
+  userName,
+}: SendWelcomeEmailParams): Promise<boolean> {
   const subject = `Welcome to ${APP_NAME}!`;
 
   const htmlBody = `
@@ -367,7 +402,10 @@ If you have any questions, please reach out to the site administrator.
 /**
  * Send password reset email
  */
-export async function sendPasswordResetEmail(to: string, resetToken: string): Promise<boolean> {
+export async function sendPasswordResetEmail(
+  to: string,
+  resetToken: string,
+): Promise<boolean> {
   const resetUrl = `${APP_URL}/reset-password?token=${resetToken}`;
   const subject = `Reset your ${APP_NAME} password`;
 
@@ -434,4 +472,3 @@ If you didn't request this reset, please ignore this email.
     return false;
   }
 }
-

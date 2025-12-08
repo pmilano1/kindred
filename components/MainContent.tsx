@@ -13,11 +13,12 @@ export default function MainContent({ children }: MainContentProps) {
     <main
       className="main-content"
       style={{
-        marginLeft: isCollapsed ? 'var(--sidebar-collapsed-width)' : 'var(--sidebar-width)',
+        marginLeft: isCollapsed
+          ? 'var(--sidebar-collapsed-width)'
+          : 'var(--sidebar-width)',
       }}
     >
       {children}
     </main>
   );
 }
-

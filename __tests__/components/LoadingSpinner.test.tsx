@@ -1,5 +1,5 @@
-import React from 'react';
 import { render, screen } from '@testing-library/react';
+import { describe, expect, it } from 'vitest';
 import LoadingSpinner from '@/components/LoadingSpinner';
 
 describe('LoadingSpinner', () => {
@@ -54,4 +54,3 @@ describe('LoadingSpinner', () => {
     expect(spinner).toHaveClass('animate-spin');
   });
 });
-

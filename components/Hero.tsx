@@ -24,4 +24,3 @@ export default function Hero({ title, subtitle }: HeroProps) {
     </section>
   );
 }
-

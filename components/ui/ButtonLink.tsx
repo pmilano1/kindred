@@ -1,8 +1,8 @@
 'use client';
 
+import type { LucideIcon } from 'lucide-react';
 import Link from 'next/link';
-import { ReactNode } from 'react';
-import { LucideIcon } from 'lucide-react';
+import type { ReactNode } from 'react';
 
 export type ButtonLinkVariant = 'primary' | 'secondary' | 'ghost' | 'outline';
 export type ButtonLinkSize = 'sm' | 'md' | 'lg';
@@ -21,7 +21,8 @@ const variantStyles: Record<ButtonLinkVariant, string> = {
   primary: 'bg-primary text-white hover:bg-primary-dark border-transparent',
   secondary: 'bg-gray-100 text-gray-700 hover:bg-gray-200 border-transparent',
   ghost: 'bg-transparent text-gray-600 hover:bg-gray-100 border-transparent',
-  outline: 'bg-transparent text-primary border-primary hover:bg-primary hover:text-white',
+  outline:
+    'bg-transparent text-primary border-primary hover:bg-primary hover:text-white',
 };
 
 const sizeStyles: Record<ButtonLinkSize, string> = {
@@ -49,12 +50,17 @@ export default function ButtonLink({
         ${variantStyles[variant]}
         ${sizeStyles[size]}
         ${className}
-      `.trim().replace(/\s+/g, ' ')}
+      `
+        .trim()
+        .replace(/\s+/g, ' ')}
     >
-      {Icon && iconPosition === 'left' && <Icon className="w-4 h-4 flex-shrink-0" />}
+      {Icon && iconPosition === 'left' && (
+        <Icon className="w-4 h-4 flex-shrink-0" />
+      )}
       {children}
-      {Icon && iconPosition === 'right' && <Icon className="w-4 h-4 flex-shrink-0" />}
+      {Icon && iconPosition === 'right' && (
+        <Icon className="w-4 h-4 flex-shrink-0" />
+      )}
     </Link>
   );
 }
-

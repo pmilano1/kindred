@@ -1,21 +1,23 @@
 /**
  * Footer Component Tests
  */
+
 import { render, screen } from '@testing-library/react';
+import { beforeEach, describe, expect, it, type Mock, vi } from 'vitest';
 import Footer from '@/components/Footer';
 
 // Mock SettingsProvider
-jest.mock('@/components/SettingsProvider', () => ({
-  useSettings: jest.fn(),
+vi.mock('@/components/SettingsProvider', () => ({
+  useSettings: vi.fn(),
 }));
 
 import { useSettings } from '@/components/SettingsProvider';
 
-const mockedUseSettings = useSettings as jest.Mock;
+const mockedUseSettings = useSettings as Mock;
 
 describe('Footer', () => {
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
   });
 
   it('renders copyright with family name and site name', () => {
@@ -27,9 +29,11 @@ describe('Footer', () => {
     });
 
     render(<Footer />);
-    
+
     const currentYear = new Date().getFullYear();
-    expect(screen.getByText(`© ${currentYear} Milanese Family Tree`)).toBeInTheDocument();
+    expect(
+      screen.getByText(`© ${currentYear} Milanese Family Tree`),
+    ).toBeInTheDocument();
   });
 
   it('renders footer text when provided', () => {
@@ -41,8 +45,10 @@ describe('Footer', () => {
     });
 
     render(<Footer />);
-    
-    expect(screen.getByText('Preserving our heritage for future generations')).toBeInTheDocument();
+
+    expect(
+      screen.getByText('Preserving our heritage for future generations'),
+    ).toBeInTheDocument();
   });
 
   it('does not render footer text when not provided', () => {
@@ -54,7 +60,7 @@ describe('Footer', () => {
     });
 
     render(<Footer />);
-    
+
     // Only copyright should be present
     const footerElement = screen.getByRole('contentinfo');
     expect(footerElement.querySelectorAll('p').length).toBe(1);
@@ -69,7 +75,7 @@ describe('Footer', () => {
     });
 
     render(<Footer />);
-    
+
     const emailLink = screen.getByRole('link', { name: 'admin@example.com' });
     expect(emailLink).toHaveAttribute('href', 'mailto:admin@example.com');
   });
@@ -83,7 +89,7 @@ describe('Footer', () => {
     });
 
     render(<Footer />);
-    
+
     expect(screen.queryByText(/Contact:/)).not.toBeInTheDocument();
   });
 
@@ -96,11 +102,14 @@ describe('Footer', () => {
     });
 
     render(<Footer />);
-    
+
     const currentYear = new Date().getFullYear();
-    expect(screen.getByText(`© ${currentYear} Milanese Family History`)).toBeInTheDocument();
+    expect(
+      screen.getByText(`© ${currentYear} Milanese Family History`),
+    ).toBeInTheDocument();
     expect(screen.getByText('Generations of stories')).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: 'contact@milanese.life' })).toBeInTheDocument();
+    expect(
+      screen.getByRole('link', { name: 'contact@milanese.life' }),
+    ).toBeInTheDocument();
   });
 });
-

@@ -1,13 +1,12 @@
 'use client';
 
-import { useState, useEffect, useRef, Suspense, useMemo } from 'react';
-import { useSearchParams } from 'next/navigation';
 import { useLazyQuery } from '@apollo/client/react';
-
-import { PageHeader } from '@/components/ui';
+import { useSearchParams } from 'next/navigation';
+import { Suspense, useEffect, useMemo, useRef, useState } from 'react';
 import PersonCard from '@/components/PersonCard';
-import { Person } from '@/lib/types';
+import { PageHeader } from '@/components/ui';
 import { SEARCH_PEOPLE } from '@/lib/graphql/queries';
+import type { Person } from '@/lib/types';
 
 interface SearchResult {
   search: {
@@ -28,7 +27,8 @@ function SearchContent() {
   const urlQuery = searchParams.get('q') || '';
 
   const searchTermRef = useRef(urlQuery);
-  const [executeSearch, { data, called }] = useLazyQuery<SearchResult>(SEARCH_PEOPLE);
+  const [executeSearch, { data, called }] =
+    useLazyQuery<SearchResult>(SEARCH_PEOPLE);
   const lastUrlQuery = useRef<string>('');
 
   // Filter and sort state
@@ -42,15 +42,15 @@ function SearchContent() {
   const displayedSearchTerm = urlQuery || searchTermRef.current;
 
   const rawResults = useMemo(
-    () => data?.search?.edges?.map(e => e.node) || [],
-    [data?.search?.edges]
+    () => data?.search?.edges?.map((e) => e.node) || [],
+    [data?.search?.edges],
   );
   const totalCount = data?.search?.pageInfo?.totalCount || 0;
 
   // Extract unique surnames for filter dropdown
   const uniqueSurnames = useMemo(() => {
     const surnames = rawResults
-      .map(p => p.name_surname)
+      .map((p) => p.name_surname)
       .filter((s): s is string => !!s);
     return [...new Set(surnames)].sort();
   }, [rawResults]);
@@ -61,23 +61,27 @@ function SearchContent() {
 
     // Apply living filter
     if (livingFilter === 'living') {
-      filtered = filtered.filter(p => p.living === true);
+      filtered = filtered.filter((p) => p.living === true);
     } else if (livingFilter === 'deceased') {
-      filtered = filtered.filter(p => p.living === false || p.death_year);
+      filtered = filtered.filter((p) => p.living === false || p.death_year);
     }
 
     // Apply surname filter
     if (surnameFilter) {
-      filtered = filtered.filter(p => p.name_surname === surnameFilter);
+      filtered = filtered.filter((p) => p.name_surname === surnameFilter);
     }
 
     // Apply sorting
     switch (sortBy) {
       case 'name':
-        filtered.sort((a, b) => (a.name_full || '').localeCompare(b.name_full || ''));
+        filtered.sort((a, b) =>
+          (a.name_full || '').localeCompare(b.name_full || ''),
+        );
         break;
       case 'birth_year_asc':
-        filtered.sort((a, b) => (a.birth_year || 9999) - (b.birth_year || 9999));
+        filtered.sort(
+          (a, b) => (a.birth_year || 9999) - (b.birth_year || 9999),
+        );
         break;
       case 'birth_year_desc':
         filtered.sort((a, b) => (b.birth_year || 0) - (a.birth_year || 0));
@@ -101,7 +105,11 @@ function SearchContent() {
     <>
       <PageHeader
         title="Search Results"
-        subtitle={searched ? `Found ${totalCount} result${totalCount !== 1 ? 's' : ''} for "${displayedSearchTerm}"` : 'Use the search bar above to find family members'}
+        subtitle={
+          searched
+            ? `Found ${totalCount} result${totalCount !== 1 ? 's' : ''} for "${displayedSearchTerm}"`
+            : 'Use the search bar above to find family members'
+        }
         icon="Search"
       />
       <div className="content-wrapper">
@@ -109,8 +117,10 @@ function SearchContent() {
           <div>
             {/* Results summary */}
             <p className="text-sm text-[var(--text-muted)] mb-4 text-center">
-              Found {totalCount} result{totalCount !== 1 ? 's' : ''} for &ldquo;{displayedSearchTerm}&rdquo;
-              {results.length !== totalCount && ` (showing ${results.length} after filters)`}
+              Found {totalCount} result{totalCount !== 1 ? 's' : ''} for &ldquo;
+              {displayedSearchTerm}&rdquo;
+              {results.length !== totalCount &&
+                ` (showing ${results.length} after filters)`}
             </p>
 
             {/* Filter and Sort Controls */}
@@ -119,7 +129,9 @@ function SearchContent() {
                 <div className="flex flex-wrap gap-4 items-center">
                   {/* Sort */}
                   <div className="flex items-center gap-2">
-                    <label className="text-sm font-medium text-[var(--text-muted)]">Sort:</label>
+                    <label className="text-sm font-medium text-[var(--text-muted)]">
+                      Sort:
+                    </label>
                     <select
                       value={sortBy}
                       onChange={(e) => setSortBy(e.target.value as SortOption)}
@@ -127,17 +139,25 @@ function SearchContent() {
                     >
                       <option value="relevance">Relevance</option>
                       <option value="name">Name (A-Z)</option>
-                      <option value="birth_year_asc">Birth Year (oldest)</option>
-                      <option value="birth_year_desc">Birth Year (newest)</option>
+                      <option value="birth_year_asc">
+                        Birth Year (oldest)
+                      </option>
+                      <option value="birth_year_desc">
+                        Birth Year (newest)
+                      </option>
                     </select>
                   </div>
 
                   {/* Living Filter */}
                   <div className="flex items-center gap-2">
-                    <label className="text-sm font-medium text-[var(--text-muted)]">Status:</label>
+                    <label className="text-sm font-medium text-[var(--text-muted)]">
+                      Status:
+                    </label>
                     <select
                       value={livingFilter}
-                      onChange={(e) => setLivingFilter(e.target.value as LivingFilter)}
+                      onChange={(e) =>
+                        setLivingFilter(e.target.value as LivingFilter)
+                      }
                       className="input-field text-sm py-1 px-2"
                     >
                       <option value="all">All</option>
@@ -149,22 +169,28 @@ function SearchContent() {
                   {/* Surname Filter */}
                   {uniqueSurnames.length > 1 && (
                     <div className="flex items-center gap-2">
-                      <label className="text-sm font-medium text-[var(--text-muted)]">Surname:</label>
+                      <label className="text-sm font-medium text-[var(--text-muted)]">
+                        Surname:
+                      </label>
                       <select
                         value={surnameFilter}
                         onChange={(e) => setSurnameFilter(e.target.value)}
                         className="input-field text-sm py-1 px-2"
                       >
                         <option value="">All surnames</option>
-                        {uniqueSurnames.map(surname => (
-                          <option key={surname} value={surname}>{surname}</option>
+                        {uniqueSurnames.map((surname) => (
+                          <option key={surname} value={surname}>
+                            {surname}
+                          </option>
                         ))}
                       </select>
                     </div>
                   )}
 
                   {/* Clear filters */}
-                  {(livingFilter !== 'all' || surnameFilter || sortBy !== 'relevance') && (
+                  {(livingFilter !== 'all' ||
+                    surnameFilter ||
+                    sortBy !== 'relevance') && (
                     <button
                       onClick={() => {
                         setLivingFilter('all');
@@ -209,11 +235,13 @@ function SearchContent() {
 
 export default function SearchPage() {
   return (
-    <Suspense fallback={
-      <div className="flex items-center justify-center py-12">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900"></div>
-      </div>
-    }>
+    <Suspense
+      fallback={
+        <div className="flex items-center justify-center py-12">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900"></div>
+        </div>
+      }
+    >
       <SearchContent />
     </Suspense>
   );

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback, useSyncExternalStore } from 'react';
+import { useCallback, useState, useSyncExternalStore } from 'react';
 
 const STORAGE_KEY = 'kindred-recent-searches';
 const MAX_SEARCHES = 10;
@@ -42,37 +42,44 @@ export function useRecentSearches() {
   const storedSearches = useSyncExternalStore(
     subscribe,
     getStoredSearches,
-    () => [] // Server snapshot
+    () => [], // Server snapshot
   );
-  
+
   // Local state for immediate updates (before storage event fires)
-  const [localSearches, setLocalSearches] = useState<RecentSearch[] | null>(null);
-  
+  const [localSearches, setLocalSearches] = useState<RecentSearch[] | null>(
+    null,
+  );
+
   // Use local state if set, otherwise use stored
   const searches = localSearches ?? storedSearches;
 
   // Add a search to history
   const addSearch = useCallback((query: string) => {
     if (!query.trim()) return;
-    
+
     const current = getStoredSearches();
     // Remove duplicates and add new search at the beginning
-    const filtered = current.filter(s => s.query.toLowerCase() !== query.toLowerCase());
-    const updated = [{ query: query.trim(), timestamp: Date.now() }, ...filtered].slice(0, MAX_SEARCHES);
-    
+    const filtered = current.filter(
+      (s) => s.query.toLowerCase() !== query.toLowerCase(),
+    );
+    const updated = [
+      { query: query.trim(), timestamp: Date.now() },
+      ...filtered,
+    ].slice(0, MAX_SEARCHES);
+
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
     } catch {
       // Ignore localStorage errors
     }
-    
+
     setLocalSearches(updated);
   }, []);
 
   // Remove a specific search
   const removeSearch = useCallback((query: string) => {
     const current = getStoredSearches();
-    const updated = current.filter(s => s.query !== query);
+    const updated = current.filter((s) => s.query !== query);
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
     } catch {
@@ -98,4 +105,3 @@ export function useRecentSearches() {
     clearSearches,
   };
 }
-

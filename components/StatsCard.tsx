@@ -13,4 +13,3 @@ export default function StatsCard({ label, value, icon }: StatsCardProps) {
     </div>
   );
 }
-

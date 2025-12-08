@@ -12,7 +12,7 @@ function getPool(): Pool {
       console.log('[DB] Connecting via DATABASE_URL with SSL');
       _pool = new Pool({
         connectionString: dbUrl,
-        ssl: { rejectUnauthorized: false }
+        ssl: { rejectUnauthorized: false },
       });
     } else {
       // Local development - no SSL
@@ -20,7 +20,7 @@ function getPool(): Pool {
       console.log('[DB] Connecting to', host);
       _pool = new Pool({
         host,
-        port: parseInt(process.env.DB_PORT || '5432'),
+        port: parseInt(process.env.DB_PORT || '5432', 10),
         database: process.env.DB_NAME || 'genealogy',
         user: process.env.DB_USER || 'genealogy',
         password: process.env.DB_PASSWORD || 'GenTree2024!',
@@ -34,10 +34,13 @@ function getPool(): Pool {
 const pool = new Proxy({} as Pool, {
   get(_, prop) {
     const realPool = getPool();
-    const value = (realPool as unknown as Record<string | symbol, unknown>)[prop];
-    return typeof value === 'function' ? (value as (...args: unknown[]) => unknown).bind(realPool) : value;
-  }
+    const value = (realPool as unknown as Record<string | symbol, unknown>)[
+      prop
+    ];
+    return typeof value === 'function'
+      ? (value as (...args: unknown[]) => unknown).bind(realPool)
+      : value;
+  },
 });
 
 export { pool };
-

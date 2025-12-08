@@ -1,6 +1,12 @@
 'use client';
 
-import { createContext, useContext, useState, useSyncExternalStore, ReactNode } from 'react';
+import {
+  createContext,
+  type ReactNode,
+  useContext,
+  useState,
+  useSyncExternalStore,
+} from 'react';
 
 interface SidebarContextType {
   isCollapsed: boolean;
@@ -27,7 +33,11 @@ function subscribe(callback: () => void): () => void {
 }
 
 export function SidebarProvider({ children }: { children: ReactNode }) {
-  const storedCollapsed = useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot);
+  const storedCollapsed = useSyncExternalStore(
+    subscribe,
+    getSnapshot,
+    getServerSnapshot,
+  );
   const [isCollapsed, setIsCollapsed] = useState(storedCollapsed);
 
   const toggleCollapse = () => {
@@ -42,7 +52,9 @@ export function SidebarProvider({ children }: { children: ReactNode }) {
   };
 
   return (
-    <SidebarContext.Provider value={{ isCollapsed, toggleCollapse, setCollapsed }}>
+    <SidebarContext.Provider
+      value={{ isCollapsed, toggleCollapse, setCollapsed }}
+    >
       {children}
     </SidebarContext.Provider>
   );
@@ -55,4 +67,3 @@ export function useSidebar() {
   }
   return context;
 }
-

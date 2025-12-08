@@ -544,4 +544,3 @@ export const typeDefs = `#graphql
     warnings: [String!]!
   }
 `;
-

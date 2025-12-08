@@ -51,8 +51,21 @@ function escapeGedcom(text: string | null | undefined): string {
 function formatGedcomDate(dateStr: string | null): string {
   if (!dateStr) return '';
   const date = new Date(dateStr);
-  if (isNaN(date.getTime())) return escapeGedcom(dateStr);
-  const months = ['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC'];
+  if (Number.isNaN(date.getTime())) return escapeGedcom(dateStr);
+  const months = [
+    'JAN',
+    'FEB',
+    'MAR',
+    'APR',
+    'MAY',
+    'JUN',
+    'JUL',
+    'AUG',
+    'SEP',
+    'OCT',
+    'NOV',
+    'DEC',
+  ];
   return `${date.getDate()} ${months[date.getMonth()]} ${date.getFullYear()}`;
 }
 
@@ -64,17 +77,35 @@ function generateXref(type: 'I' | 'F' | 'S', id: string): string {
 export function generateGedcom(
   people: GedcomPerson[],
   families: GedcomFamily[],
-  options: GedcomExportOptions = {}
+  options: GedcomExportOptions = {},
 ): string {
   const lines: string[] = [];
-  const { includeLiving = false, includeSources = true, submitterName = 'Kindred Family Tree' } = options;
-  const filteredPeople = includeLiving ? people : people.filter(p => !p.living);
-  const filteredPeopleIds = new Set(filteredPeople.map(p => p.id));
+  const {
+    includeLiving = false,
+    includeSources = true,
+    submitterName = 'Kindred Family Tree',
+  } = options;
+  const filteredPeople = includeLiving
+    ? people
+    : people.filter((p) => !p.living);
+  const filteredPeopleIds = new Set(filteredPeople.map((p) => p.id));
 
   // Header
-  lines.push('0 HEAD', '1 SOUR Kindred', '2 VERS 1.0', '2 NAME Kindred Family Tree', '1 DEST ANY');
+  lines.push(
+    '0 HEAD',
+    '1 SOUR Kindred',
+    '2 VERS 1.0',
+    '2 NAME Kindred Family Tree',
+    '1 DEST ANY',
+  );
   lines.push(`1 DATE ${formatGedcomDate(new Date().toISOString())}`);
-  lines.push('1 GEDC', '2 VERS 5.5.1', '2 FORM LINEAGE-LINKED', '1 CHAR UTF-8', '1 SUBM @SUBM@');
+  lines.push(
+    '1 GEDC',
+    '2 VERS 5.5.1',
+    '2 FORM LINEAGE-LINKED',
+    '1 CHAR UTF-8',
+    '1 SUBM @SUBM@',
+  );
   lines.push('0 @SUBM@ SUBM', `1 NAME ${escapeGedcom(submitterName)}`);
 
   // Individual records
@@ -82,7 +113,8 @@ export function generateGedcom(
     const xref = generateXref('I', person.id);
     lines.push(`0 ${xref} INDI`);
     const surname = person.name_surname || '';
-    const given = person.name_given || person.name_full.replace(surname, '').trim();
+    const given =
+      person.name_given || person.name_full.replace(surname, '').trim();
     lines.push(`1 NAME ${escapeGedcom(given)} /${escapeGedcom(surname)}/`);
     if (given) lines.push(`2 GIVN ${escapeGedcom(given)}`);
     if (surname) lines.push(`2 SURN ${escapeGedcom(surname)}`);
@@ -92,23 +124,31 @@ export function generateGedcom(
     }
     if (person.birth_date || person.birth_place) {
       lines.push('1 BIRT');
-      if (person.birth_date) lines.push(`2 DATE ${formatGedcomDate(person.birth_date)}`);
-      if (person.birth_place) lines.push(`2 PLAC ${escapeGedcom(person.birth_place)}`);
+      if (person.birth_date)
+        lines.push(`2 DATE ${formatGedcomDate(person.birth_date)}`);
+      if (person.birth_place)
+        lines.push(`2 PLAC ${escapeGedcom(person.birth_place)}`);
     }
     if (person.christening_date || person.christening_place) {
       lines.push('1 CHR');
-      if (person.christening_date) lines.push(`2 DATE ${formatGedcomDate(person.christening_date)}`);
-      if (person.christening_place) lines.push(`2 PLAC ${escapeGedcom(person.christening_place)}`);
+      if (person.christening_date)
+        lines.push(`2 DATE ${formatGedcomDate(person.christening_date)}`);
+      if (person.christening_place)
+        lines.push(`2 PLAC ${escapeGedcom(person.christening_place)}`);
     }
     if (person.death_date || person.death_place) {
       lines.push('1 DEAT');
-      if (person.death_date) lines.push(`2 DATE ${formatGedcomDate(person.death_date)}`);
-      if (person.death_place) lines.push(`2 PLAC ${escapeGedcom(person.death_place)}`);
+      if (person.death_date)
+        lines.push(`2 DATE ${formatGedcomDate(person.death_date)}`);
+      if (person.death_place)
+        lines.push(`2 PLAC ${escapeGedcom(person.death_place)}`);
     }
     if (person.burial_date || person.burial_place) {
       lines.push('1 BURI');
-      if (person.burial_date) lines.push(`2 DATE ${formatGedcomDate(person.burial_date)}`);
-      if (person.burial_place) lines.push(`2 PLAC ${escapeGedcom(person.burial_place)}`);
+      if (person.burial_date)
+        lines.push(`2 DATE ${formatGedcomDate(person.burial_date)}`);
+      if (person.burial_place)
+        lines.push(`2 PLAC ${escapeGedcom(person.burial_place)}`);
     }
     if (includeSources && person.sources) {
       for (const source of person.sources) {
@@ -119,21 +159,28 @@ export function generateGedcom(
 
   // Family records
   for (const family of families) {
-    const hasHusband = family.husband_id && filteredPeopleIds.has(family.husband_id);
+    const hasHusband =
+      family.husband_id && filteredPeopleIds.has(family.husband_id);
     const hasWife = family.wife_id && filteredPeopleIds.has(family.wife_id);
-    const hasChildren = family.children_ids.some(id => filteredPeopleIds.has(id));
+    const hasChildren = family.children_ids.some((id) =>
+      filteredPeopleIds.has(id),
+    );
     if (!hasHusband && !hasWife && !hasChildren) continue;
     const xref = generateXref('F', family.id);
     lines.push(`0 ${xref} FAM`);
-    if (hasHusband) lines.push(`1 HUSB ${generateXref('I', family.husband_id!)}`);
+    if (hasHusband)
+      lines.push(`1 HUSB ${generateXref('I', family.husband_id!)}`);
     if (hasWife) lines.push(`1 WIFE ${generateXref('I', family.wife_id!)}`);
     for (const childId of family.children_ids) {
-      if (filteredPeopleIds.has(childId)) lines.push(`1 CHIL ${generateXref('I', childId)}`);
+      if (filteredPeopleIds.has(childId))
+        lines.push(`1 CHIL ${generateXref('I', childId)}`);
     }
     if (family.marriage_date || family.marriage_place) {
       lines.push('1 MARR');
-      if (family.marriage_date) lines.push(`2 DATE ${formatGedcomDate(family.marriage_date)}`);
-      if (family.marriage_place) lines.push(`2 PLAC ${escapeGedcom(family.marriage_place)}`);
+      if (family.marriage_date)
+        lines.push(`2 DATE ${formatGedcomDate(family.marriage_date)}`);
+      if (family.marriage_place)
+        lines.push(`2 PLAC ${escapeGedcom(family.marriage_place)}`);
     }
   }
 
@@ -147,8 +194,10 @@ export function generateGedcom(
     }
     for (const source of allSources.values()) {
       lines.push(`0 ${generateXref('S', source.id)} SOUR`);
-      if (source.source_name) lines.push(`1 TITL ${escapeGedcom(source.source_name)}`);
-      if (source.source_url) lines.push(`1 NOTE URL: ${escapeGedcom(source.source_url)}`);
+      if (source.source_name)
+        lines.push(`1 TITL ${escapeGedcom(source.source_name)}`);
+      if (source.source_url)
+        lines.push(`1 NOTE URL: ${escapeGedcom(source.source_url)}`);
       if (source.content) lines.push(`1 TEXT ${escapeGedcom(source.content)}`);
     }
   }
@@ -210,7 +259,7 @@ function parseLine(line: string): GedcomLine | null {
     level: parseInt(match[1], 10),
     xref: match[2] || null,
     tag: match[3].toUpperCase(),
-    value: (match[4] || '').trim()
+    value: (match[4] || '').trim(),
   };
 }
 
@@ -223,7 +272,8 @@ export function parseGedcom(content: string): GedcomParseResult {
 
   let currentPerson: Partial<ParsedPerson> | null = null;
   let currentFamily: Partial<ParsedFamily> | null = null;
-  let currentEvent: { type: string; date?: string; place?: string } | null = null;
+  let currentEvent: { type: string; date?: string; place?: string } | null =
+    null;
 
   for (const line of lines) {
     const parsed = parseLine(line);
@@ -242,14 +292,28 @@ export function parseGedcom(content: string): GedcomParseResult {
 
       if (tag === 'INDI' && xref) {
         currentPerson = {
-          xref, name_full: '', name_given: null, name_surname: null, sex: null,
-          birth_date: null, birth_place: null, death_date: null, death_place: null,
-          burial_date: null, burial_place: null, christening_date: null, christening_place: null
+          xref,
+          name_full: '',
+          name_given: null,
+          name_surname: null,
+          sex: null,
+          birth_date: null,
+          birth_place: null,
+          death_date: null,
+          death_place: null,
+          burial_date: null,
+          burial_place: null,
+          christening_date: null,
+          christening_place: null,
         };
       } else if (tag === 'FAM' && xref) {
         currentFamily = {
-          xref, husband_xref: null, wife_xref: null, children_xrefs: [],
-          marriage_date: null, marriage_place: null
+          xref,
+          husband_xref: null,
+          wife_xref: null,
+          children_xrefs: [],
+          marriage_date: null,
+          marriage_place: null,
         };
       }
       continue;
@@ -264,12 +328,14 @@ export function parseGedcom(content: string): GedcomParseResult {
         if (nameMatch) {
           currentPerson.name_given = nameMatch[1].trim() || null;
           currentPerson.name_surname = nameMatch[2].trim() || null;
-          currentPerson.name_full = `${nameMatch[1].trim()} ${nameMatch[2].trim()}`.trim();
+          currentPerson.name_full =
+            `${nameMatch[1].trim()} ${nameMatch[2].trim()}`.trim();
         } else {
           currentPerson.name_full = value.replace(/\//g, '').trim();
         }
       } else if (tag === 'SEX') {
-        currentPerson.sex = value === 'M' ? 'male' : value === 'F' ? 'female' : null;
+        currentPerson.sex =
+          value === 'M' ? 'male' : value === 'F' ? 'female' : null;
       } else if (tag === 'BIRT') {
         currentEvent = { type: 'birth' };
       } else if (tag === 'DEAT') {
@@ -296,8 +362,10 @@ export function parseGedcom(content: string): GedcomParseResult {
         if (currentEvent.date) currentPerson.burial_date = currentEvent.date;
         if (currentEvent.place) currentPerson.burial_place = currentEvent.place;
       } else if (currentEvent.type === 'christening') {
-        if (currentEvent.date) currentPerson.christening_date = currentEvent.date;
-        if (currentEvent.place) currentPerson.christening_place = currentEvent.place;
+        if (currentEvent.date)
+          currentPerson.christening_date = currentEvent.date;
+        if (currentEvent.place)
+          currentPerson.christening_place = currentEvent.place;
       }
     }
 
@@ -316,7 +384,8 @@ export function parseGedcom(content: string): GedcomParseResult {
       if (tag === 'PLAC') currentEvent.place = value;
       if (currentEvent.type === 'marriage') {
         if (currentEvent.date) currentFamily.marriage_date = currentEvent.date;
-        if (currentEvent.place) currentFamily.marriage_place = currentEvent.place;
+        if (currentEvent.place)
+          currentFamily.marriage_place = currentEvent.place;
       }
     }
   }

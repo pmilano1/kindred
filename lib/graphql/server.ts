@@ -4,11 +4,11 @@
  * When USE_LIVE_API=true, queries are proxied to the production API
  */
 
-import { graphql, GraphQLSchema, print, DocumentNode } from 'graphql';
 import { makeExecutableSchema } from '@graphql-tools/schema';
-import { typeDefs } from './schema';
-import { resolvers } from './resolvers';
+import { type DocumentNode, type GraphQLSchema, graphql, print } from 'graphql';
 import { createLoaders } from './dataloaders';
+import { resolvers } from './resolvers';
+import { typeDefs } from './schema';
 
 const USE_LIVE_API = process.env.USE_LIVE_API === 'true';
 const GRAPHQL_PROXY_URL = process.env.GRAPHQL_PROXY_URL;
@@ -37,7 +37,7 @@ export interface GraphQLResult<T> {
  */
 async function executeViaProxy<T>(
   queryString: string,
-  variables?: Record<string, unknown>
+  variables?: Record<string, unknown>,
 ): Promise<GraphQLResult<T>> {
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
@@ -63,7 +63,7 @@ async function executeViaProxy<T>(
 export async function executeQuery<T = Record<string, unknown>>(
   query: DocumentNode | string,
   variables?: Record<string, unknown>,
-  user?: { id: string; email: string; role: string }
+  user?: { id: string; email: string; role: string },
 ): Promise<GraphQLResult<T>> {
   const queryString = typeof query === 'string' ? query : print(query);
 
@@ -91,18 +91,17 @@ export async function executeQuery<T = Record<string, unknown>>(
 export async function query<T = Record<string, unknown>>(
   queryDoc: DocumentNode | string,
   variables?: Record<string, unknown>,
-  user?: { id: string; email: string; role: string }
+  user?: { id: string; email: string; role: string },
 ): Promise<T> {
   const result = await executeQuery<T>(queryDoc, variables, user);
-  
+
   if (result.errors && result.errors.length > 0) {
     throw new Error(result.errors[0].message);
   }
-  
+
   if (!result.data) {
     throw new Error('No data returned from GraphQL query');
   }
-  
+
   return result.data;
 }
-

@@ -1,8 +1,8 @@
 'use client';
 
-import { useState, Suspense } from 'react';
-import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
+import { useSearchParams } from 'next/navigation';
+import { Suspense, useState } from 'react';
 import LoadingSpinner from '@/components/LoadingSpinner';
 import { Button, Input, Label } from '@/components/ui';
 
@@ -48,7 +48,9 @@ function ResetPasswordContent() {
 
       const data = await response.json();
       if (data.errors || !data.data?.resetPassword?.success) {
-        setError(data.data?.resetPassword?.message || 'Invalid or expired reset link');
+        setError(
+          data.data?.resetPassword?.message || 'Invalid or expired reset link',
+        );
       } else {
         setSuccess(true);
       }
@@ -63,9 +65,16 @@ function ResetPasswordContent() {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">
         <div className="bg-white/10 backdrop-blur-lg rounded-2xl p-8 shadow-2xl border border-white/20 max-w-md w-full mx-4 text-center">
-          <h1 className="text-2xl font-bold text-white mb-4">Invalid Reset Link</h1>
-          <p className="text-slate-300 mb-6">This password reset link is invalid or has expired.</p>
-          <Link href="/forgot-password" className="text-green-400 hover:text-green-300">
+          <h1 className="text-2xl font-bold text-white mb-4">
+            Invalid Reset Link
+          </h1>
+          <p className="text-slate-300 mb-6">
+            This password reset link is invalid or has expired.
+          </p>
+          <Link
+            href="/forgot-password"
+            className="text-green-400 hover:text-green-300"
+          >
             Request a new reset link
           </Link>
         </div>
@@ -77,16 +86,23 @@ function ResetPasswordContent() {
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">
       <div className="bg-white/10 backdrop-blur-lg rounded-2xl p-8 shadow-2xl border border-white/20 max-w-md w-full mx-4">
         <div className="text-center mb-8">
-          <h1 className="text-3xl font-bold text-white mb-2">Set New Password</h1>
+          <h1 className="text-3xl font-bold text-white mb-2">
+            Set New Password
+          </h1>
           <p className="text-slate-300">Enter your new password below</p>
         </div>
 
         {success ? (
           <div className="text-center">
             <div className="bg-green-500/20 border border-green-500/50 rounded-lg p-4 mb-6">
-              <p className="text-green-200">Your password has been reset successfully!</p>
+              <p className="text-green-200">
+                Your password has been reset successfully!
+              </p>
             </div>
-            <Link href="/login" className="inline-block bg-green-600 hover:bg-green-700 text-white font-semibold py-3 px-6 rounded-lg">
+            <Link
+              href="/login"
+              className="inline-block bg-green-600 hover:bg-green-700 text-white font-semibold py-3 px-6 rounded-lg"
+            >
               Sign In
             </Link>
           </div>
@@ -98,19 +114,41 @@ function ResetPasswordContent() {
               </div>
             )}
             <div className="space-y-2">
-              <Label htmlFor="password" className="text-slate-300">New Password</Label>
-              <Input type="password" id="password" value={password} onChange={(e) => setPassword(e.target.value)}
+              <Label htmlFor="password" className="text-slate-300">
+                New Password
+              </Label>
+              <Input
+                type="password"
+                id="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
                 className="bg-white/10 border-white/20 text-white placeholder-slate-400 focus-visible:ring-green-500"
-                placeholder="••••••••" required minLength={8} />
+                placeholder="••••••••"
+                required
+                minLength={8}
+              />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="confirmPassword" className="text-slate-300">Confirm Password</Label>
-              <Input type="password" id="confirmPassword" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)}
+              <Label htmlFor="confirmPassword" className="text-slate-300">
+                Confirm Password
+              </Label>
+              <Input
+                type="password"
+                id="confirmPassword"
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
                 className="bg-white/10 border-white/20 text-white placeholder-slate-400 focus-visible:ring-green-500"
-                placeholder="••••••••" required minLength={8} />
+                placeholder="••••••••"
+                required
+                minLength={8}
+              />
             </div>
-            <Button type="submit" variant="primary" loading={isLoading}
-              className="w-full font-semibold py-3 px-4">
+            <Button
+              type="submit"
+              variant="primary"
+              loading={isLoading}
+              className="w-full font-semibold py-3 px-4"
+            >
               Reset Password
             </Button>
           </form>
@@ -122,13 +160,14 @@ function ResetPasswordContent() {
 
 export default function ResetPasswordPage() {
   return (
-    <Suspense fallback={
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">
-        <LoadingSpinner size="lg" className="text-white" />
-      </div>
-    }>
+    <Suspense
+      fallback={
+        <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">
+          <LoadingSpinner size="lg" className="text-white" />
+        </div>
+      }
+    >
       <ResetPasswordContent />
     </Suspense>
   );
 }
-

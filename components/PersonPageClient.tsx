@@ -1,40 +1,49 @@
 'use client';
 
-import { useState } from 'react';
+import { useMutation, useQuery } from '@apollo/client/react';
+import { ArrowLeft, Pencil, Star, Trash2 } from 'lucide-react';
 import Image from 'next/image';
 import Link from 'next/link';
-import { useQuery, useMutation } from '@apollo/client/react';
 import { useSession } from 'next-auth/react';
-import { ArrowLeft, Star, Pencil, Trash2 } from 'lucide-react';
-import { GET_PERSON, UPDATE_NOTABLE_STATUS } from '@/lib/graphql/queries';
-import { Button, ButtonLink, Textarea, PageHeader } from '@/components/ui';
-import ResearchPanel from '@/components/ResearchPanel';
-import TreeLink from '@/components/TreeLink';
-import EditPersonModal from '@/components/EditPersonModal';
+import { useState } from 'react';
 import DeletePersonDialog from '@/components/DeletePersonDialog';
-import LifeEventsEditor from '@/components/LifeEventsEditor';
+import EditPersonModal from '@/components/EditPersonModal';
 import FactsEditor from '@/components/FactsEditor';
 import FamilyEditor from '@/components/FamilyEditor';
-import SourcesEditor from '@/components/SourcesEditor';
+import LifeEventsEditor from '@/components/LifeEventsEditor';
 import MediaGallery from '@/components/MediaGallery';
-import { Person, Family, LifeEvent, Fact, Source, Media } from '@/lib/types';
+import ResearchPanel from '@/components/ResearchPanel';
+import SourcesEditor from '@/components/SourcesEditor';
+import TreeLink from '@/components/TreeLink';
+import { Button, ButtonLink, PageHeader, Textarea } from '@/components/ui';
+import { GET_PERSON, UPDATE_NOTABLE_STATUS } from '@/lib/graphql/queries';
+import type {
+  Fact,
+  Family,
+  LifeEvent,
+  Media,
+  Person,
+  Source,
+} from '@/lib/types';
 
 interface PersonData {
-  person: Person & {
-    parents: Person[];
-    siblings: Person[];
-    spouses: Person[];
-    children: Person[];
-    families: (Family & {
-      husband: Person | null;
-      wife: Person | null;
-      children: Person[];
-    })[];
-    lifeEvents: LifeEvent[];
-    facts: Fact[];
-    sources: Source[];
-    media: Media[];
-  } | null;
+  person:
+    | (Person & {
+        parents: Person[];
+        siblings: Person[];
+        spouses: Person[];
+        children: Person[];
+        families: (Family & {
+          husband: Person | null;
+          wife: Person | null;
+          children: Person[];
+        })[];
+        lifeEvents: LifeEvent[];
+        facts: Fact[];
+        sources: Source[];
+        media: Media[];
+      })
+    | null;
 }
 
 interface Props {
@@ -52,7 +61,8 @@ export default function PersonPageClient({ personId }: Props) {
   const [showEditModal, setShowEditModal] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
 
-  const canEdit = session?.user?.role === 'admin' || session?.user?.role === 'editor';
+  const canEdit =
+    session?.user?.role === 'admin' || session?.user?.role === 'editor';
   const isAdmin = session?.user?.role === 'admin';
 
   const handleToggleNotable = async () => {
@@ -74,7 +84,11 @@ export default function PersonPageClient({ personId }: Props) {
 
   const handleSaveNotable = async () => {
     await updateNotable({
-      variables: { id: personId, isNotable: true, notableDescription: notableDesc || null },
+      variables: {
+        id: personId,
+        isNotable: true,
+        notableDescription: notableDesc || null,
+      },
       refetchQueries: [{ query: GET_PERSON, variables: { id: personId } }],
     });
     setNotableEditing(false);
@@ -104,7 +118,7 @@ export default function PersonPageClient({ personId }: Props) {
 
   // Get families where this person is a spouse
   const familiesAsSpouse = person.families.filter(
-    f => f.husband_id === personId || f.wife_id === personId
+    (f) => f.husband_id === personId || f.wife_id === personId,
   );
 
   const subtitle = person.living
@@ -115,7 +129,9 @@ export default function PersonPageClient({ personId }: Props) {
     <>
       <PageHeader
         title={person.name_full}
-        subtitle={person.is_notable ? `⭐ ${subtitle} • Notable Figure` : subtitle}
+        subtitle={
+          person.is_notable ? `⭐ ${subtitle} • Notable Figure` : subtitle
+        }
         icon="User"
       />
       <div className="content-wrapper">
@@ -125,254 +141,375 @@ export default function PersonPageClient({ personId }: Props) {
             {/* Notable description */}
             {person.is_notable && person.notable_description && (
               <div className="mb-6 p-4 bg-gradient-to-r from-amber-50 to-yellow-50 border border-amber-200 rounded-lg">
-                <p className="text-amber-700 italic">{person.notable_description}</p>
+                <p className="text-amber-700 italic">
+                  {person.notable_description}
+                </p>
               </div>
             )}
 
-        {/* Notable Editor Modal */}
-        {notableEditing && (
-          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-            <div className="bg-white rounded-xl p-6 max-w-md w-full mx-4 shadow-2xl">
-              <h3 className="text-lg font-semibold mb-4">⭐ Mark as Notable Figure</h3>
-              <p className="text-sm text-muted-foreground mb-3">
-                Add a short description of why this person is notable (optional):
-              </p>
-              <Textarea
-                value={notableDesc}
-                onChange={(e) => setNotableDesc(e.target.value)}
-                placeholder="e.g., First Empress of France, married Napoleon Bonaparte"
-                className="mb-4"
-                rows={3}
-              />
-              <div className="flex justify-end gap-2">
-                <Button variant="ghost" onClick={() => setNotableEditing(false)}>Cancel</Button>
-                <Button className="bg-amber-500 hover:bg-amber-600" onClick={handleSaveNotable}>Save</Button>
+            {/* Notable Editor Modal */}
+            {notableEditing && (
+              <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+                <div className="bg-white rounded-xl p-6 max-w-md w-full mx-4 shadow-2xl">
+                  <h3 className="text-lg font-semibold mb-4">
+                    ⭐ Mark as Notable Figure
+                  </h3>
+                  <p className="text-sm text-muted-foreground mb-3">
+                    Add a short description of why this person is notable
+                    (optional):
+                  </p>
+                  <Textarea
+                    value={notableDesc}
+                    onChange={(e) => setNotableDesc(e.target.value)}
+                    placeholder="e.g., First Empress of France, married Napoleon Bonaparte"
+                    className="mb-4"
+                    rows={3}
+                  />
+                  <div className="flex justify-end gap-2">
+                    <Button
+                      variant="ghost"
+                      onClick={() => setNotableEditing(false)}
+                    >
+                      Cancel
+                    </Button>
+                    <Button
+                      className="bg-amber-500 hover:bg-amber-600"
+                      onClick={handleSaveNotable}
+                    >
+                      Save
+                    </Button>
+                  </div>
+                </div>
               </div>
-            </div>
-          </div>
-        )}
+            )}
 
-        {/* Main Info Card */}
-        <div className={`card p-6 mb-6 border-l-4 ${isFemale ? 'border-l-pink-500' : 'border-l-blue-500'}`}>
-          <div className="flex flex-wrap gap-2 mb-4">
-            <span className={`badge ${isFemale ? 'badge-female' : 'badge-male'}`}>
-              {isFemale ? 'Female' : 'Male'}
-            </span>
-            {person.living && <span className="badge badge-living">Living</span>}
-            {canEdit && (
-              <>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={handleToggleNotable}
-                  className={person.is_notable
-                    ? 'bg-amber-100 text-amber-800 border border-amber-300 hover:bg-amber-200'
-                    : 'bg-gray-100 text-gray-600 border border-gray-300 hover:bg-gray-200'}
-                  title={person.is_notable ? 'Click to remove notable status' : 'Click to mark as notable'}
-                  icon={<Star className={`w-3 h-3 ${person.is_notable ? 'fill-amber-500' : ''}`} />}
+            {/* Main Info Card */}
+            <div
+              className={`card p-6 mb-6 border-l-4 ${isFemale ? 'border-l-pink-500' : 'border-l-blue-500'}`}
+            >
+              <div className="flex flex-wrap gap-2 mb-4">
+                <span
+                  className={`badge ${isFemale ? 'badge-female' : 'badge-male'}`}
                 >
-                  {person.is_notable ? 'Notable' : 'Mark Notable'}
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => setShowEditModal(true)}
-                  className="bg-blue-100 text-blue-800 border border-blue-300 hover:bg-blue-200"
-                  title="Edit person details"
-                  icon={<Pencil className="w-3 h-3" />}
-                >
-                  Edit
-                </Button>
-                {isAdmin && (
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => setShowDeleteDialog(true)}
-                    className="bg-red-100 text-red-800 border border-red-300 hover:bg-red-200"
-                    title="Delete person (admin only)"
-                    icon={<Trash2 className="w-3 h-3" />}
-                  >
-                    Delete
-                  </Button>
+                  {isFemale ? 'Female' : 'Male'}
+                </span>
+                {person.living && (
+                  <span className="badge badge-living">Living</span>
                 )}
-              </>
-            )}
-          </div>
+                {canEdit && (
+                  <>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={handleToggleNotable}
+                      className={
+                        person.is_notable
+                          ? 'bg-amber-100 text-amber-800 border border-amber-300 hover:bg-amber-200'
+                          : 'bg-gray-100 text-gray-600 border border-gray-300 hover:bg-gray-200'
+                      }
+                      title={
+                        person.is_notable
+                          ? 'Click to remove notable status'
+                          : 'Click to mark as notable'
+                      }
+                      icon={
+                        <Star
+                          className={`w-3 h-3 ${person.is_notable ? 'fill-amber-500' : ''}`}
+                        />
+                      }
+                    >
+                      {person.is_notable ? 'Notable' : 'Mark Notable'}
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setShowEditModal(true)}
+                      className="bg-blue-100 text-blue-800 border border-blue-300 hover:bg-blue-200"
+                      title="Edit person details"
+                      icon={<Pencil className="w-3 h-3" />}
+                    >
+                      Edit
+                    </Button>
+                    {isAdmin && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => setShowDeleteDialog(true)}
+                        className="bg-red-100 text-red-800 border border-red-300 hover:bg-red-200"
+                        title="Delete person (admin only)"
+                        icon={<Trash2 className="w-3 h-3" />}
+                      >
+                        Delete
+                      </Button>
+                    )}
+                  </>
+                )}
+              </div>
 
-          <div className="grid md:grid-cols-2 gap-6">
-            <div>
-              <h3 className="font-semibold text-gray-700 mb-2">🎂 Birth</h3>
-              <p className="text-gray-600">
-                {person.birth_date || person.birth_year || 'Unknown'}
-                {person.birth_place && <><br /><span className="text-sm">{person.birth_place}</span></>}
-              </p>
-            </div>
-            {person.christening_date && (
-              <div>
-                <h3 className="font-semibold text-gray-700 mb-2">⛪ Christening</h3>
-                <p className="text-gray-600">
-                  {person.christening_date}
-                  {person.christening_place && <><br /><span className="text-sm">{person.christening_place}</span></>}
-                </p>
-              </div>
-            )}
-            {!person.living && (
-              <div>
-                <h3 className="font-semibold text-gray-700 mb-2">✝️ Death</h3>
-                <p className="text-gray-600">
-                  {person.death_date || person.death_year || 'Unknown'}
-                  {person.death_place && <><br /><span className="text-sm">{person.death_place}</span></>}
-                </p>
-              </div>
-            )}
-            {(person.burial_date || person.burial_place) && (
-              <div>
-                <h3 className="font-semibold text-gray-700 mb-2">🪦 Burial</h3>
-                <p className="text-gray-600">
-                  {person.burial_date}
-                  {person.burial_place && <><br /><span className="text-sm">{person.burial_place}</span></>}
-                </p>
-              </div>
-            )}
-            {person.immigration_date && (
-              <div>
-                <h3 className="font-semibold text-gray-700 mb-2">🚢 Immigration</h3>
-                <p className="text-gray-600">
-                  {person.immigration_date}
-                  {person.immigration_place && <><br /><span className="text-sm">{person.immigration_place}</span></>}
-                </p>
-              </div>
-            )}
-            {person.naturalization_date && (
-              <div>
-                <h3 className="font-semibold text-gray-700 mb-2">🏛️ Naturalization</h3>
-                <p className="text-gray-600">
-                  {person.naturalization_date}
-                  {person.naturalization_place && <><br /><span className="text-sm">{person.naturalization_place}</span></>}
-                </p>
-              </div>
-            )}
-            {person.religion && (
-              <div>
-                <h3 className="font-semibold text-gray-700 mb-2">✡️ Religion</h3>
-                <p className="text-gray-600">{person.religion}</p>
-              </div>
-            )}
-          </div>
-          {person.description && (
-            <div className="mt-4 pt-4 border-t">
-              <h3 className="font-semibold text-gray-700 mb-2">📝 Notes</h3>
-              <p className="text-gray-600 text-sm">{person.description}</p>
-            </div>
-          )}
-          {person.familysearch_id && (
-            <div className="mt-4 pt-4 border-t">
-              <a href={`https://www.familysearch.org/tree/person/details/${person.familysearch_id}`}
-                 target="_blank"
-                 rel="noopener noreferrer"
-                 className="text-green-600 hover:text-green-800 text-sm flex items-center gap-1">
-                🌳 View on FamilySearch
-              </a>
-            </div>
-          )}
-        </div>
-
-        {/* Two-column grid for family sections on large screens */}
-        <div className="grid grid-cols-1 xl:grid-cols-2 gap-6 mb-6">
-          {/* Parents */}
-          {person.parents.length > 0 && (
-            <div className="card p-6">
-              <h3 className="section-title">Parents</h3>
-              <div className="grid gap-4">
-                {person.parents.map(parent => (
-                  <div key={parent.id} className={`p-4 rounded-lg border-l-4 ${parent.sex === 'F' ? 'border-l-pink-400 bg-pink-50' : 'border-l-blue-400 bg-blue-50'} hover:shadow-md transition flex justify-between items-start`}>
-                    <Link href={`/person/${parent.id}`} className="flex-1">
-                      <p className="font-semibold">{parent.name_full}</p>
-                      <p className="text-sm text-gray-500">{parent.birth_year || '?'} – {parent.death_year || (parent.living ? 'Living' : '?')}</p>
-                    </Link>
-                    <TreeLink personId={parent.id} />
+              <div className="grid md:grid-cols-2 gap-6">
+                <div>
+                  <h3 className="font-semibold text-gray-700 mb-2">🎂 Birth</h3>
+                  <p className="text-gray-600">
+                    {person.birth_date || person.birth_year || 'Unknown'}
+                    {person.birth_place && (
+                      <>
+                        <br />
+                        <span className="text-sm">{person.birth_place}</span>
+                      </>
+                    )}
+                  </p>
+                </div>
+                {person.christening_date && (
+                  <div>
+                    <h3 className="font-semibold text-gray-700 mb-2">
+                      ⛪ Christening
+                    </h3>
+                    <p className="text-gray-600">
+                      {person.christening_date}
+                      {person.christening_place && (
+                        <>
+                          <br />
+                          <span className="text-sm">
+                            {person.christening_place}
+                          </span>
+                        </>
+                      )}
+                    </p>
                   </div>
-                ))}
+                )}
+                {!person.living && (
+                  <div>
+                    <h3 className="font-semibold text-gray-700 mb-2">
+                      ✝️ Death
+                    </h3>
+                    <p className="text-gray-600">
+                      {person.death_date || person.death_year || 'Unknown'}
+                      {person.death_place && (
+                        <>
+                          <br />
+                          <span className="text-sm">{person.death_place}</span>
+                        </>
+                      )}
+                    </p>
+                  </div>
+                )}
+                {(person.burial_date || person.burial_place) && (
+                  <div>
+                    <h3 className="font-semibold text-gray-700 mb-2">
+                      🪦 Burial
+                    </h3>
+                    <p className="text-gray-600">
+                      {person.burial_date}
+                      {person.burial_place && (
+                        <>
+                          <br />
+                          <span className="text-sm">{person.burial_place}</span>
+                        </>
+                      )}
+                    </p>
+                  </div>
+                )}
+                {person.immigration_date && (
+                  <div>
+                    <h3 className="font-semibold text-gray-700 mb-2">
+                      🚢 Immigration
+                    </h3>
+                    <p className="text-gray-600">
+                      {person.immigration_date}
+                      {person.immigration_place && (
+                        <>
+                          <br />
+                          <span className="text-sm">
+                            {person.immigration_place}
+                          </span>
+                        </>
+                      )}
+                    </p>
+                  </div>
+                )}
+                {person.naturalization_date && (
+                  <div>
+                    <h3 className="font-semibold text-gray-700 mb-2">
+                      🏛️ Naturalization
+                    </h3>
+                    <p className="text-gray-600">
+                      {person.naturalization_date}
+                      {person.naturalization_place && (
+                        <>
+                          <br />
+                          <span className="text-sm">
+                            {person.naturalization_place}
+                          </span>
+                        </>
+                      )}
+                    </p>
+                  </div>
+                )}
+                {person.religion && (
+                  <div>
+                    <h3 className="font-semibold text-gray-700 mb-2">
+                      ✡️ Religion
+                    </h3>
+                    <p className="text-gray-600">{person.religion}</p>
+                  </div>
+                )}
+              </div>
+              {person.description && (
+                <div className="mt-4 pt-4 border-t">
+                  <h3 className="font-semibold text-gray-700 mb-2">📝 Notes</h3>
+                  <p className="text-gray-600 text-sm">{person.description}</p>
+                </div>
+              )}
+              {person.familysearch_id && (
+                <div className="mt-4 pt-4 border-t">
+                  <a
+                    href={`https://www.familysearch.org/tree/person/details/${person.familysearch_id}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-green-600 hover:text-green-800 text-sm flex items-center gap-1"
+                  >
+                    🌳 View on FamilySearch
+                  </a>
+                </div>
+              )}
+            </div>
+
+            {/* Two-column grid for family sections on large screens */}
+            <div className="grid grid-cols-1 xl:grid-cols-2 gap-6 mb-6">
+              {/* Parents */}
+              {person.parents.length > 0 && (
+                <div className="card p-6">
+                  <h3 className="section-title">Parents</h3>
+                  <div className="grid gap-4">
+                    {person.parents.map((parent) => (
+                      <div
+                        key={parent.id}
+                        className={`p-4 rounded-lg border-l-4 ${parent.sex === 'F' ? 'border-l-pink-400 bg-pink-50' : 'border-l-blue-400 bg-blue-50'} hover:shadow-md transition flex justify-between items-start`}
+                      >
+                        <Link href={`/person/${parent.id}`} className="flex-1">
+                          <p className="font-semibold">{parent.name_full}</p>
+                          <p className="text-sm text-gray-500">
+                            {parent.birth_year || '?'} –{' '}
+                            {parent.death_year ||
+                              (parent.living ? 'Living' : '?')}
+                          </p>
+                        </Link>
+                        <TreeLink personId={parent.id} />
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Siblings */}
+              {person.siblings.length > 0 && (
+                <div className="card p-6">
+                  <h3 className="section-title">
+                    Siblings ({person.siblings.length})
+                  </h3>
+                  <div className="grid gap-2">
+                    {person.siblings.map((sibling) => (
+                      <div
+                        key={sibling.id}
+                        className={`p-3 rounded border-l-4 ${sibling.sex === 'F' ? 'border-l-pink-300 bg-pink-50/50' : 'border-l-blue-300 bg-blue-50/50'} hover:shadow-sm transition text-sm flex justify-between items-center`}
+                      >
+                        <Link href={`/person/${sibling.id}`} className="flex-1">
+                          {sibling.name_full}{' '}
+                          {sibling.birth_year
+                            ? `(b. ${sibling.birth_year})`
+                            : ''}
+                        </Link>
+                        <TreeLink personId={sibling.id} className="text-sm" />
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Spouse & Children - Full width */}
+            <FamilyEditor
+              personId={personId}
+              personSex={person.sex || 'M'}
+              families={familiesAsSpouse}
+              canEdit={canEdit}
+            />
+
+            {/* Two-column grid for events and facts on large screens */}
+            <div className="grid grid-cols-1 xl:grid-cols-2 gap-6 mb-6">
+              {/* Life Events (residences, occupations, other events) */}
+              <div className="xl:col-span-1">
+                <LifeEventsEditor
+                  personId={personId}
+                  lifeEvents={person.lifeEvents}
+                  canEdit={canEdit}
+                />
+              </div>
+
+              {/* Facts */}
+              <div className="xl:col-span-1">
+                <FactsEditor
+                  personId={personId}
+                  facts={person.facts}
+                  canEdit={canEdit}
+                />
               </div>
             </div>
-          )}
 
-          {/* Siblings */}
-          {person.siblings.length > 0 && (
-            <div className="card p-6">
-              <h3 className="section-title">Siblings ({person.siblings.length})</h3>
-              <div className="grid gap-2">
-                {person.siblings.map(sibling => (
-                  <div key={sibling.id} className={`p-3 rounded border-l-4 ${sibling.sex === 'F' ? 'border-l-pink-300 bg-pink-50/50' : 'border-l-blue-300 bg-blue-50/50'} hover:shadow-sm transition text-sm flex justify-between items-center`}>
-                    <Link href={`/person/${sibling.id}`} className="flex-1">
-                      {sibling.name_full} {sibling.birth_year ? `(b. ${sibling.birth_year})` : ''}
-                    </Link>
-                    <TreeLink personId={sibling.id} className="text-sm" />
-                  </div>
-                ))}
+            {/* Coat of Arms - Full width */}
+            {person.facts.filter((f) => f.fact_type === 'coat_of_arms').length >
+              0 && (
+              <div className="card p-6 mb-6 bg-gradient-to-r from-amber-50 to-yellow-50 border-2 border-amber-300">
+                <h3 className="section-title">🛡️ Coat of Arms</h3>
+                <div className="flex flex-wrap gap-4 justify-center">
+                  {person.facts
+                    .filter((f) => f.fact_type === 'coat_of_arms')
+                    .map((fact) => (
+                      <a
+                        key={fact.id}
+                        href={fact.fact_value || '#'}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="block"
+                      >
+                        <div className="relative w-[200px] h-[250px]">
+                          <Image
+                            src={fact.fact_value || ''}
+                            alt="Family Coat of Arms"
+                            fill
+                            className="object-contain rounded-lg shadow-lg border-4 border-amber-200 hover:border-amber-400 transition-all hover:scale-105"
+                            unoptimized
+                          />
+                        </div>
+                      </a>
+                    ))}
+                </div>
               </div>
-            </div>
-          )}
-        </div>
+            )}
 
-        {/* Spouse & Children - Full width */}
-        <FamilyEditor
-          personId={personId}
-          personSex={person.sex || 'M'}
-          families={familiesAsSpouse}
-          canEdit={canEdit}
-        />
+            {/* Media Gallery - Full width */}
+            <MediaGallery
+              personId={personId}
+              media={person.media || []}
+              canEdit={canEdit}
+            />
 
-        {/* Two-column grid for events and facts on large screens */}
-        <div className="grid grid-cols-1 xl:grid-cols-2 gap-6 mb-6">
-          {/* Life Events (residences, occupations, other events) */}
-          <div className="xl:col-span-1">
-            <LifeEventsEditor personId={personId} lifeEvents={person.lifeEvents} canEdit={canEdit} />
+            {/* Sources & Research - Full width */}
+            <SourcesEditor
+              personId={personId}
+              sources={person.sources || []}
+              canEdit={canEdit}
+            />
+
+            <ButtonLink href="/people" variant="secondary" icon={ArrowLeft}>
+              Back to People
+            </ButtonLink>
           </div>
 
-          {/* Facts */}
-          <div className="xl:col-span-1">
-            <FactsEditor personId={personId} facts={person.facts} canEdit={canEdit} />
+          {/* Sidebar with Research Panel */}
+          <div className="lg:w-80 flex-shrink-0">
+            <ResearchPanel personId={personId} personName={person.name_full} />
           </div>
-        </div>
-
-        {/* Coat of Arms - Full width */}
-        {person.facts.filter(f => f.fact_type === 'coat_of_arms').length > 0 && (
-          <div className="card p-6 mb-6 bg-gradient-to-r from-amber-50 to-yellow-50 border-2 border-amber-300">
-            <h3 className="section-title">🛡️ Coat of Arms</h3>
-            <div className="flex flex-wrap gap-4 justify-center">
-              {person.facts.filter(f => f.fact_type === 'coat_of_arms').map((fact) => (
-                <a key={fact.id} href={fact.fact_value || '#'} target="_blank" rel="noopener noreferrer" className="block">
-                  <div className="relative w-[200px] h-[250px]">
-                    <Image
-                      src={fact.fact_value || ''}
-                      alt="Family Coat of Arms"
-                      fill
-                      className="object-contain rounded-lg shadow-lg border-4 border-amber-200 hover:border-amber-400 transition-all hover:scale-105"
-                      unoptimized
-                    />
-                  </div>
-                </a>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* Media Gallery - Full width */}
-        <MediaGallery personId={personId} media={person.media || []} canEdit={canEdit} />
-
-        {/* Sources & Research - Full width */}
-        <SourcesEditor personId={personId} sources={person.sources || []} canEdit={canEdit} />
-
-        <ButtonLink href="/people" variant="secondary" icon={ArrowLeft}>
-          Back to People
-        </ButtonLink>
-      </div>
-
-        {/* Sidebar with Research Panel */}
-        <div className="lg:w-80 flex-shrink-0">
-          <ResearchPanel personId={personId} personName={person.name_full} />
-        </div>
         </div>
       </div>
 
@@ -394,4 +531,3 @@ export default function PersonPageClient({ personId }: Props) {
     </>
   );
 }
-

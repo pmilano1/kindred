@@ -129,11 +129,15 @@ export const themePresets: ThemePreset[] = [
 ];
 
 export function getPresetById(id: string): ThemePreset | undefined {
-  return themePresets.find(p => p.id === id);
+  return themePresets.find((p) => p.id === id);
 }
 
-export function getPresetByPrimaryColor(color: string): ThemePreset | undefined {
-  return themePresets.find(p => p.colors.primary.toLowerCase() === color.toLowerCase());
+export function getPresetByPrimaryColor(
+  color: string,
+): ThemePreset | undefined {
+  return themePresets.find(
+    (p) => p.colors.primary.toLowerCase() === color.toLowerCase(),
+  );
 }
 
 export function applyThemePreset(preset: ThemePreset): void {
@@ -143,4 +147,3 @@ export function applyThemePreset(preset: ThemePreset): void {
   root.style.setProperty('--secondary-color', preset.colors.secondary);
   root.style.setProperty('--accent-color', preset.colors.accent);
 }
-

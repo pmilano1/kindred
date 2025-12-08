@@ -1,11 +1,11 @@
-import type { Metadata } from "next";
-import "./globals.css";
-import { Providers } from "@/components/Providers";
-import Sidebar from "@/components/Sidebar";
-import MainContent from "@/components/MainContent";
-import Footer from "@/components/Footer";
-import DevApiIndicator from "@/components/DevApiIndicator";
-import { getSettings } from "@/lib/settings";
+import type { Metadata } from 'next';
+import './globals.css';
+import DevApiIndicator from '@/components/DevApiIndicator';
+import Footer from '@/components/Footer';
+import MainContent from '@/components/MainContent';
+import { Providers } from '@/components/Providers';
+import Sidebar from '@/components/Sidebar';
+import { getSettings } from '@/lib/settings';
 
 export async function generateMetadata(): Promise<Metadata> {
   try {
@@ -20,8 +20,8 @@ export async function generateMetadata(): Promise<Metadata> {
     };
   } catch {
     return {
-      title: "Family Genealogy",
-      description: "Explore the family tree and ancestry",
+      title: 'Family Genealogy',
+      description: 'Explore the family tree and ancestry',
       icons: {
         icon: '/favicon.svg',
         apple: '/kindred-logo.svg',

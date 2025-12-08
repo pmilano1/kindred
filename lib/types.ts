@@ -74,10 +74,52 @@ export interface Stats {
 }
 
 // Unified Source type - combines sources and research activity
-export type SourceType = 'FamilySearch' | 'Geni' | 'Ancestry' | 'MyHeritage' | 'FindAGrave' | 'ANOM' | 'Geneanet' | 'WikiTree' | 'Newspapers' | 'Census' | 'VitalRecords' | 'ChurchRecords' | 'Immigration' | 'Military' | 'DNA' | 'FamilyBible' | 'Interview' | 'Other';
-export type SourceAction = 'searched' | 'found' | 'verified' | 'rejected' | 'corrected' | 'todo' | 'note' | 'question' | 'brick_wall';
-export type SourceConfidence = 'confirmed' | 'probable' | 'possible' | 'uncertain' | 'conflicting' | 'speculative' | 'high' | 'medium' | 'low';
-export type ResearchStatus = 'not_started' | 'in_progress' | 'partial' | 'verified' | 'needs_review' | 'brick_wall';
+export type SourceType =
+  | 'FamilySearch'
+  | 'Geni'
+  | 'Ancestry'
+  | 'MyHeritage'
+  | 'FindAGrave'
+  | 'ANOM'
+  | 'Geneanet'
+  | 'WikiTree'
+  | 'Newspapers'
+  | 'Census'
+  | 'VitalRecords'
+  | 'ChurchRecords'
+  | 'Immigration'
+  | 'Military'
+  | 'DNA'
+  | 'FamilyBible'
+  | 'Interview'
+  | 'Other';
+export type SourceAction =
+  | 'searched'
+  | 'found'
+  | 'verified'
+  | 'rejected'
+  | 'corrected'
+  | 'todo'
+  | 'note'
+  | 'question'
+  | 'brick_wall';
+export type SourceConfidence =
+  | 'confirmed'
+  | 'probable'
+  | 'possible'
+  | 'uncertain'
+  | 'conflicting'
+  | 'speculative'
+  | 'high'
+  | 'medium'
+  | 'low';
+export type ResearchStatus =
+  | 'not_started'
+  | 'in_progress'
+  | 'partial'
+  | 'verified'
+  | 'needs_review'
+  | 'brick_wall';
 
 export interface Source {
   id: string;

@@ -1,10 +1,10 @@
 'use client';
 
-import { SessionProvider } from 'next-auth/react';
-import { ApolloClient, InMemoryCache, HttpLink } from '@apollo/client/core';
+import { ApolloClient, HttpLink, InMemoryCache } from '@apollo/client/core';
 import { ApolloProvider } from '@apollo/client/react';
+import { SessionProvider } from 'next-auth/react';
 import { useMemo } from 'react';
-import { SettingsProvider, SiteSettings } from './SettingsProvider';
+import { SettingsProvider, type SiteSettings } from './SettingsProvider';
 import { SidebarProvider } from './SidebarContext';
 
 function ApolloWrapper({ children }: { children: React.ReactNode }) {
@@ -48,12 +48,9 @@ export function Providers({ children, settings }: ProvidersProps) {
     <SessionProvider refetchOnWindowFocus={false} refetchInterval={0}>
       <ApolloWrapper>
         <SettingsProvider settings={settings}>
-          <SidebarProvider>
-            {children}
-          </SidebarProvider>
+          <SidebarProvider>{children}</SidebarProvider>
         </SettingsProvider>
       </ApolloWrapper>
     </SessionProvider>
   );
 }
-

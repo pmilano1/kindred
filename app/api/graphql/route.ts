@@ -1,13 +1,13 @@
-import { ApolloServer, BaseContext } from '@apollo/server';
+import { ApolloServer, type BaseContext } from '@apollo/server';
 import { startServerAndCreateNextHandler } from '@as-integrations/next';
-import { NextRequest, NextResponse } from 'next/server';
-import { auth } from '@/lib/auth';
-import { pool } from '@/lib/pool';
-import { typeDefs } from '@/lib/graphql/schema';
-import { resolvers } from '@/lib/graphql/resolvers';
-import { createLoaders, Loaders } from '@/lib/graphql/dataloaders';
-import depthLimit from 'graphql-depth-limit';
 import { GraphQLError } from 'graphql';
+import depthLimit from 'graphql-depth-limit';
+import { type NextRequest, NextResponse } from 'next/server';
+import { auth } from '@/lib/auth';
+import { createLoaders, type Loaders } from '@/lib/graphql/dataloaders';
+import { resolvers } from '@/lib/graphql/resolvers';
+import { typeDefs } from '@/lib/graphql/schema';
+import { pool } from '@/lib/pool';
 
 // Proxy configuration for local development
 const PROXY_URL = process.env.GRAPHQL_PROXY_URL;
@@ -19,7 +19,7 @@ async function proxyToLiveApi(request: NextRequest): Promise<NextResponse> {
   if (!PROXY_URL) {
     return NextResponse.json(
       { errors: [{ message: 'GRAPHQL_PROXY_URL not configured' }] },
-      { status: 500 }
+      { status: 500 },
     );
   }
 
@@ -56,7 +56,7 @@ async function proxyToLiveApi(request: NextRequest): Promise<NextResponse> {
     console.error('[GraphQL Proxy] Error:', error);
     return NextResponse.json(
       { errors: [{ message: `Proxy error: ${(error as Error).message}` }] },
-      { status: 502 }
+      { status: 502 },
     );
   }
 }
@@ -68,8 +68,8 @@ interface Context extends BaseContext {
 }
 
 // Query limits
-const MAX_DEPTH = 7;           // Max nesting (person -> children -> children -> ...)
-const MAX_QUERY_SIZE = 10000;  // Max query string length
+const MAX_DEPTH = 7; // Max nesting (person -> children -> children -> ...)
+const MAX_QUERY_SIZE = 10000; // Max query string length
 
 // Create Apollo Server with security plugins
 const server = new ApolloServer<Context>({
@@ -85,8 +85,12 @@ const server = new ApolloServer<Context>({
         return {
           async willSendResponse({ response, contextValue }) {
             const duration = Date.now() - start;
-            const user = (contextValue as { user?: { email: string } }).user?.email || 'anonymous';
-            console.log(`[GraphQL] ${user} - ${duration}ms - ${response.body.kind === 'single' ? (response.body.singleResult.errors ? 'ERROR' : 'OK') : 'BATCH'}`);
+            const user =
+              (contextValue as { user?: { email: string } }).user?.email ||
+              'anonymous';
+            console.log(
+              `[GraphQL] ${user} - ${duration}ms - ${response.body.kind === 'single' ? (response.body.singleResult.errors ? 'ERROR' : 'OK') : 'BATCH'}`,
+            );
           },
           async didEncounterErrors({ errors }) {
             for (const err of errors) {
@@ -104,9 +108,12 @@ const server = new ApolloServer<Context>({
             // Simple complexity estimation based on query size
             const querySize = request.query?.length || 0;
             if (querySize > MAX_QUERY_SIZE) {
-              throw new GraphQLError(`Query too complex: ${querySize} chars exceeds limit`, {
-                extensions: { code: 'QUERY_TOO_COMPLEX' },
-              });
+              throw new GraphQLError(
+                `Query too complex: ${querySize} chars exceeds limit`,
+                {
+                  extensions: { code: 'QUERY_TOO_COMPLEX' },
+                },
+              );
             }
           },
         };
@@ -119,7 +126,7 @@ const server = new ApolloServer<Context>({
 async function validateApiKey(apiKey: string) {
   const result = await pool.query(
     'SELECT id, email, role FROM users WHERE api_key = $1',
-    [apiKey]
+    [apiKey],
   );
   return result.rows[0] || null;
 }
@@ -181,4 +188,3 @@ export async function POST(request: NextRequest) {
   }
   return handler(request);
 }
-

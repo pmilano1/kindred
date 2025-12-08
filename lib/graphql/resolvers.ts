@@ -1,20 +1,33 @@
-import crypto from 'crypto';
-import { pool } from '../pool';
-import { Person } from '../types';
+import crypto from 'node:crypto';
+import { sendInviteEmail, verifyEmailForSandbox } from '../email';
 import {
-  getUsers,
-  getInvitations,
+  type GedcomFamily,
+  type GedcomPerson,
+  type GedcomSource,
+  generateGedcom,
+  parseGedcom,
+} from '../gedcom';
+import {
+  getMigrationStatus,
+  runMigrations as runMigrationsFromModule,
+} from '../migrations';
+import { pool } from '../pool';
+import {
+  clearSettingsCache,
+  getSettings,
+  type SiteSettings,
+} from '../settings';
+import type { Person } from '../types';
+import {
   createInvitation,
   deleteInvitation,
-  updateUserRole,
   deleteUser,
-  logAudit
+  getInvitations,
+  getUsers,
+  logAudit,
+  updateUserRole,
 } from '../users';
-import { sendInviteEmail, verifyEmailForSandbox } from '../email';
-import { Loaders } from './dataloaders';
-import { getSettings, clearSettingsCache, SiteSettings } from '../settings';
-import { generateGedcom, GedcomPerson, GedcomFamily, GedcomSource, parseGedcom } from '../gedcom';
-import { runMigrations as runMigrationsFromModule, getMigrationStatus } from '../migrations';
+import type { Loaders } from './dataloaders';
 
 // ===========================================
 // QUERY CACHING
@@ -70,14 +83,20 @@ interface Context {
 }
 
 // Helper to check auth for mutations
-function requireAuth(context: Context, requiredRole: 'viewer' | 'editor' | 'admin' = 'viewer') {
+function requireAuth(
+  context: Context,
+  requiredRole: 'viewer' | 'editor' | 'admin' = 'viewer',
+) {
   if (!context.user) {
     throw new Error('Authentication required');
   }
   if (requiredRole === 'admin' && context.user.role !== 'admin') {
     throw new Error('Admin access required');
   }
-  if (requiredRole === 'editor' && !['admin', 'editor'].includes(context.user.role)) {
+  if (
+    requiredRole === 'editor' &&
+    !['admin', 'editor'].includes(context.user.role)
+  ) {
     throw new Error('Editor access required');
   }
   return context.user;
@@ -85,13 +104,14 @@ function requireAuth(context: Context, requiredRole: 'viewer' | 'editor' | 'admi
 
 // Cursor encoding/decoding
 const encodeCursor = (id: string) => Buffer.from(id).toString('base64');
-const decodeCursor = (cursor: string) => Buffer.from(cursor, 'base64').toString('utf-8');
+const decodeCursor = (cursor: string) =>
+  Buffer.from(cursor, 'base64').toString('utf-8');
 
 // Helper to get a person by ID
 async function getPerson(id: string): Promise<Person | null> {
   const { rows } = await pool.query(
     `SELECT *, COALESCE(notes, description) as description FROM people WHERE id = $1`,
-    [id]
+    [id],
   );
   return rows[0] || null;
 }
@@ -105,14 +125,22 @@ export const resolvers = {
       ctx.loaders.familyLoader.load(id),
 
     // Cursor-based pagination for people
-    people: async (_: unknown, { first = 50, after, last, before }: { first?: number; after?: string; last?: number; before?: string }) => {
+    people: async (
+      _: unknown,
+      {
+        first = 50,
+        after,
+        last,
+        before,
+      }: { first?: number; after?: string; last?: number; before?: string },
+    ) => {
       const limit = Math.min(first || last || 50, 100);
       const afterId = after ? decodeCursor(after) : null;
       const beforeId = before ? decodeCursor(before) : null;
 
       // Get total count
       const countResult = await pool.query('SELECT COUNT(*) FROM people');
-      const totalCount = parseInt(countResult.rows[0].count);
+      const totalCount = parseInt(countResult.rows[0].count, 10);
 
       // Build query with cursor
       let query = `SELECT *, COALESCE(notes, description) as description FROM people`;
@@ -135,12 +163,17 @@ export const resolvers = {
       if (beforeId) people.reverse();
 
       return {
-        edges: people.map((p: { id: string }) => ({ node: p, cursor: encodeCursor(p.id) })),
+        edges: people.map((p: { id: string }) => ({
+          node: p,
+          cursor: encodeCursor(p.id),
+        })),
         pageInfo: {
           hasNextPage: hasMore,
           hasPreviousPage: !!afterId,
           startCursor: people.length ? encodeCursor(people[0].id) : null,
-          endCursor: people.length ? encodeCursor(people[people.length - 1].id) : null,
+          endCursor: people.length
+            ? encodeCursor(people[people.length - 1].id)
+            : null,
           totalCount,
         },
       };
@@ -148,25 +181,34 @@ export const resolvers = {
 
     // Legacy offset-based (for backwards compatibility)
     // Tree component needs all people - allow up to 10000 for tree view
-    peopleList: async (_: unknown, { limit = 100, offset = 0 }: { limit?: number; offset?: number }) => {
-      const { rows } = await pool.query(`
+    peopleList: async (
+      _: unknown,
+      { limit = 100, offset = 0 }: { limit?: number; offset?: number },
+    ) => {
+      const { rows } = await pool.query(
+        `
         SELECT *, COALESCE(notes, description) as description
         FROM people
         ORDER BY birth_year DESC NULLS LAST
         LIMIT $1 OFFSET $2
-      `, [Math.min(limit, 10000), offset]);
+      `,
+        [Math.min(limit, 10000), offset],
+      );
       return rows;
     },
 
     // Recent people (for home page)
     recentPeople: async (_: unknown, { limit = 10 }: { limit?: number }) => {
-      const { rows } = await pool.query(`
+      const { rows } = await pool.query(
+        `
         SELECT *, COALESCE(notes, description) as description
         FROM people
         WHERE birth_year IS NOT NULL
         ORDER BY birth_year DESC
         LIMIT $1
-      `, [Math.min(limit, 50)]);
+      `,
+        [Math.min(limit, 50)],
+      );
       return rows;
     },
 
@@ -182,14 +224,24 @@ export const resolvers = {
     },
 
     // Search with pagination using PostgreSQL full-text search
-    search: async (_: unknown, { query, first = 50, after }: { query: string; first?: number; after?: string }) => {
+    search: async (
+      _: unknown,
+      {
+        query,
+        first = 50,
+        after,
+      }: { query: string; first?: number; after?: string },
+    ) => {
       const limit = Math.min(first, 100);
       const afterId = after ? decodeCursor(after) : null;
 
       // Prepare search query for PostgreSQL full-text search
       // Split into words and add prefix matching for partial word search
-      const searchTerms = query.trim().split(/\s+/).filter(t => t.length > 0);
-      const tsQuery = searchTerms.map(term => `${term}:*`).join(' & ');
+      const searchTerms = query
+        .trim()
+        .split(/\s+/)
+        .filter((t) => t.length > 0);
+      const tsQuery = searchTerms.map((term) => `${term}:*`).join(' & ');
 
       // Build the query with full-text search and trigram fallback
       let sql: string;
@@ -226,21 +278,30 @@ export const resolvers = {
       // Apply cursor-based pagination
       let startIdx = 0;
       if (afterId) {
-        const afterIdx = allResults.findIndex((p: { id: string }) => p.id === afterId);
+        const afterIdx = allResults.findIndex(
+          (p: { id: string }) => p.id === afterId,
+        );
         if (afterIdx >= 0) startIdx = afterIdx + 1;
       }
 
       const paginatedPeople = allResults.slice(startIdx, startIdx + limit + 1);
       const hasMore = paginatedPeople.length > limit;
-      const people = hasMore ? paginatedPeople.slice(0, limit) : paginatedPeople;
+      const people = hasMore
+        ? paginatedPeople.slice(0, limit)
+        : paginatedPeople;
 
       return {
-        edges: people.map((p: { id: string }) => ({ node: p, cursor: encodeCursor(p.id) })),
+        edges: people.map((p: { id: string }) => ({
+          node: p,
+          cursor: encodeCursor(p.id),
+        })),
         pageInfo: {
           hasNextPage: hasMore,
           hasPreviousPage: startIdx > 0,
           startCursor: people.length ? encodeCursor(people[0].id) : null,
-          endCursor: people.length ? encodeCursor(people[people.length - 1].id) : null,
+          endCursor: people.length
+            ? encodeCursor(people[people.length - 1].id)
+            : null,
           totalCount,
         },
       };
@@ -267,7 +328,8 @@ export const resolvers = {
     },
 
     researchQueue: async (_: unknown, { limit = 50 }: { limit?: number }) => {
-      const { rows } = await pool.query(`
+      const { rows } = await pool.query(
+        `
         SELECT * FROM people
         WHERE research_status != 'verified' OR research_status IS NULL
         ORDER BY
@@ -276,30 +338,39 @@ export const resolvers = {
           (research_status = 'in_progress') DESC,
           last_researched NULLS FIRST
         LIMIT $1
-      `, [Math.min(limit, 100)]);
+      `,
+        [Math.min(limit, 100)],
+      );
       // Convert Date objects to ISO strings for serialization
       return rows.map((row: Record<string, unknown>) => ({
         ...row,
-        last_researched: row.last_researched instanceof Date
-          ? row.last_researched.toISOString()
-          : row.last_researched,
-        created_at: row.created_at instanceof Date
-          ? row.created_at.toISOString()
-          : row.created_at,
-        updated_at: row.updated_at instanceof Date
-          ? row.updated_at.toISOString()
-          : row.updated_at,
+        last_researched:
+          row.last_researched instanceof Date
+            ? row.last_researched.toISOString()
+            : row.last_researched,
+        created_at:
+          row.created_at instanceof Date
+            ? row.created_at.toISOString()
+            : row.created_at,
+        updated_at:
+          row.updated_at instanceof Date
+            ? row.updated_at.toISOString()
+            : row.updated_at,
       }));
     },
 
     // Optimized ancestry traversal (single recursive CTE)
     // Optimized ancestry traversal with caching
-    ancestors: async (_: unknown, { personId, generations = 5 }: { personId: string; generations?: number }) => {
+    ancestors: async (
+      _: unknown,
+      { personId, generations = 5 }: { personId: string; generations?: number },
+    ) => {
       const cacheKey = `ancestors:${personId}:${generations}`;
       const cached = getCached<Person[]>(cacheKey);
       if (cached) return cached;
 
-      const { rows } = await pool.query(`
+      const { rows } = await pool.query(
+        `
         WITH RECURSIVE ancestry AS (
           SELECT p.*, 1 as gen FROM people p
           JOIN children c ON c.person_id = $1
@@ -315,19 +386,25 @@ export const resolvers = {
           WHERE a.gen < $2
         )
         SELECT DISTINCT ON (id) * FROM ancestry ORDER BY id, gen
-      `, [personId, generations]);
+      `,
+        [personId, generations],
+      );
 
       setCache(cacheKey, rows);
       return rows;
     },
 
     // Optimized descendant traversal with caching
-    descendants: async (_: unknown, { personId, generations = 5 }: { personId: string; generations?: number }) => {
+    descendants: async (
+      _: unknown,
+      { personId, generations = 5 }: { personId: string; generations?: number },
+    ) => {
       const cacheKey = `descendants:${personId}:${generations}`;
       const cached = getCached<Person[]>(cacheKey);
       if (cached) return cached;
 
-      const { rows } = await pool.query(`
+      const { rows } = await pool.query(
+        `
         WITH RECURSIVE descendancy AS (
           SELECT p.*, 1 as gen FROM people p
           JOIN children c ON c.person_id = p.id
@@ -343,7 +420,9 @@ export const resolvers = {
           WHERE d.gen < $2
         )
         SELECT DISTINCT ON (id) * FROM descendancy ORDER BY id, gen
-      `, [personId, generations]);
+      `,
+        [personId, generations],
+      );
 
       setCache(cacheKey, rows);
       return rows;
@@ -355,7 +434,10 @@ export const resolvers = {
         SELECT * FROM people WHERE birth_year IS NOT NULL OR death_year IS NOT NULL
       `);
 
-      const events: Map<number, Array<{type: string; person: Person}>> = new Map();
+      const events: Map<
+        number,
+        Array<{ type: string; person: Person }>
+      > = new Map();
 
       for (const person of rows) {
         if (person.birth_year) {
@@ -378,7 +460,7 @@ export const resolvers = {
       const user = requireAuth(context);
       const { rows } = await pool.query(
         'SELECT id, email, name, role, created_at, last_login, last_accessed, api_key FROM users WHERE id = $1',
-        [user.id]
+        [user.id],
       );
       return rows[0] || null;
     },
@@ -396,14 +478,16 @@ export const resolvers = {
 
     // Surname crests (coat of arms by surname)
     surnameCrests: async () => {
-      const { rows } = await pool.query(`SELECT * FROM surname_crests ORDER BY surname`);
+      const { rows } = await pool.query(
+        `SELECT * FROM surname_crests ORDER BY surname`,
+      );
       return rows;
     },
 
     surnameCrest: async (_: unknown, { surname }: { surname: string }) => {
       const { rows } = await pool.query(
         `SELECT * FROM surname_crests WHERE LOWER(surname) = LOWER($1) LIMIT 1`,
-        [surname]
+        [surname],
       );
       return rows[0] || null;
     },
@@ -417,7 +501,7 @@ export const resolvers = {
       requireAuth(context, 'admin');
       try {
         const { rows } = await pool.query(
-          'SELECT key, value, description, category, updated_at FROM settings ORDER BY category, key'
+          'SELECT key, value, description, category, updated_at FROM settings ORDER BY category, key',
         );
         return rows;
       } catch (error) {
@@ -437,9 +521,19 @@ export const resolvers = {
         WHERE table_schema = 'public'
         ORDER BY table_name
       `);
-      const requiredTables = ['people', 'families', 'children', 'users', 'settings'];
-      const existingTables = rows.map((r: { table_name: string }) => r.table_name);
-      const missingTables = requiredTables.filter(t => !existingTables.includes(t));
+      const requiredTables = [
+        'people',
+        'families',
+        'children',
+        'users',
+        'settings',
+      ];
+      const existingTables = rows.map(
+        (r: { table_name: string }) => r.table_name,
+      );
+      const missingTables = requiredTables.filter(
+        (t) => !existingTables.includes(t),
+      );
       return {
         tables: existingTables,
         missingTables,
@@ -452,11 +546,15 @@ export const resolvers = {
     },
 
     // Email queries (admin only)
-    emailLogs: async (_: unknown, { limit = 50, offset = 0 }: { limit?: number; offset?: number }, context: Context) => {
+    emailLogs: async (
+      _: unknown,
+      { limit = 50, offset = 0 }: { limit?: number; offset?: number },
+      context: Context,
+    ) => {
       requireAuth(context, 'admin');
       const { rows } = await pool.query(
         'SELECT id, email_type, recipient, subject, success, error_message, sent_at FROM email_log ORDER BY sent_at DESC LIMIT $1 OFFSET $2',
-        [limit, offset]
+        [limit, offset],
       );
       return rows;
     },
@@ -477,10 +575,10 @@ export const resolvers = {
         ORDER BY count DESC
       `);
       return {
-        total_sent: parseInt(totals.rows[0].total_sent) || 0,
-        successful: parseInt(totals.rows[0].successful) || 0,
-        failed: parseInt(totals.rows[0].failed) || 0,
-        by_type: byType.rows
+        total_sent: parseInt(totals.rows[0].total_sent, 10) || 0,
+        successful: parseInt(totals.rows[0].successful, 10) || 0,
+        failed: parseInt(totals.rows[0].failed, 10) || 0,
+        by_type: byType.rows,
       };
     },
 
@@ -489,13 +587,20 @@ export const resolvers = {
       const user = requireAuth(context);
       const { rows } = await pool.query(
         'SELECT user_id, research_updates, tree_changes, weekly_digest, birthday_reminders FROM email_preferences WHERE user_id = $1',
-        [user.id]
+        [user.id],
       );
       return rows[0] || null;
     },
 
     // GEDCOM export
-    exportGedcom: async (_: unknown, { includeLiving, includeSources }: { includeLiving?: boolean; includeSources?: boolean }, context: Context) => {
+    exportGedcom: async (
+      _: unknown,
+      {
+        includeLiving,
+        includeSources,
+      }: { includeLiving?: boolean; includeSources?: boolean },
+      context: Context,
+    ) => {
       requireAuth(context);
 
       // Fetch all people with sources
@@ -512,13 +617,14 @@ export const resolvers = {
       `);
       const sourcesByPerson = new Map<string, GedcomSource[]>();
       for (const src of sourcesResult.rows) {
-        if (!sourcesByPerson.has(src.person_id)) sourcesByPerson.set(src.person_id, []);
+        if (!sourcesByPerson.has(src.person_id))
+          sourcesByPerson.set(src.person_id, []);
         sourcesByPerson.get(src.person_id)!.push(src);
       }
 
-      const people: GedcomPerson[] = peopleResult.rows.map(p => ({
+      const people: GedcomPerson[] = peopleResult.rows.map((p) => ({
         ...p,
-        sources: sourcesByPerson.get(p.id) || []
+        sources: sourcesByPerson.get(p.id) || [],
       }));
 
       // Fetch all families with children
@@ -531,66 +637,83 @@ export const resolvers = {
       `);
       const childrenByFamily = new Map<string, string[]>();
       for (const c of childrenResult.rows) {
-        if (!childrenByFamily.has(c.family_id)) childrenByFamily.set(c.family_id, []);
+        if (!childrenByFamily.has(c.family_id))
+          childrenByFamily.set(c.family_id, []);
         childrenByFamily.get(c.family_id)!.push(c.person_id);
       }
 
-      const families: GedcomFamily[] = familiesResult.rows.map(f => ({
+      const families: GedcomFamily[] = familiesResult.rows.map((f) => ({
         ...f,
-        children_ids: childrenByFamily.get(f.id) || []
+        children_ids: childrenByFamily.get(f.id) || [],
       }));
 
       return generateGedcom(people, families, {
         includeLiving: includeLiving ?? false,
         includeSources: includeSources ?? true,
-        submitterName: 'Kindred Family Tree'
+        submitterName: 'Kindred Family Tree',
       });
     },
   },
 
   Mutation: {
-    createPerson: async (_: unknown, { input }: { input: Record<string, unknown> }, context: Context) => {
+    createPerson: async (
+      _: unknown,
+      { input }: { input: Record<string, unknown> },
+      context: Context,
+    ) => {
       requireAuth(context, 'editor');
 
       // Generate a nanoid-style ID (12 chars alphanumeric)
-      const id = crypto.randomBytes(9).toString('base64').replace(/[+/=]/g, '').substring(0, 12);
+      const id = crypto
+        .randomBytes(9)
+        .toString('base64')
+        .replace(/[+/=]/g, '')
+        .substring(0, 12);
 
       // Require at least name_full
       if (!input.name_full) {
         throw new Error('name_full is required');
       }
 
-      const fields = Object.keys(input).filter(k => input[k] !== undefined);
+      const fields = Object.keys(input).filter((k) => input[k] !== undefined);
       const columns = ['id', ...fields];
       const placeholders = columns.map((_, i) => `$${i + 1}`).join(', ');
-      const values = [id, ...fields.map(f => input[f])];
+      const values = [id, ...fields.map((f) => input[f])];
 
       await pool.query(
         `INSERT INTO people (${columns.join(', ')}) VALUES (${placeholders})`,
-        values
+        values,
       );
 
       return getPerson(id);
     },
 
-    updatePerson: async (_: unknown, { id, input }: { id: string; input: Record<string, unknown> }, context: Context) => {
+    updatePerson: async (
+      _: unknown,
+      { id, input }: { id: string; input: Record<string, unknown> },
+      context: Context,
+    ) => {
       requireAuth(context, 'editor');
 
-      const fields = Object.keys(input).filter(k => input[k] !== undefined);
+      const fields = Object.keys(input).filter((k) => input[k] !== undefined);
       if (fields.length === 0) return getPerson(id);
 
       const setClause = fields.map((f, i) => `${f} = $${i + 2}`).join(', ');
-      const values = fields.map(f => input[f]);
+      const values = fields.map((f) => input[f]);
 
-      await pool.query(
-        `UPDATE people SET ${setClause} WHERE id = $1`,
-        [id, ...values]
-      );
+      await pool.query(`UPDATE people SET ${setClause} WHERE id = $1`, [
+        id,
+        ...values,
+      ]);
 
       return getPerson(id);
     },
 
-    deletePerson: async (_: unknown, { id }: { id: string }, context: Context) => {
+    deletePerson: async (
+      _: unknown,
+      { id }: { id: string },
+      context: Context,
+    ) => {
       requireAuth(context, 'admin'); // Only admin can delete
 
       // Check if person exists
@@ -603,9 +726,18 @@ export const resolvers = {
       await pool.query('DELETE FROM sources WHERE person_id = $1', [id]);
       await pool.query('DELETE FROM facts WHERE person_id = $1', [id]);
       await pool.query('DELETE FROM life_events WHERE person_id = $1', [id]);
-      await pool.query('DELETE FROM children WHERE person_id = $1 OR child_id = $1', [id]);
-      await pool.query('UPDATE families SET husband_id = NULL WHERE husband_id = $1', [id]);
-      await pool.query('UPDATE families SET wife_id = NULL WHERE wife_id = $1', [id]);
+      await pool.query(
+        'DELETE FROM children WHERE person_id = $1 OR child_id = $1',
+        [id],
+      );
+      await pool.query(
+        'UPDATE families SET husband_id = NULL WHERE husband_id = $1',
+        [id],
+      );
+      await pool.query(
+        'UPDATE families SET wife_id = NULL WHERE wife_id = $1',
+        [id],
+      );
 
       // Delete the person
       await pool.query('DELETE FROM people WHERE id = $1', [id]);
@@ -614,80 +746,199 @@ export const resolvers = {
     },
 
     // Life Event mutations
-    addLifeEvent: async (_: unknown, { personId, input }: { personId: string; input: { event_type: string; event_date?: string; event_year?: number; event_place?: string; event_value?: string } }, context: Context) => {
+    addLifeEvent: async (
+      _: unknown,
+      {
+        personId,
+        input,
+      }: {
+        personId: string;
+        input: {
+          event_type: string;
+          event_date?: string;
+          event_year?: number;
+          event_place?: string;
+          event_value?: string;
+        };
+      },
+      context: Context,
+    ) => {
       requireAuth(context, 'editor');
       const { rows } = await pool.query(
         `INSERT INTO life_events (person_id, event_type, event_date, event_year, event_place, event_value)
          VALUES ($1, $2, $3, $4, $5, $6) RETURNING *`,
-        [personId, input.event_type, input.event_date || null, input.event_year || null, input.event_place || null, input.event_value || null]
+        [
+          personId,
+          input.event_type,
+          input.event_date || null,
+          input.event_year || null,
+          input.event_place || null,
+          input.event_value || null,
+        ],
       );
       return rows[0];
     },
 
-    updateLifeEvent: async (_: unknown, { id, input }: { id: number; input: { event_type: string; event_date?: string; event_year?: number; event_place?: string; event_value?: string } }, context: Context) => {
+    updateLifeEvent: async (
+      _: unknown,
+      {
+        id,
+        input,
+      }: {
+        id: number;
+        input: {
+          event_type: string;
+          event_date?: string;
+          event_year?: number;
+          event_place?: string;
+          event_value?: string;
+        };
+      },
+      context: Context,
+    ) => {
       requireAuth(context, 'editor');
       const { rows } = await pool.query(
         `UPDATE life_events SET event_type = $2, event_date = $3, event_year = $4, event_place = $5, event_value = $6 WHERE id = $1 RETURNING *`,
-        [id, input.event_type, input.event_date || null, input.event_year || null, input.event_place || null, input.event_value || null]
+        [
+          id,
+          input.event_type,
+          input.event_date || null,
+          input.event_year || null,
+          input.event_place || null,
+          input.event_value || null,
+        ],
       );
       return rows[0] || null;
     },
 
-    deleteLifeEvent: async (_: unknown, { id }: { id: number }, context: Context) => {
+    deleteLifeEvent: async (
+      _: unknown,
+      { id }: { id: number },
+      context: Context,
+    ) => {
       requireAuth(context, 'editor');
       await pool.query('DELETE FROM life_events WHERE id = $1', [id]);
       return true;
     },
 
     // Fact mutations
-    addFact: async (_: unknown, { personId, input }: { personId: string; input: { fact_type: string; fact_value?: string } }, context: Context) => {
+    addFact: async (
+      _: unknown,
+      {
+        personId,
+        input,
+      }: {
+        personId: string;
+        input: { fact_type: string; fact_value?: string };
+      },
+      context: Context,
+    ) => {
       requireAuth(context, 'editor');
       const { rows } = await pool.query(
         `INSERT INTO facts (person_id, fact_type, fact_value) VALUES ($1, $2, $3) RETURNING *`,
-        [personId, input.fact_type, input.fact_value || null]
+        [personId, input.fact_type, input.fact_value || null],
       );
       return rows[0];
     },
 
-    updateFact: async (_: unknown, { id, input }: { id: number; input: { fact_type: string; fact_value?: string } }, context: Context) => {
+    updateFact: async (
+      _: unknown,
+      {
+        id,
+        input,
+      }: { id: number; input: { fact_type: string; fact_value?: string } },
+      context: Context,
+    ) => {
       requireAuth(context, 'editor');
       const { rows } = await pool.query(
         `UPDATE facts SET fact_type = $2, fact_value = $3 WHERE id = $1 RETURNING *`,
-        [id, input.fact_type, input.fact_value || null]
+        [id, input.fact_type, input.fact_value || null],
       );
       return rows[0] || null;
     },
 
-    deleteFact: async (_: unknown, { id }: { id: number }, context: Context) => {
+    deleteFact: async (
+      _: unknown,
+      { id }: { id: number },
+      context: Context,
+    ) => {
       requireAuth(context, 'editor');
       await pool.query('DELETE FROM facts WHERE id = $1', [id]);
       return true;
     },
 
     // Family mutations
-    createFamily: async (_: unknown, { input }: { input: { husband_id?: string; wife_id?: string; marriage_date?: string; marriage_year?: number; marriage_place?: string } }, context: Context) => {
+    createFamily: async (
+      _: unknown,
+      {
+        input,
+      }: {
+        input: {
+          husband_id?: string;
+          wife_id?: string;
+          marriage_date?: string;
+          marriage_year?: number;
+          marriage_place?: string;
+        };
+      },
+      context: Context,
+    ) => {
       requireAuth(context, 'editor');
       const id = crypto.randomUUID().replace(/-/g, '').slice(0, 12);
       const { rows } = await pool.query(
         `INSERT INTO families (id, husband_id, wife_id, marriage_date, marriage_year, marriage_place)
          VALUES ($1, $2, $3, $4, $5, $6) RETURNING *`,
-        [id, input.husband_id || null, input.wife_id || null, input.marriage_date || null, input.marriage_year || null, input.marriage_place || null]
+        [
+          id,
+          input.husband_id || null,
+          input.wife_id || null,
+          input.marriage_date || null,
+          input.marriage_year || null,
+          input.marriage_place || null,
+        ],
       );
       return rows[0];
     },
 
-    updateFamily: async (_: unknown, { id, input }: { id: string; input: { husband_id?: string; wife_id?: string; marriage_date?: string; marriage_year?: number; marriage_place?: string } }, context: Context) => {
+    updateFamily: async (
+      _: unknown,
+      {
+        id,
+        input,
+      }: {
+        id: string;
+        input: {
+          husband_id?: string;
+          wife_id?: string;
+          marriage_date?: string;
+          marriage_year?: number;
+          marriage_place?: string;
+        };
+      },
+      context: Context,
+    ) => {
       requireAuth(context, 'editor');
       const { rows } = await pool.query(
         `UPDATE families SET husband_id = COALESCE($2, husband_id), wife_id = COALESCE($3, wife_id),
          marriage_date = COALESCE($4, marriage_date), marriage_year = COALESCE($5, marriage_year),
          marriage_place = COALESCE($6, marriage_place) WHERE id = $1 RETURNING *`,
-        [id, input.husband_id, input.wife_id, input.marriage_date, input.marriage_year, input.marriage_place]
+        [
+          id,
+          input.husband_id,
+          input.wife_id,
+          input.marriage_date,
+          input.marriage_year,
+          input.marriage_place,
+        ],
       );
       return rows[0] || null;
     },
 
-    deleteFamily: async (_: unknown, { id }: { id: string }, context: Context) => {
+    deleteFamily: async (
+      _: unknown,
+      { id }: { id: string },
+      context: Context,
+    ) => {
       requireAuth(context, 'admin');
       // Delete children links first
       await pool.query('DELETE FROM children WHERE family_id = $1', [id]);
@@ -695,42 +946,92 @@ export const resolvers = {
       return true;
     },
 
-    addChildToFamily: async (_: unknown, { familyId, personId }: { familyId: string; personId: string }, context: Context) => {
+    addChildToFamily: async (
+      _: unknown,
+      { familyId, personId }: { familyId: string; personId: string },
+      context: Context,
+    ) => {
       requireAuth(context, 'editor');
       // Check if already exists
       const { rows: existing } = await pool.query(
         'SELECT 1 FROM children WHERE family_id = $1 AND person_id = $2',
-        [familyId, personId]
+        [familyId, personId],
       );
       if (existing.length > 0) return true;
       await pool.query(
         'INSERT INTO children (family_id, person_id) VALUES ($1, $2)',
-        [familyId, personId]
+        [familyId, personId],
       );
       return true;
     },
 
-    removeChildFromFamily: async (_: unknown, { familyId, personId }: { familyId: string; personId: string }, context: Context) => {
+    removeChildFromFamily: async (
+      _: unknown,
+      { familyId, personId }: { familyId: string; personId: string },
+      context: Context,
+    ) => {
       requireAuth(context, 'editor');
       await pool.query(
         'DELETE FROM children WHERE family_id = $1 AND person_id = $2',
-        [familyId, personId]
+        [familyId, personId],
       );
       return true;
     },
 
-    addSource: async (_: unknown, { personId, input }: { personId: string; input: { source_type?: string; source_name?: string; source_url?: string; action: string; content?: string; confidence?: string } }, context: Context) => {
+    addSource: async (
+      _: unknown,
+      {
+        personId,
+        input,
+      }: {
+        personId: string;
+        input: {
+          source_type?: string;
+          source_name?: string;
+          source_url?: string;
+          action: string;
+          content?: string;
+          confidence?: string;
+        };
+      },
+      context: Context,
+    ) => {
       requireAuth(context, 'editor');
 
       const { rows } = await pool.query(
         `INSERT INTO sources (person_id, source_type, source_name, source_url, action, content, confidence)
          VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *`,
-        [personId, input.source_type, input.source_name, input.source_url, input.action, input.content, input.confidence]
+        [
+          personId,
+          input.source_type,
+          input.source_name,
+          input.source_url,
+          input.action,
+          input.content,
+          input.confidence,
+        ],
       );
       return rows[0];
     },
 
-    updateSource: async (_: unknown, { id, input }: { id: string; input: { source_type?: string; source_name?: string; source_url?: string; action?: string; content?: string; confidence?: string } }, context: Context) => {
+    updateSource: async (
+      _: unknown,
+      {
+        id,
+        input,
+      }: {
+        id: string;
+        input: {
+          source_type?: string;
+          source_name?: string;
+          source_url?: string;
+          action?: string;
+          content?: string;
+          confidence?: string;
+        };
+      },
+      context: Context,
+    ) => {
       requireAuth(context, 'editor');
       const { rows } = await pool.query(
         `UPDATE sources SET
@@ -741,37 +1042,61 @@ export const resolvers = {
          content = COALESCE($6, content),
          confidence = COALESCE($7, confidence)
          WHERE id = $1 RETURNING *`,
-        [id, input.source_type, input.source_name, input.source_url, input.action, input.content, input.confidence]
+        [
+          id,
+          input.source_type,
+          input.source_name,
+          input.source_url,
+          input.action,
+          input.content,
+          input.confidence,
+        ],
       );
       return rows[0] || null;
     },
 
-    deleteSource: async (_: unknown, { id }: { id: string }, context: Context) => {
+    deleteSource: async (
+      _: unknown,
+      { id }: { id: string },
+      context: Context,
+    ) => {
       requireAuth(context, 'editor');
       await pool.query('DELETE FROM sources WHERE id = $1', [id]);
       return true;
     },
 
-    updateResearchStatus: async (_: unknown, { personId, status }: { personId: string; status: string }, context: Context) => {
+    updateResearchStatus: async (
+      _: unknown,
+      { personId, status }: { personId: string; status: string },
+      context: Context,
+    ) => {
       requireAuth(context, 'editor');
       await pool.query(
         `UPDATE people SET research_status = $1, last_researched = NOW() WHERE id = $2`,
-        [status, personId]
+        [status, personId],
       );
       return getPerson(personId);
     },
 
-    updateResearchPriority: async (_: unknown, { personId, priority }: { personId: string; priority: number }, context: Context) => {
+    updateResearchPriority: async (
+      _: unknown,
+      { personId, priority }: { personId: string; priority: number },
+      context: Context,
+    ) => {
       requireAuth(context, 'editor');
       await pool.query(
         `UPDATE people SET research_priority = $1 WHERE id = $2`,
-        [priority, personId]
+        [priority, personId],
       );
       return getPerson(personId);
     },
 
     // Admin mutations
-    createInvitation: async (_: unknown, { email, role }: { email: string; role: string }, context: Context) => {
+    createInvitation: async (
+      _: unknown,
+      { email, role }: { email: string; role: string },
+      context: Context,
+    ) => {
       const user = requireAuth(context, 'admin');
 
       const invitation = await createInvitation(email, role, user.id);
@@ -790,7 +1115,7 @@ export const resolvers = {
           inviteUrl,
           role,
           inviterName: user.email,
-          inviterEmail: user.email
+          inviterEmail: user.email,
         });
       } catch (error) {
         console.error('Failed to send invite email:', error);
@@ -799,14 +1124,22 @@ export const resolvers = {
       return invitation;
     },
 
-    deleteInvitation: async (_: unknown, { id }: { id: string }, context: Context) => {
+    deleteInvitation: async (
+      _: unknown,
+      { id }: { id: string },
+      context: Context,
+    ) => {
       const user = requireAuth(context, 'admin');
       await deleteInvitation(id);
       await logAudit(user.id, 'delete_invitation', { invitationId: id });
       return true;
     },
 
-    updateUserRole: async (_: unknown, { userId, role }: { userId: string; role: string }, context: Context) => {
+    updateUserRole: async (
+      _: unknown,
+      { userId, role }: { userId: string; role: string },
+      context: Context,
+    ) => {
       const user = requireAuth(context, 'admin');
 
       // Prevent removing own admin rights
@@ -815,14 +1148,21 @@ export const resolvers = {
       }
 
       await updateUserRole(userId, role);
-      await logAudit(user.id, 'update_user_role', { targetUserId: userId, newRole: role });
+      await logAudit(user.id, 'update_user_role', {
+        targetUserId: userId,
+        newRole: role,
+      });
 
       // Return updated user
       const users = await getUsers();
-      return users.find(u => u.id === userId);
+      return users.find((u) => u.id === userId);
     },
 
-    deleteUser: async (_: unknown, { userId }: { userId: string }, context: Context) => {
+    deleteUser: async (
+      _: unknown,
+      { userId }: { userId: string },
+      context: Context,
+    ) => {
       const user = requireAuth(context, 'admin');
 
       // Prevent self-deletion
@@ -836,7 +1176,23 @@ export const resolvers = {
     },
 
     // Surname crest mutations
-    setSurnameCrest: async (_: unknown, { surname, coatOfArms, description, origin, motto }: { surname: string; coatOfArms: string; description?: string; origin?: string; motto?: string }, context: Context) => {
+    setSurnameCrest: async (
+      _: unknown,
+      {
+        surname,
+        coatOfArms,
+        description,
+        origin,
+        motto,
+      }: {
+        surname: string;
+        coatOfArms: string;
+        description?: string;
+        origin?: string;
+        motto?: string;
+      },
+      context: Context,
+    ) => {
       requireAuth(context, 'editor');
       const { rows } = await pool.query(
         `INSERT INTO surname_crests (surname, coat_of_arms, description, origin, motto)
@@ -844,37 +1200,65 @@ export const resolvers = {
          ON CONFLICT (surname) DO UPDATE SET
            coat_of_arms = $2, description = $3, origin = $4, motto = $5, updated_at = NOW()
          RETURNING *`,
-        [surname, coatOfArms, description || null, origin || null, motto || null]
+        [
+          surname,
+          coatOfArms,
+          description || null,
+          origin || null,
+          motto || null,
+        ],
       );
       return rows[0];
     },
 
-    removeSurnameCrest: async (_: unknown, { surname }: { surname: string }, context: Context) => {
+    removeSurnameCrest: async (
+      _: unknown,
+      { surname }: { surname: string },
+      context: Context,
+    ) => {
       requireAuth(context, 'editor');
-      await pool.query(`DELETE FROM surname_crests WHERE LOWER(surname) = LOWER($1)`, [surname]);
+      await pool.query(
+        `DELETE FROM surname_crests WHERE LOWER(surname) = LOWER($1)`,
+        [surname],
+      );
       return true;
     },
 
     // Person-specific coat of arms override (stored in facts table)
-    setPersonCoatOfArms: async (_: unknown, { personId, coatOfArms }: { personId: string; coatOfArms: string }, context: Context) => {
+    setPersonCoatOfArms: async (
+      _: unknown,
+      { personId, coatOfArms }: { personId: string; coatOfArms: string },
+      context: Context,
+    ) => {
       requireAuth(context, 'editor');
       await pool.query(
         `INSERT INTO facts (person_id, fact_type, fact_value)
          VALUES ($1, 'coat_of_arms', $2)
          ON CONFLICT (person_id, fact_type) DO UPDATE SET fact_value = $2`,
-        [personId, coatOfArms]
+        [personId, coatOfArms],
       );
       return coatOfArms;
     },
 
-    removePersonCoatOfArms: async (_: unknown, { personId }: { personId: string }, context: Context) => {
+    removePersonCoatOfArms: async (
+      _: unknown,
+      { personId }: { personId: string },
+      context: Context,
+    ) => {
       requireAuth(context, 'editor');
-      await pool.query(`DELETE FROM facts WHERE person_id = $1 AND fact_type = 'coat_of_arms'`, [personId]);
+      await pool.query(
+        `DELETE FROM facts WHERE person_id = $1 AND fact_type = 'coat_of_arms'`,
+        [personId],
+      );
       return true;
     },
 
     // Settings mutations
-    updateSettings: async (_: unknown, { input }: { input: Record<string, string | null> }, context: Context) => {
+    updateSettings: async (
+      _: unknown,
+      { input }: { input: Record<string, string | null> },
+      context: Context,
+    ) => {
       requireAuth(context, 'admin');
       const entries = Object.entries(input).filter(([, v]) => v !== undefined);
       for (const [key, value] of entries) {
@@ -882,7 +1266,7 @@ export const resolvers = {
           `INSERT INTO settings (key, value, updated_at)
            VALUES ($1, $2, NOW())
            ON CONFLICT (key) DO UPDATE SET value = $2, updated_at = NOW()`,
-          [key, value]
+          [key, value],
         );
       }
       clearSettingsCache();
@@ -898,10 +1282,13 @@ export const resolvers = {
     generateApiKey: async (_: unknown, __: unknown, context: Context) => {
       const user = requireAuth(context);
       // Generate a secure random API key (64 hex characters)
-      const crypto = await import('crypto');
+      const crypto = await import('node:crypto');
       const apiKey = crypto.randomBytes(32).toString('hex');
 
-      await pool.query('UPDATE users SET api_key = $1 WHERE id = $2', [apiKey, user.id]);
+      await pool.query('UPDATE users SET api_key = $1 WHERE id = $2', [
+        apiKey,
+        user.id,
+      ]);
       await logAudit(user.id, 'generate_api_key', { userId: user.id });
 
       return apiKey;
@@ -909,17 +1296,33 @@ export const resolvers = {
 
     revokeApiKey: async (_: unknown, __: unknown, context: Context) => {
       const user = requireAuth(context);
-      await pool.query('UPDATE users SET api_key = NULL WHERE id = $1', [user.id]);
+      await pool.query('UPDATE users SET api_key = NULL WHERE id = $1', [
+        user.id,
+      ]);
       await logAudit(user.id, 'revoke_api_key', { userId: user.id });
       return true;
     },
 
     // Email preferences mutation
-    updateEmailPreferences: async (_: unknown, { input }: { input: { research_updates?: boolean; tree_changes?: boolean; weekly_digest?: boolean; birthday_reminders?: boolean } }, context: Context) => {
+    updateEmailPreferences: async (
+      _: unknown,
+      {
+        input,
+      }: {
+        input: {
+          research_updates?: boolean;
+          tree_changes?: boolean;
+          weekly_digest?: boolean;
+          birthday_reminders?: boolean;
+        };
+      },
+      context: Context,
+    ) => {
       const user = requireAuth(context);
 
       // Upsert preferences
-      const { rows } = await pool.query(`
+      const { rows } = await pool.query(
+        `
         INSERT INTO email_preferences (user_id, research_updates, tree_changes, weekly_digest, birthday_reminders, updated_at)
         VALUES ($1, $2, $3, $4, $5, NOW())
         ON CONFLICT (user_id) DO UPDATE SET
@@ -929,25 +1332,46 @@ export const resolvers = {
           birthday_reminders = COALESCE($5, email_preferences.birthday_reminders),
           updated_at = NOW()
         RETURNING user_id, research_updates, tree_changes, weekly_digest, birthday_reminders
-      `, [
-        user.id,
-        input.research_updates ?? true,
-        input.tree_changes ?? false,
-        input.weekly_digest ?? false,
-        input.birthday_reminders ?? false
-      ]);
+      `,
+        [
+          user.id,
+          input.research_updates ?? true,
+          input.tree_changes ?? false,
+          input.weekly_digest ?? false,
+          input.birthday_reminders ?? false,
+        ],
+      );
 
       return rows[0];
     },
 
     // Admin: Create local user directly (no invitation required)
-    createLocalUser: async (_: unknown, { email, name, role, password, requirePasswordChange }: { email: string; name: string; role: string; password: string; requirePasswordChange?: boolean }, context: Context) => {
+    createLocalUser: async (
+      _: unknown,
+      {
+        email,
+        name,
+        role,
+        password,
+        requirePasswordChange,
+      }: {
+        email: string;
+        name: string;
+        role: string;
+        password: string;
+        requirePasswordChange?: boolean;
+      },
+      context: Context,
+    ) => {
       requireAuth(context, 'admin');
       const bcrypt = await import('bcryptjs');
-      const crypto = await import('crypto');
+      const crypto = await import('node:crypto');
 
       // Check if user already exists
-      const existingUser = await pool.query('SELECT id FROM users WHERE email = $1', [email]);
+      const existingUser = await pool.query(
+        'SELECT id FROM users WHERE email = $1',
+        [email],
+      );
       if (existingUser.rows.length > 0) {
         throw new Error('User with this email already exists');
       }
@@ -966,20 +1390,37 @@ export const resolvers = {
         `INSERT INTO users (id, email, name, role, password_hash, auth_provider, require_password_change, created_at, last_login)
          VALUES ($1, $2, $3, $4, $5, 'local', $6, NOW(), NULL)
          RETURNING id, email, name, role, created_at`,
-        [userId, email, name, role, passwordHash, requirePasswordChange ?? false]
+        [
+          userId,
+          email,
+          name,
+          role,
+          passwordHash,
+          requirePasswordChange ?? false,
+        ],
       );
 
       return rows[0];
     },
 
     // Service account mutations
-    createServiceAccount: async (_: unknown, { name, description, role }: { name: string; description?: string; role: string }, context: Context) => {
+    createServiceAccount: async (
+      _: unknown,
+      {
+        name,
+        description,
+        role,
+      }: { name: string; description?: string; role: string },
+      context: Context,
+    ) => {
       requireAuth(context, 'admin');
-      const crypto = await import('crypto');
+      const crypto = await import('node:crypto');
 
       // Validate role (service accounts cannot be admin)
       if (!['editor', 'viewer'].includes(role)) {
-        throw new Error('Invalid role. Service accounts can only be editor or viewer');
+        throw new Error(
+          'Invalid role. Service accounts can only be editor or viewer',
+        );
       }
 
       // Generate unique ID and API key
@@ -991,19 +1432,30 @@ export const resolvers = {
         `INSERT INTO users (id, email, name, role, account_type, description, api_key, auth_provider, created_at)
          VALUES ($1, $2, $3, $4, 'service', $5, $6, 'api', NOW())
          RETURNING id, email, name, role, account_type, description, created_at`,
-        [userId, `service-${userId}@internal`, name, role, description || null, apiKey]
+        [
+          userId,
+          `service-${userId}@internal`,
+          name,
+          role,
+          description || null,
+          apiKey,
+        ],
       );
 
       return { user: rows[0], apiKey };
     },
 
-    revokeServiceAccount: async (_: unknown, { userId }: { userId: string }, context: Context) => {
+    revokeServiceAccount: async (
+      _: unknown,
+      { userId }: { userId: string },
+      context: Context,
+    ) => {
       requireAuth(context, 'admin');
 
       // Verify it's a service account
       const { rows } = await pool.query(
         'SELECT id FROM users WHERE id = $1 AND account_type = $2',
-        [userId, 'service']
+        [userId, 'service'],
       );
 
       if (rows.length === 0) {
@@ -1016,15 +1468,22 @@ export const resolvers = {
     },
 
     // Local auth mutations
-    registerWithInvitation: async (_: unknown, { token, password, name }: { token: string; password: string; name?: string }) => {
+    registerWithInvitation: async (
+      _: unknown,
+      {
+        token,
+        password,
+        name,
+      }: { token: string; password: string; name?: string },
+    ) => {
       const bcrypt = await import('bcryptjs');
-      const crypto = await import('crypto');
+      const crypto = await import('node:crypto');
 
       // Find valid invitation
       const invResult = await pool.query(
         `SELECT id, email, role FROM invitations
          WHERE token = $1 AND accepted_at IS NULL AND expires_at > NOW()`,
-        [token]
+        [token],
       );
 
       if (invResult.rows.length === 0) {
@@ -1034,7 +1493,10 @@ export const resolvers = {
       const invitation = invResult.rows[0];
 
       // Check if user already exists
-      const existingUser = await pool.query('SELECT id FROM users WHERE email = $1', [invitation.email]);
+      const existingUser = await pool.query(
+        'SELECT id FROM users WHERE email = $1',
+        [invitation.email],
+      );
       if (existingUser.rows.length > 0) {
         return { success: false, message: 'User already exists' };
       }
@@ -1047,22 +1509,31 @@ export const resolvers = {
       await pool.query(
         `INSERT INTO users (id, email, name, role, password_hash, auth_provider, invited_at, last_login)
          VALUES ($1, $2, $3, $4, $5, 'local', NOW(), NOW())`,
-        [userId, invitation.email, name || invitation.email.split('@')[0], invitation.role, passwordHash]
+        [
+          userId,
+          invitation.email,
+          name || invitation.email.split('@')[0],
+          invitation.role,
+          passwordHash,
+        ],
       );
 
       // Mark invitation as accepted
-      await pool.query('UPDATE invitations SET accepted_at = NOW() WHERE id = $1', [invitation.id]);
+      await pool.query(
+        'UPDATE invitations SET accepted_at = NOW() WHERE id = $1',
+        [invitation.id],
+      );
 
       return { success: true, message: 'Account created successfully', userId };
     },
 
     requestPasswordReset: async (_: unknown, { email }: { email: string }) => {
-      const crypto = await import('crypto');
+      const crypto = await import('node:crypto');
 
       // Find user with local auth
       const userResult = await pool.query(
         'SELECT id FROM users WHERE email = $1 AND auth_provider = $2',
-        [email, 'local']
+        [email, 'local'],
       );
 
       // Always return true to prevent email enumeration
@@ -1080,7 +1551,7 @@ export const resolvers = {
       await pool.query(
         `INSERT INTO password_reset_tokens (user_id, token, expires_at)
          VALUES ($1, $2, $3)`,
-        [user.id, resetToken, expiresAt]
+        [user.id, resetToken, expiresAt],
       );
 
       // Send email (import dynamically to avoid circular deps)
@@ -1094,14 +1565,17 @@ export const resolvers = {
       return true;
     },
 
-    resetPassword: async (_: unknown, { token, newPassword }: { token: string; newPassword: string }) => {
+    resetPassword: async (
+      _: unknown,
+      { token, newPassword }: { token: string; newPassword: string },
+    ) => {
       const bcrypt = await import('bcryptjs');
 
       // Find valid token
       const tokenResult = await pool.query(
         `SELECT user_id FROM password_reset_tokens
          WHERE token = $1 AND expires_at > NOW() AND used_at IS NULL`,
-        [token]
+        [token],
       );
 
       if (tokenResult.rows.length === 0) {
@@ -1116,23 +1590,33 @@ export const resolvers = {
       // Update password
       await pool.query(
         'UPDATE users SET password_hash = $1, failed_login_attempts = 0, locked_until = NULL WHERE id = $2',
-        [passwordHash, userId]
+        [passwordHash, userId],
       );
 
       // Mark token as used
-      await pool.query('UPDATE password_reset_tokens SET used_at = NOW() WHERE token = $1', [token]);
+      await pool.query(
+        'UPDATE password_reset_tokens SET used_at = NOW() WHERE token = $1',
+        [token],
+      );
 
       return { success: true, message: 'Password reset successfully', userId };
     },
 
-    changePassword: async (_: unknown, { currentPassword, newPassword }: { currentPassword: string; newPassword: string }, context: Context) => {
+    changePassword: async (
+      _: unknown,
+      {
+        currentPassword,
+        newPassword,
+      }: { currentPassword: string; newPassword: string },
+      context: Context,
+    ) => {
       const user = requireAuth(context);
       const bcrypt = await import('bcryptjs');
 
       // Get current password hash
       const userResult = await pool.query(
         'SELECT password_hash FROM users WHERE id = $1 AND auth_provider = $2',
-        [user.id, 'local']
+        [user.id, 'local'],
       );
 
       if (userResult.rows.length === 0 || !userResult.rows[0].password_hash) {
@@ -1140,20 +1624,30 @@ export const resolvers = {
       }
 
       // Verify current password
-      const isValid = await bcrypt.compare(currentPassword, userResult.rows[0].password_hash);
+      const isValid = await bcrypt.compare(
+        currentPassword,
+        userResult.rows[0].password_hash,
+      );
       if (!isValid) {
         throw new Error('Current password is incorrect');
       }
 
       // Hash and update new password
       const passwordHash = await bcrypt.hash(newPassword, 12);
-      await pool.query('UPDATE users SET password_hash = $1 WHERE id = $2', [passwordHash, user.id]);
+      await pool.query('UPDATE users SET password_hash = $1 WHERE id = $2', [
+        passwordHash,
+        user.id,
+      ]);
 
       return true;
     },
 
     // GEDCOM import
-    importGedcom: async (_: unknown, { content }: { content: string }, context: Context) => {
+    importGedcom: async (
+      _: unknown,
+      { content }: { content: string },
+      context: Context,
+    ) => {
       requireAuth(context, 'admin');
 
       const result = parseGedcom(content);
@@ -1167,16 +1661,39 @@ export const resolvers = {
       let peopleImported = 0;
       for (const person of result.people) {
         try {
-          const id = crypto.randomBytes(9).toString('base64').replace(/[+/=]/g, '').substring(0, 12);
+          const id = crypto
+            .randomBytes(9)
+            .toString('base64')
+            .replace(/[+/=]/g, '')
+            .substring(0, 12);
           xrefToId.set(person.xref, id);
 
-          await pool.query(`
+          await pool.query(
+            `
             INSERT INTO people (id, name_full, name_given, name_surname, sex, birth_date, birth_place, death_date, death_place, burial_date, burial_place, christening_date, christening_place)
             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
-          `, [id, person.name_full, person.name_given, person.name_surname, person.sex, person.birth_date, person.birth_place, person.death_date, person.death_place, person.burial_date, person.burial_place, person.christening_date, person.christening_place]);
+          `,
+            [
+              id,
+              person.name_full,
+              person.name_given,
+              person.name_surname,
+              person.sex,
+              person.birth_date,
+              person.birth_place,
+              person.death_date,
+              person.death_place,
+              person.burial_date,
+              person.burial_place,
+              person.christening_date,
+              person.christening_place,
+            ],
+          );
           peopleImported++;
         } catch (err) {
-          errors.push(`Failed to import person ${person.name_full}: ${(err as Error).message}`);
+          errors.push(
+            `Failed to import person ${person.name_full}: ${(err as Error).message}`,
+          );
         }
       }
 
@@ -1184,20 +1701,40 @@ export const resolvers = {
       let familiesImported = 0;
       for (const family of result.families) {
         try {
-          const id = crypto.randomBytes(9).toString('base64').replace(/[+/=]/g, '').substring(0, 12);
-          const husbandId = family.husband_xref ? xrefToId.get(family.husband_xref) : null;
-          const wifeId = family.wife_xref ? xrefToId.get(family.wife_xref) : null;
+          const id = crypto
+            .randomBytes(9)
+            .toString('base64')
+            .replace(/[+/=]/g, '')
+            .substring(0, 12);
+          const husbandId = family.husband_xref
+            ? xrefToId.get(family.husband_xref)
+            : null;
+          const wifeId = family.wife_xref
+            ? xrefToId.get(family.wife_xref)
+            : null;
 
-          await pool.query(`
+          await pool.query(
+            `
             INSERT INTO families (id, husband_id, wife_id, marriage_date, marriage_place)
             VALUES ($1, $2, $3, $4, $5)
-          `, [id, husbandId, wifeId, family.marriage_date, family.marriage_place]);
+          `,
+            [
+              id,
+              husbandId,
+              wifeId,
+              family.marriage_date,
+              family.marriage_place,
+            ],
+          );
 
           // Add children
           for (const childXref of family.children_xrefs) {
             const childId = xrefToId.get(childXref);
             if (childId) {
-              await pool.query('INSERT INTO children (family_id, person_id) VALUES ($1, $2)', [id, childId]);
+              await pool.query(
+                'INSERT INTO children (family_id, person_id) VALUES ($1, $2)',
+                [id, childId],
+              );
             } else {
               warnings.push(`Child ${childXref} not found for family`);
             }
@@ -1212,32 +1749,103 @@ export const resolvers = {
     },
 
     // Media mutations
-    uploadMedia: async (_: unknown, { personId, input }: { personId: string; input: { filename: string; original_filename: string; mime_type: string; file_size: number; storage_path: string; thumbnail_path?: string; media_type: string; caption?: string; date_taken?: string; source_attribution?: string } }, context: Context) => {
+    uploadMedia: async (
+      _: unknown,
+      {
+        personId,
+        input,
+      }: {
+        personId: string;
+        input: {
+          filename: string;
+          original_filename: string;
+          mime_type: string;
+          file_size: number;
+          storage_path: string;
+          thumbnail_path?: string;
+          media_type: string;
+          caption?: string;
+          date_taken?: string;
+          source_attribution?: string;
+        };
+      },
+      context: Context,
+    ) => {
       const user = requireAuth(context, 'editor');
-      const id = crypto.randomBytes(9).toString('base64').replace(/[+/=]/g, '').substring(0, 12);
+      const id = crypto
+        .randomBytes(9)
+        .toString('base64')
+        .replace(/[+/=]/g, '')
+        .substring(0, 12);
 
-      const { rows } = await pool.query(`
+      const { rows } = await pool.query(
+        `
         INSERT INTO media (id, person_id, filename, original_filename, mime_type, file_size, storage_path, thumbnail_path, media_type, caption, date_taken, source_attribution, uploaded_by)
         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
         RETURNING *
-      `, [id, personId, input.filename, input.original_filename, input.mime_type, input.file_size, input.storage_path, input.thumbnail_path || null, input.media_type, input.caption || null, input.date_taken || null, input.source_attribution || null, user.id]);
+      `,
+        [
+          id,
+          personId,
+          input.filename,
+          input.original_filename,
+          input.mime_type,
+          input.file_size,
+          input.storage_path,
+          input.thumbnail_path || null,
+          input.media_type,
+          input.caption || null,
+          input.date_taken || null,
+          input.source_attribution || null,
+          user.id,
+        ],
+      );
 
       return rows[0];
     },
 
-    updateMedia: async (_: unknown, { id, input }: { id: string; input: { caption?: string; date_taken?: string; source_attribution?: string; media_type?: string } }, context: Context) => {
+    updateMedia: async (
+      _: unknown,
+      {
+        id,
+        input,
+      }: {
+        id: string;
+        input: {
+          caption?: string;
+          date_taken?: string;
+          source_attribution?: string;
+          media_type?: string;
+        };
+      },
+      context: Context,
+    ) => {
       requireAuth(context, 'editor');
       const updates: string[] = [];
       const values: unknown[] = [];
       let paramIndex = 1;
 
-      if (input.caption !== undefined) { updates.push(`caption = $${paramIndex++}`); values.push(input.caption); }
-      if (input.date_taken !== undefined) { updates.push(`date_taken = $${paramIndex++}`); values.push(input.date_taken); }
-      if (input.source_attribution !== undefined) { updates.push(`source_attribution = $${paramIndex++}`); values.push(input.source_attribution); }
-      if (input.media_type !== undefined) { updates.push(`media_type = $${paramIndex++}`); values.push(input.media_type); }
+      if (input.caption !== undefined) {
+        updates.push(`caption = $${paramIndex++}`);
+        values.push(input.caption);
+      }
+      if (input.date_taken !== undefined) {
+        updates.push(`date_taken = $${paramIndex++}`);
+        values.push(input.date_taken);
+      }
+      if (input.source_attribution !== undefined) {
+        updates.push(`source_attribution = $${paramIndex++}`);
+        values.push(input.source_attribution);
+      }
+      if (input.media_type !== undefined) {
+        updates.push(`media_type = $${paramIndex++}`);
+        values.push(input.media_type);
+      }
 
       if (updates.length === 0) {
-        const { rows } = await pool.query('SELECT * FROM media WHERE id = $1', [id]);
+        const { rows } = await pool.query('SELECT * FROM media WHERE id = $1', [
+          id,
+        ]);
         return rows[0] || null;
       }
 
@@ -1246,12 +1854,16 @@ export const resolvers = {
 
       const { rows } = await pool.query(
         `UPDATE media SET ${updates.join(', ')} WHERE id = $${paramIndex} RETURNING *`,
-        values
+        values,
       );
       return rows[0] || null;
     },
 
-    deleteMedia: async (_: unknown, { id }: { id: string }, context: Context) => {
+    deleteMedia: async (
+      _: unknown,
+      { id }: { id: string },
+      context: Context,
+    ) => {
       requireAuth(context, 'editor');
       const result = await pool.query('DELETE FROM media WHERE id = $1', [id]);
       return (result.rowCount ?? 0) > 0;
@@ -1263,39 +1875,78 @@ export const resolvers = {
     parents: async (person: { id: string }, _: unknown, ctx: Context) => {
       const families = await ctx.loaders.familiesAsChildLoader.load(person.id);
       if (families.length === 0) return [];
-      const parentIds = families.flatMap(f => [f.husband_id, f.wife_id].filter(Boolean)) as string[];
-      return parentIds.length ? (await ctx.loaders.personLoader.loadMany(parentIds)).filter(Boolean) : [];
+      const parentIds = families.flatMap((f) =>
+        [f.husband_id, f.wife_id].filter(Boolean),
+      ) as string[];
+      return parentIds.length
+        ? (await ctx.loaders.personLoader.loadMany(parentIds)).filter(Boolean)
+        : [];
     },
     siblings: async (person: { id: string }, _: unknown, ctx: Context) => {
-      const parentFamilies = await ctx.loaders.familiesAsChildLoader.load(person.id);
+      const parentFamilies = await ctx.loaders.familiesAsChildLoader.load(
+        person.id,
+      );
       if (parentFamilies.length === 0) return [];
-      const childrenByFamily = await ctx.loaders.childrenByFamilyLoader.loadMany(parentFamilies.map(f => f.id));
-      const siblingIds = [...new Set(childrenByFamily.flat().filter((id): id is string => typeof id === 'string' && id !== person.id))];
-      return siblingIds.length ? (await ctx.loaders.personLoader.loadMany(siblingIds)).filter(Boolean) : [];
+      const childrenByFamily =
+        await ctx.loaders.childrenByFamilyLoader.loadMany(
+          parentFamilies.map((f) => f.id),
+        );
+      const siblingIds = [
+        ...new Set(
+          childrenByFamily
+            .flat()
+            .filter(
+              (id): id is string => typeof id === 'string' && id !== person.id,
+            ),
+        ),
+      ];
+      return siblingIds.length
+        ? (await ctx.loaders.personLoader.loadMany(siblingIds)).filter(Boolean)
+        : [];
     },
     spouses: async (person: { id: string }, _: unknown, ctx: Context) => {
       const families = await ctx.loaders.familiesAsSpouseLoader.load(person.id);
-      const spouseIds = families.map(f => f.husband_id === person.id ? f.wife_id : f.husband_id).filter(Boolean) as string[];
-      return spouseIds.length ? (await ctx.loaders.personLoader.loadMany(spouseIds)).filter(Boolean) : [];
+      const spouseIds = families
+        .map((f) => (f.husband_id === person.id ? f.wife_id : f.husband_id))
+        .filter(Boolean) as string[];
+      return spouseIds.length
+        ? (await ctx.loaders.personLoader.loadMany(spouseIds)).filter(Boolean)
+        : [];
     },
     children: async (person: { id: string }, _: unknown, ctx: Context) => {
       const families = await ctx.loaders.familiesAsSpouseLoader.load(person.id);
       if (families.length === 0) return [];
-      const childrenByFamily = await ctx.loaders.childrenByFamilyLoader.loadMany(families.map(f => f.id));
-      const childIds = [...new Set(childrenByFamily.flat().filter((id): id is string => typeof id === 'string'))];
-      return childIds.length ? (await ctx.loaders.personLoader.loadMany(childIds)).filter(Boolean) : [];
+      const childrenByFamily =
+        await ctx.loaders.childrenByFamilyLoader.loadMany(
+          families.map((f) => f.id),
+        );
+      const childIds = [
+        ...new Set(
+          childrenByFamily
+            .flat()
+            .filter((id): id is string => typeof id === 'string'),
+        ),
+      ];
+      return childIds.length
+        ? (await ctx.loaders.personLoader.loadMany(childIds)).filter(Boolean)
+        : [];
     },
-    families: async (person: { id: string }, _: unknown, ctx: Context) => ctx.loaders.familiesAsSpouseLoader.load(person.id),
-    lifeEvents: async (person: { id: string }, _: unknown, ctx: Context) => ctx.loaders.lifeEventsLoader.load(person.id),
-    facts: (person: { id: string }, _: unknown, ctx: Context) => ctx.loaders.factsLoader.load(person.id),
-    sources: (person: { id: string }, _: unknown, ctx: Context) => ctx.loaders.sourcesLoader.load(person.id),
-    media: (person: { id: string }, _: unknown, ctx: Context) => ctx.loaders.mediaLoader.load(person.id),
+    families: async (person: { id: string }, _: unknown, ctx: Context) =>
+      ctx.loaders.familiesAsSpouseLoader.load(person.id),
+    lifeEvents: async (person: { id: string }, _: unknown, ctx: Context) =>
+      ctx.loaders.lifeEventsLoader.load(person.id),
+    facts: (person: { id: string }, _: unknown, ctx: Context) =>
+      ctx.loaders.factsLoader.load(person.id),
+    sources: (person: { id: string }, _: unknown, ctx: Context) =>
+      ctx.loaders.sourcesLoader.load(person.id),
+    media: (person: { id: string }, _: unknown, ctx: Context) =>
+      ctx.loaders.mediaLoader.load(person.id),
     // Coat of arms: check person override first, then surname lookup
     coatOfArms: async (person: { id: string; name_surname?: string }) => {
       // 1. Check for person-specific override in facts table
       const { rows: personRows } = await pool.query(
         `SELECT fact_value FROM facts WHERE person_id = $1 AND fact_type = 'coat_of_arms' LIMIT 1`,
-        [person.id]
+        [person.id],
       );
       if (personRows[0]?.fact_value) return personRows[0].fact_value;
 
@@ -1303,7 +1954,7 @@ export const resolvers = {
       if (person.name_surname) {
         const { rows: surnameRows } = await pool.query(
           `SELECT coat_of_arms FROM surname_crests WHERE LOWER(surname) = LOWER($1) LIMIT 1`,
-          [person.name_surname]
+          [person.name_surname],
         );
         if (surnameRows[0]?.coat_of_arms) return surnameRows[0].coat_of_arms;
       }
@@ -1313,10 +1964,12 @@ export const resolvers = {
     // Notable relatives connected through ancestry (cached for performance)
     notableRelatives: async (person: { id: string }) => {
       const cacheKey = `notable_relatives:${person.id}`;
-      const cached = getCached<Array<{ person: Person; generation: number }>>(cacheKey);
+      const cached =
+        getCached<Array<{ person: Person; generation: number }>>(cacheKey);
       if (cached) return cached;
 
-      const { rows } = await pool.query(`
+      const { rows } = await pool.query(
+        `
         WITH RECURSIVE ancestry AS (
           -- Trace direct ancestors up to 15 generations
           SELECT p.id, p.name_full, 0 as generation, ARRAY[p.id]::text[] as path
@@ -1371,11 +2024,13 @@ export const resolvers = {
         JOIN people p ON p.id = ar.id
         WHERE p.is_notable = true
         ORDER BY ar.generation
-      `, [person.id]);
+      `,
+        [person.id],
+      );
 
-      const result = rows.map(row => ({
+      const result = rows.map((row) => ({
         person: row,
-        generation: row.generation
+        generation: row.generation,
       }));
 
       setCache(cacheKey, result);
@@ -1384,13 +2039,21 @@ export const resolvers = {
   },
 
   Family: {
-    husband: (family: { husband_id: string | null }, _: unknown, ctx: Context) =>
-      family.husband_id ? ctx.loaders.personLoader.load(family.husband_id) : null,
+    husband: (
+      family: { husband_id: string | null },
+      _: unknown,
+      ctx: Context,
+    ) =>
+      family.husband_id
+        ? ctx.loaders.personLoader.load(family.husband_id)
+        : null,
     wife: (family: { wife_id: string | null }, _: unknown, ctx: Context) =>
       family.wife_id ? ctx.loaders.personLoader.load(family.wife_id) : null,
     children: async (family: { id: string }, _: unknown, ctx: Context) => {
       const childIds = await ctx.loaders.childrenByFamilyLoader.load(family.id);
-      return childIds.length ? (await ctx.loaders.personLoader.loadMany(childIds)).filter(Boolean) : [];
+      return childIds.length
+        ? (await ctx.loaders.personLoader.loadMany(childIds)).filter(Boolean)
+        : [];
     },
   },
 
@@ -1423,7 +2086,8 @@ export const resolvers = {
     created_at: (media: { created_at: Date | string | null }) =>
       media.created_at ? new Date(media.created_at).toISOString() : null,
     date_taken: (media: { date_taken: Date | string | null }) =>
-      media.date_taken ? new Date(media.date_taken).toISOString().split('T')[0] : null,
+      media.date_taken
+        ? new Date(media.date_taken).toISOString().split('T')[0]
+        : null,
   },
 };
-

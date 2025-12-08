@@ -1,5 +1,5 @@
-import { PageHeader } from '@/components/ui';
 import ResearchQueueClient from '@/components/ResearchQueueClient';
+import { PageHeader } from '@/components/ui';
 
 export default function ResearchQueuePage() {
   return (
@@ -15,4 +15,3 @@ export default function ResearchQueuePage() {
     </>
   );
 }
-

@@ -1,14 +1,31 @@
 'use client';
 
-import { useEffect, useState, useCallback } from 'react';
-import { useSession } from 'next-auth/react';
-import { useRouter } from 'next/navigation';
-import { Save, Play, Download, Upload } from 'lucide-react';
-import { PageHeader, Button, Input, Label, Textarea, Checkbox, Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui';
-import LoadingSpinner from '@/components/LoadingSpinner';
+import { Download, Play, Save, Upload } from 'lucide-react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
+import { useSession } from 'next-auth/react';
+import { useCallback, useEffect, useState } from 'react';
+import LoadingSpinner from '@/components/LoadingSpinner';
 import { useSettingsRefetch } from '@/components/SettingsProvider';
-import { themePresets, applyThemePreset, getPresetByPrimaryColor, type ThemePreset } from '@/lib/theme-presets';
+import {
+  Button,
+  Checkbox,
+  Input,
+  Label,
+  PageHeader,
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+  Textarea,
+} from '@/components/ui';
+import {
+  applyThemePreset,
+  getPresetByPrimaryColor,
+  type ThemePreset,
+  themePresets,
+} from '@/lib/theme-presets';
 
 interface SettingRow {
   key: string;
@@ -40,7 +57,10 @@ const CATEGORY_LABELS: Record<string, string> = {
   contact: '📧 Contact',
 };
 
-const graphqlFetch = async (query: string, variables?: Record<string, unknown>) => {
+const graphqlFetch = async (
+  query: string,
+  variables?: Record<string, unknown>,
+) => {
   const res = await fetch('/api/graphql', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -59,7 +79,10 @@ export default function SettingsPage() {
   const [rows, setRows] = useState<SettingRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+  const [message, setMessage] = useState<{
+    type: 'success' | 'error';
+    text: string;
+  } | null>(null);
   const [needsMigration, setNeedsMigration] = useState(false);
   const [migrating, setMigrating] = useState(false);
 
@@ -70,12 +93,19 @@ export default function SettingsPage() {
 
   // GEDCOM import state
   const [importing, setImporting] = useState(false);
-  const [importResult, setImportResult] = useState<{ peopleImported: number; familiesImported: number; errors: string[]; warnings: string[] } | null>(null);
+  const [importResult, setImportResult] = useState<{
+    peopleImported: number;
+    familiesImported: number;
+    errors: string[];
+    warnings: string[];
+  } | null>(null);
 
   const loadSettings = useCallback(async () => {
     try {
       // Check migration status first
-      const statusData = await graphqlFetch(`query { migrationStatus { migrationNeeded } }`);
+      const statusData = await graphqlFetch(
+        `query { migrationStatus { migrationNeeded } }`,
+      );
       if (statusData.migrationStatus.migrationNeeded) {
         setNeedsMigration(true);
         setLoading(false);
@@ -114,11 +144,14 @@ export default function SettingsPage() {
     setSaving(true);
     setMessage(null);
     try {
-      await graphqlFetch(`
+      await graphqlFetch(
+        `
         mutation UpdateSettings($input: SettingsInput!) {
           updateSettings(input: $input) { site_name }
         }
-      `, { input: settings });
+      `,
+        { input: settings },
+      );
       // Refetch global settings to update UI immediately
       refetchGlobalSettings();
       setMessage({ type: 'success', text: 'Settings saved successfully!' });
@@ -133,31 +166,47 @@ export default function SettingsPage() {
   const handleMigrate = async () => {
     setMigrating(true);
     try {
-      const data = await graphqlFetch(`mutation { runMigrations { success results message } }`);
-      setMessage({ type: 'success', text: 'Migration completed: ' + data.runMigrations.results.join(', ') });
+      const data = await graphqlFetch(
+        `mutation { runMigrations { success results message } }`,
+      );
+      setMessage({
+        type: 'success',
+        text: `Migration completed: ${data.runMigrations.results.join(', ')}`,
+      });
       loadSettings();
     } catch (err) {
-      setMessage({ type: 'error', text: 'Migration failed: ' + (err as Error).message });
+      setMessage({
+        type: 'error',
+        text: `Migration failed: ${(err as Error).message}`,
+      });
     } finally {
       setMigrating(false);
     }
   };
 
   const updateSetting = (key: string, value: string) => {
-    setSettings(prev => ({ ...prev, [key]: value }));
+    setSettings((prev) => ({ ...prev, [key]: value }));
   };
 
   const handleExportGedcom = async () => {
     setExporting(true);
     try {
-      const data = await graphqlFetch(`
+      const data = await graphqlFetch(
+        `
         query ExportGedcom($includeLiving: Boolean, $includeSources: Boolean) {
           exportGedcom(includeLiving: $includeLiving, includeSources: $includeSources)
         }
-      `, { includeLiving: exportIncludeLiving, includeSources: exportIncludeSources });
+      `,
+        {
+          includeLiving: exportIncludeLiving,
+          includeSources: exportIncludeSources,
+        },
+      );
 
       // Create and download the file
-      const blob = new Blob([data.exportGedcom], { type: 'text/plain;charset=utf-8' });
+      const blob = new Blob([data.exportGedcom], {
+        type: 'text/plain;charset=utf-8',
+      });
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
@@ -166,16 +215,24 @@ export default function SettingsPage() {
       a.click();
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
-      setMessage({ type: 'success', text: 'GEDCOM file exported successfully!' });
+      setMessage({
+        type: 'success',
+        text: 'GEDCOM file exported successfully!',
+      });
     } catch (err) {
       console.error('Failed to export GEDCOM:', err);
-      setMessage({ type: 'error', text: 'Failed to export GEDCOM: ' + (err as Error).message });
+      setMessage({
+        type: 'error',
+        text: `Failed to export GEDCOM: ${(err as Error).message}`,
+      });
     } finally {
       setExporting(false);
     }
   };
 
-  const handleImportGedcom = async (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleImportGedcom = async (
+    event: React.ChangeEvent<HTMLInputElement>,
+  ) => {
     const file = event.target.files?.[0];
     if (!file) return;
 
@@ -185,7 +242,8 @@ export default function SettingsPage() {
 
     try {
       const content = await file.text();
-      const data = await graphqlFetch(`
+      const data = await graphqlFetch(
+        `
         mutation ImportGedcom($content: String!) {
           importGedcom(content: $content) {
             peopleImported
@@ -194,17 +252,28 @@ export default function SettingsPage() {
             warnings
           }
         }
-      `, { content });
+      `,
+        { content },
+      );
 
       setImportResult(data.importGedcom);
       if (data.importGedcom.errors.length === 0) {
-        setMessage({ type: 'success', text: `Imported ${data.importGedcom.peopleImported} people and ${data.importGedcom.familiesImported} families!` });
+        setMessage({
+          type: 'success',
+          text: `Imported ${data.importGedcom.peopleImported} people and ${data.importGedcom.familiesImported} families!`,
+        });
       } else {
-        setMessage({ type: 'error', text: `Import completed with ${data.importGedcom.errors.length} errors` });
+        setMessage({
+          type: 'error',
+          text: `Import completed with ${data.importGedcom.errors.length} errors`,
+        });
       }
     } catch (err) {
       console.error('Failed to import GEDCOM:', err);
-      setMessage({ type: 'error', text: 'Failed to import GEDCOM: ' + (err as Error).message });
+      setMessage({
+        type: 'error',
+        text: `Failed to import GEDCOM: ${(err as Error).message}`,
+      });
     } finally {
       setImporting(false);
       // Reset file input
@@ -212,17 +281,24 @@ export default function SettingsPage() {
     }
   };
 
-  const groupedSettings = rows.reduce((acc, row) => {
-    const cat = row.category || 'general';
-    if (!acc[cat]) acc[cat] = [];
-    acc[cat].push(row);
-    return acc;
-  }, {} as Record<string, SettingRow[]>);
+  const groupedSettings = rows.reduce(
+    (acc, row) => {
+      const cat = row.category || 'general';
+      if (!acc[cat]) acc[cat] = [];
+      acc[cat].push(row);
+      return acc;
+    },
+    {} as Record<string, SettingRow[]>,
+  );
 
   if (loading) {
     return (
       <>
-        <PageHeader title="Site Settings" subtitle="Configure your genealogy site" icon="Sliders" />
+        <PageHeader
+          title="Site Settings"
+          subtitle="Configure your genealogy site"
+          icon="Sliders"
+        />
         <div className="content-wrapper flex justify-center py-12">
           <LoadingSpinner size="lg" message="Loading settings..." />
         </div>
@@ -232,18 +308,28 @@ export default function SettingsPage() {
 
   return (
     <>
-      <PageHeader title="Site Settings" subtitle="Configure your genealogy site" icon="Sliders" />
+      <PageHeader
+        title="Site Settings"
+        subtitle="Configure your genealogy site"
+        icon="Sliders"
+      />
       <div className="content-wrapper">
         {/* Navigation */}
         <div className="flex gap-4 mb-8">
-          <Link href="/admin" className="nav-tab">Users</Link>
+          <Link href="/admin" className="nav-tab">
+            Users
+          </Link>
           <span className="nav-tab-active">Site Settings</span>
-          <Link href="/admin/api-keys" className="nav-tab">API Keys</Link>
+          <Link href="/admin/api-keys" className="nav-tab">
+            API Keys
+          </Link>
         </div>
 
         {/* Message */}
         {message && (
-          <div className={`mb-6 p-4 rounded-lg ${message.type === 'success' ? 'bg-green-50 text-green-800 border border-green-200' : 'bg-red-50 text-red-800 border border-red-200'}`}>
+          <div
+            className={`mb-6 p-4 rounded-lg ${message.type === 'success' ? 'bg-green-50 text-green-800 border border-green-200' : 'bg-red-50 text-red-800 border border-red-200'}`}
+          >
             {message.text}
           </div>
         )}
@@ -251,8 +337,15 @@ export default function SettingsPage() {
         {/* Migration needed */}
         {needsMigration && (
           <div className="mb-6 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
-            <p className="text-yellow-800 mb-3">Settings table needs to be created.</p>
-            <Button onClick={handleMigrate} disabled={migrating} loading={migrating} icon={<Play className="w-4 h-4" />}>
+            <p className="text-yellow-800 mb-3">
+              Settings table needs to be created.
+            </p>
+            <Button
+              onClick={handleMigrate}
+              disabled={migrating}
+              loading={migrating}
+              icon={<Play className="w-4 h-4" />}
+            >
               Run Migration
             </Button>
           </div>
@@ -262,42 +355,69 @@ export default function SettingsPage() {
         {!needsMigration && Object.keys(groupedSettings).length > 0 && (
           <div className="space-y-8">
             {Object.entries(groupedSettings).map(([category, categoryRows]) => (
-              <div key={category} className="bg-white rounded-xl shadow-sm border p-6">
+              <div
+                key={category}
+                className="bg-white rounded-xl shadow-sm border p-6"
+              >
                 <h2 className="text-xl font-semibold mb-4">
                   {CATEGORY_LABELS[category] || category}
                 </h2>
                 <div className="space-y-4">
-                  {categoryRows.map(row => (
-                    <div key={row.key} className="grid grid-cols-3 gap-4 items-start">
+                  {categoryRows.map((row) => (
+                    <div
+                      key={row.key}
+                      className="grid grid-cols-3 gap-4 items-start"
+                    >
                       <div>
                         <label className="block font-medium text-gray-700">
                           {SETTING_LABELS[row.key] || row.key}
                         </label>
-                        <p className="text-sm text-gray-500">{row.description}</p>
+                        <p className="text-sm text-gray-500">
+                          {row.description}
+                        </p>
                       </div>
                       <div className="col-span-2">
                         {row.key === 'theme_color' ? (
                           <ThemePresetPicker
                             value={settings[row.key] || '#37b24d'}
                             onSelectPreset={(preset) => {
-                              updateSetting('theme_color', preset.colors.primary);
+                              updateSetting(
+                                'theme_color',
+                                preset.colors.primary,
+                              );
                               // Apply theme immediately for preview
                               applyThemePreset(preset);
                             }}
                           />
                         ) : row.key === 'date_format' ? (
-                          <Select value={settings[row.key] || 'MDY'} onValueChange={(v) => updateSetting(row.key, v)}>
+                          <Select
+                            value={settings[row.key] || 'MDY'}
+                            onValueChange={(v) => updateSetting(row.key, v)}
+                          >
                             <SelectTrigger className="w-48">
                               <SelectValue />
                             </SelectTrigger>
                             <SelectContent>
-                              <SelectItem value="MDY">MM/DD/YYYY (US)</SelectItem>
-                              <SelectItem value="DMY">DD/MM/YYYY (EU)</SelectItem>
-                              <SelectItem value="ISO">YYYY-MM-DD (ISO)</SelectItem>
+                              <SelectItem value="MDY">
+                                MM/DD/YYYY (US)
+                              </SelectItem>
+                              <SelectItem value="DMY">
+                                DD/MM/YYYY (EU)
+                              </SelectItem>
+                              <SelectItem value="ISO">
+                                YYYY-MM-DD (ISO)
+                              </SelectItem>
                             </SelectContent>
                           </Select>
-                        ) : ['require_login', 'show_living_details', 'show_coats_of_arms'].includes(row.key) ? (
-                          <Select value={settings[row.key] || 'false'} onValueChange={(v) => updateSetting(row.key, v)}>
+                        ) : [
+                            'require_login',
+                            'show_living_details',
+                            'show_coats_of_arms',
+                          ].includes(row.key) ? (
+                          <Select
+                            value={settings[row.key] || 'false'}
+                            onValueChange={(v) => updateSetting(row.key, v)}
+                          >
                             <SelectTrigger className="w-32">
                               <SelectValue />
                             </SelectTrigger>
@@ -309,16 +429,29 @@ export default function SettingsPage() {
                         ) : row.key === 'footer_text' ? (
                           <Textarea
                             value={settings[row.key] || ''}
-                            onChange={e => updateSetting(row.key, e.target.value)}
+                            onChange={(e) =>
+                              updateSetting(row.key, e.target.value)
+                            }
                             rows={2}
                             placeholder="Optional footer message"
                           />
                         ) : (
                           <Input
-                            type={['living_cutoff_years', 'default_tree_generations'].includes(row.key) ? 'number' : 'text'}
+                            type={
+                              [
+                                'living_cutoff_years',
+                                'default_tree_generations',
+                              ].includes(row.key)
+                                ? 'number'
+                                : 'text'
+                            }
                             value={settings[row.key] || ''}
-                            onChange={e => updateSetting(row.key, e.target.value)}
-                            placeholder={row.key.includes('url') ? 'https://...' : ''}
+                            onChange={(e) =>
+                              updateSetting(row.key, e.target.value)
+                            }
+                            placeholder={
+                              row.key.includes('url') ? 'https://...' : ''
+                            }
                           />
                         )}
                       </div>
@@ -344,24 +477,39 @@ export default function SettingsPage() {
             <div className="bg-gray-50 rounded-lg p-6 mt-8">
               <h3 className="text-lg font-semibold mb-4">📤 Export Data</h3>
               <p className="text-gray-600 mb-4">
-                Export your family tree data in GEDCOM format for backup or import into other genealogy software.
+                Export your family tree data in GEDCOM format for backup or
+                import into other genealogy software.
               </p>
               <div className="flex flex-wrap gap-4 mb-4">
                 <div className="flex items-center gap-2">
                   <Checkbox
                     id="export-living"
                     checked={exportIncludeLiving}
-                    onCheckedChange={(checked) => setExportIncludeLiving(checked === true)}
+                    onCheckedChange={(checked) =>
+                      setExportIncludeLiving(checked === true)
+                    }
                   />
-                  <Label htmlFor="export-living" className="text-sm cursor-pointer">Include living people</Label>
+                  <Label
+                    htmlFor="export-living"
+                    className="text-sm cursor-pointer"
+                  >
+                    Include living people
+                  </Label>
                 </div>
                 <div className="flex items-center gap-2">
                   <Checkbox
                     id="export-sources"
                     checked={exportIncludeSources}
-                    onCheckedChange={(checked) => setExportIncludeSources(checked === true)}
+                    onCheckedChange={(checked) =>
+                      setExportIncludeSources(checked === true)
+                    }
                   />
-                  <Label htmlFor="export-sources" className="text-sm cursor-pointer">Include sources</Label>
+                  <Label
+                    htmlFor="export-sources"
+                    className="text-sm cursor-pointer"
+                  >
+                    Include sources
+                  </Label>
                 </div>
               </div>
               <Button
@@ -379,7 +527,8 @@ export default function SettingsPage() {
             <div className="bg-blue-50 rounded-lg p-6 mt-6">
               <h3 className="text-lg font-semibold mb-4">📥 Import Data</h3>
               <p className="text-gray-600 mb-4">
-                Import family tree data from a GEDCOM file. Standard GEDCOM 5.5.1 format is supported.
+                Import family tree data from a GEDCOM file. Standard GEDCOM
+                5.5.1 format is supported.
               </p>
               <div className="flex items-center gap-4">
                 <input
@@ -391,7 +540,9 @@ export default function SettingsPage() {
                   className="hidden"
                 />
                 <Button
-                  onClick={() => document.getElementById('gedcom-import')?.click()}
+                  onClick={() =>
+                    document.getElementById('gedcom-import')?.click()
+                  }
                   disabled={importing}
                   loading={importing}
                   variant="secondary"
@@ -405,19 +556,29 @@ export default function SettingsPage() {
                   <p className="font-medium">Import Results:</p>
                   <ul className="mt-2 text-sm space-y-1">
                     <li>✅ People imported: {importResult.peopleImported}</li>
-                    <li>✅ Families imported: {importResult.familiesImported}</li>
+                    <li>
+                      ✅ Families imported: {importResult.familiesImported}
+                    </li>
                     {importResult.warnings.length > 0 && (
-                      <li className="text-yellow-600">⚠️ Warnings: {importResult.warnings.length}</li>
+                      <li className="text-yellow-600">
+                        ⚠️ Warnings: {importResult.warnings.length}
+                      </li>
                     )}
                     {importResult.errors.length > 0 && (
-                      <li className="text-red-600">❌ Errors: {importResult.errors.length}</li>
+                      <li className="text-red-600">
+                        ❌ Errors: {importResult.errors.length}
+                      </li>
                     )}
                   </ul>
                   {importResult.errors.length > 0 && (
                     <details className="mt-2">
-                      <summary className="text-sm text-red-600 cursor-pointer">View errors</summary>
+                      <summary className="text-sm text-red-600 cursor-pointer">
+                        View errors
+                      </summary>
                       <ul className="mt-1 text-xs text-red-600 max-h-32 overflow-y-auto">
-                        {importResult.errors.map((err, i) => <li key={i}>{err}</li>)}
+                        {importResult.errors.map((err, i) => (
+                          <li key={i}>{err}</li>
+                        ))}
                       </ul>
                     </details>
                   )}
@@ -434,7 +595,7 @@ export default function SettingsPage() {
 // Theme Preset Picker - condensed to 8 curated themes
 function ThemePresetPicker({
   value,
-  onSelectPreset
+  onSelectPreset,
 }: {
   value: string;
   onSelectPreset: (preset: ThemePreset) => void;
@@ -443,7 +604,7 @@ function ThemePresetPicker({
 
   return (
     <div className="grid grid-cols-4 gap-2">
-      {themePresets.map(preset => {
+      {themePresets.map((preset) => {
         const isSelected = currentPreset?.id === preset.id;
         return (
           <button
@@ -451,7 +612,9 @@ function ThemePresetPicker({
             type="button"
             onClick={() => onSelectPreset(preset)}
             className={`flex items-center gap-2 p-2 rounded-lg border-2 transition-all hover:border-blue-400 ${
-              isSelected ? 'border-blue-500 bg-blue-50' : 'border-gray-200 bg-white'
+              isSelected
+                ? 'border-blue-500 bg-blue-50'
+                : 'border-gray-200 bg-white'
             }`}
             title={preset.description}
           >

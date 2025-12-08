@@ -1,13 +1,17 @@
 'use client';
 
-import { useState } from 'react';
+import { useMutation, useQuery } from '@apollo/client/react';
+import { Plus } from 'lucide-react';
 import Image from 'next/image';
 import { useSession } from 'next-auth/react';
-import { useQuery, useMutation } from '@apollo/client/react';
-import { Plus } from 'lucide-react';
-import { PageHeader, Button, Input, Label, Textarea } from '@/components/ui';
+import { useState } from 'react';
 import LoadingSpinner from '@/components/LoadingSpinner';
-import { GET_SURNAME_CRESTS, SET_SURNAME_CREST, REMOVE_SURNAME_CREST } from '@/lib/graphql/queries';
+import { Button, Input, Label, PageHeader, Textarea } from '@/components/ui';
+import {
+  GET_SURNAME_CRESTS,
+  REMOVE_SURNAME_CREST,
+  SET_SURNAME_CREST,
+} from '@/lib/graphql/queries';
 
 interface SurnameCrest {
   id: string;
@@ -20,9 +24,12 @@ interface SurnameCrest {
 
 export default function CoatsOfArmsPage() {
   const { data: session } = useSession();
-  const isEditor = session?.user?.role === 'editor' || session?.user?.role === 'admin';
+  const isEditor =
+    session?.user?.role === 'editor' || session?.user?.role === 'admin';
 
-  const { data, loading, refetch } = useQuery<{ surnameCrests: SurnameCrest[] }>(GET_SURNAME_CRESTS);
+  const { data, loading, refetch } = useQuery<{
+    surnameCrests: SurnameCrest[];
+  }>(GET_SURNAME_CRESTS);
   const [setSurnameCrest] = useMutation(SET_SURNAME_CREST);
   const [removeSurnameCrest] = useMutation(REMOVE_SURNAME_CREST);
 
@@ -49,10 +56,20 @@ export default function CoatsOfArmsPage() {
     if (!surname || !imageData) return;
     try {
       await setSurnameCrest({
-        variables: { surname, coatOfArms: imageData, description: description || null, origin: origin || null, motto: motto || null }
+        variables: {
+          surname,
+          coatOfArms: imageData,
+          description: description || null,
+          origin: origin || null,
+          motto: motto || null,
+        },
       });
       setShowForm(false);
-      setSurname(''); setDescription(''); setOrigin(''); setMotto(''); setImageData('');
+      setSurname('');
+      setDescription('');
+      setOrigin('');
+      setMotto('');
+      setImageData('');
       refetch();
     } catch (err) {
       console.error('Failed to set surname crest:', err);
@@ -60,7 +77,12 @@ export default function CoatsOfArmsPage() {
   };
 
   const handleRemove = async (surnameToRemove: string) => {
-    if (!confirm(`Remove coat of arms for "${surnameToRemove}"? All people with this surname will lose their crest.`)) return;
+    if (
+      !confirm(
+        `Remove coat of arms for "${surnameToRemove}"? All people with this surname will lose their crest.`,
+      )
+    )
+      return;
     try {
       await removeSurnameCrest({ variables: { surname: surnameToRemove } });
       refetch();
@@ -75,51 +97,88 @@ export default function CoatsOfArmsPage() {
         title="Coats of Arms"
         subtitle="Assign crests by surname - all people with matching surname inherit automatically"
         icon="Shield"
-        actions={isEditor && (
-          <Button
-            onClick={() => setShowForm(!showForm)}
-            icon={showForm ? null : <Plus className="w-4 h-4" />}
-          >
-            {showForm ? 'Cancel' : 'Add Surname Crest'}
-          </Button>
-        )}
+        actions={
+          isEditor && (
+            <Button
+              onClick={() => setShowForm(!showForm)}
+              icon={showForm ? null : <Plus className="w-4 h-4" />}
+            >
+              {showForm ? 'Cancel' : 'Add Surname Crest'}
+            </Button>
+          )
+        }
       />
       <div className="content-wrapper">
-
         {showForm && isEditor && (
           <form onSubmit={handleSubmit} className="card p-6 mb-6 space-y-4">
-            <h3 className="text-lg font-semibold">Add Coat of Arms for Surname</h3>
-            <p className="text-sm text-gray-600">All people with this surname will automatically display this crest.</p>
+            <h3 className="text-lg font-semibold">
+              Add Coat of Arms for Surname
+            </h3>
+            <p className="text-sm text-gray-600">
+              All people with this surname will automatically display this
+              crest.
+            </p>
             <div className="space-y-2">
               <Label>Surname *</Label>
-              <Input type="text" placeholder="e.g., Milanese" value={surname}
-                onChange={(e) => setSurname(e.target.value)} required />
+              <Input
+                type="text"
+                placeholder="e.g., Milanese"
+                value={surname}
+                onChange={(e) => setSurname(e.target.value)}
+                required
+              />
             </div>
             <div className="space-y-2">
               <Label>Origin</Label>
-              <Input type="text" placeholder="e.g., Northern Italy" value={origin}
-                onChange={(e) => setOrigin(e.target.value)} />
+              <Input
+                type="text"
+                placeholder="e.g., Northern Italy"
+                value={origin}
+                onChange={(e) => setOrigin(e.target.value)}
+              />
             </div>
             <div className="space-y-2">
               <Label>Motto</Label>
-              <Input type="text" placeholder="Family motto" value={motto}
-                onChange={(e) => setMotto(e.target.value)} />
+              <Input
+                type="text"
+                placeholder="Family motto"
+                value={motto}
+                onChange={(e) => setMotto(e.target.value)}
+              />
             </div>
             <div className="space-y-2">
               <Label>Description</Label>
-              <Textarea placeholder="Description of the coat of arms" value={description}
-                onChange={(e) => setDescription(e.target.value)} rows={2} />
+              <Textarea
+                placeholder="Description of the coat of arms"
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+                rows={2}
+              />
             </div>
             <div className="space-y-2">
               <Label>Upload Image *</Label>
-              <input type="file" accept="image/*" onChange={handleFileChange} className="w-full" required />
+              <input
+                type="file"
+                accept="image/*"
+                onChange={handleFileChange}
+                className="w-full"
+                required
+              />
             </div>
             {imageData && (
               <div className="relative w-32 h-32 border rounded">
-                <Image src={imageData} alt="Preview" fill className="object-contain" unoptimized />
+                <Image
+                  src={imageData}
+                  alt="Preview"
+                  fill
+                  className="object-contain"
+                  unoptimized
+                />
               </div>
             )}
-            <Button type="submit" icon={<Plus className="w-4 h-4" />}>Add Surname Crest</Button>
+            <Button type="submit" icon={<Plus className="w-4 h-4" />}>
+              Add Surname Crest
+            </Button>
           </form>
         )}
 
@@ -128,22 +187,45 @@ export default function CoatsOfArmsPage() {
             <LoadingSpinner size="lg" message="Loading coats of arms..." />
           </div>
         ) : crests.length === 0 ? (
-          <div className="text-center py-12 text-gray-500">No surname crests added yet.</div>
+          <div className="text-center py-12 text-gray-500">
+            No surname crests added yet.
+          </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {crests.map((crest) => (
               <div key={crest.id} className="card p-4 text-center">
                 <div className="relative w-32 h-32 mx-auto mb-4">
-                  <Image src={crest.coat_of_arms} alt={`${crest.surname} coat of arms`}
-                    fill className="object-contain" unoptimized />
+                  <Image
+                    src={crest.coat_of_arms}
+                    alt={`${crest.surname} coat of arms`}
+                    fill
+                    className="object-contain"
+                    unoptimized
+                  />
                 </div>
                 <h3 className="text-xl font-bold">{crest.surname}</h3>
-                {crest.origin && <p className="text-sm text-gray-500">{crest.origin}</p>}
-                {crest.motto && <p className="text-sm italic text-gray-600 mt-1">&ldquo;{crest.motto}&rdquo;</p>}
-                {crest.description && <p className="text-sm text-gray-500 mt-2">{crest.description}</p>}
+                {crest.origin && (
+                  <p className="text-sm text-gray-500">{crest.origin}</p>
+                )}
+                {crest.motto && (
+                  <p className="text-sm italic text-gray-600 mt-1">
+                    &ldquo;{crest.motto}&rdquo;
+                  </p>
+                )}
+                {crest.description && (
+                  <p className="text-sm text-gray-500 mt-2">
+                    {crest.description}
+                  </p>
+                )}
                 {isEditor && (
-                  <Button variant="link" size="sm" onClick={() => handleRemove(crest.surname)}
-                    className="text-red-600 text-sm hover:underline mt-3 p-0">Remove</Button>
+                  <Button
+                    variant="link"
+                    size="sm"
+                    onClick={() => handleRemove(crest.surname)}
+                    className="text-red-600 text-sm hover:underline mt-3 p-0"
+                  >
+                    Remove
+                  </Button>
                 )}
               </div>
             ))}
@@ -153,4 +235,3 @@ export default function CoatsOfArmsPage() {
     </>
   );
 }
-

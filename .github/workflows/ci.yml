@@ -45,7 +45,7 @@ jobs:
         run: npm ci
 
       - name: Run tests
-        run: npm test -- --passWithNoTests --coverage
+        run: npm run test:ci
 
       - name: Upload coverage report
         uses: actions/upload-artifact@v4

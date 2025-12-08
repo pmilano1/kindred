@@ -1,7 +1,7 @@
 'use client';
 
-import { createContext, useContext, ReactNode, useCallback } from 'react';
 import { useQuery } from '@apollo/client/react';
+import { createContext, type ReactNode, useCallback, useContext } from 'react';
 import { GET_SITE_SETTINGS } from '@/lib/graphql/queries';
 
 export interface SiteSettings {
@@ -63,11 +63,17 @@ interface SiteSettingsQueryResult {
   siteSettings: SiteSettings;
 }
 
-export function SettingsProvider({ children, settings: initialSettings }: SettingsProviderProps) {
+export function SettingsProvider({
+  children,
+  settings: initialSettings,
+}: SettingsProviderProps) {
   // Fetch settings client-side via GraphQL
-  const { data, refetch } = useQuery<SiteSettingsQueryResult>(GET_SITE_SETTINGS, {
-    fetchPolicy: 'cache-and-network',
-  });
+  const { data, refetch } = useQuery<SiteSettingsQueryResult>(
+    GET_SITE_SETTINGS,
+    {
+      fetchPolicy: 'cache-and-network',
+    },
+  );
 
   // Use GraphQL data if available, fall back to SSR initial settings, then defaults
   const settings = data?.siteSettings || initialSettings || DEFAULT_SETTINGS;
@@ -82,4 +88,3 @@ export function SettingsProvider({ children, settings: initialSettings }: Settin
     </SettingsContext.Provider>
   );
 }
-

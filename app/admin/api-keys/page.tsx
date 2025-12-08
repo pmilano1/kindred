@@ -1,14 +1,18 @@
 'use client';
 
-import { useEffect, useState } from 'react';
-import { useSession } from 'next-auth/react';
-import { useRouter } from 'next/navigation';
-import { useQuery, useMutation } from '@apollo/client/react';
-import { RefreshCw, Trash2, Copy, Eye, EyeOff } from 'lucide-react';
-import { PageHeader, Button } from '@/components/ui';
-import LoadingSpinner from '@/components/LoadingSpinner';
+import { useMutation, useQuery } from '@apollo/client/react';
+import { Copy, Eye, EyeOff, RefreshCw, Trash2 } from 'lucide-react';
 import Link from 'next/link';
-import { GET_ME, GENERATE_API_KEY, REVOKE_API_KEY } from '@/lib/graphql/queries';
+import { useRouter } from 'next/navigation';
+import { useSession } from 'next-auth/react';
+import { useEffect, useState } from 'react';
+import LoadingSpinner from '@/components/LoadingSpinner';
+import { Button, PageHeader } from '@/components/ui';
+import {
+  GENERATE_API_KEY,
+  GET_ME,
+  REVOKE_API_KEY,
+} from '@/lib/graphql/queries';
 
 interface UserData {
   me: {
@@ -32,7 +36,8 @@ export default function ApiKeysPage() {
   const { data, loading, refetch } = useQuery<UserData>(GET_ME, {
     skip: !isAuthenticated,
   });
-  const [generateApiKey, { loading: generating }] = useMutation(GENERATE_API_KEY);
+  const [generateApiKey, { loading: generating }] =
+    useMutation(GENERATE_API_KEY);
   const [revokeApiKey, { loading: revoking }] = useMutation(REVOKE_API_KEY);
 
   const user = data?.me;
@@ -46,7 +51,11 @@ export default function ApiKeysPage() {
   }, [session, status, router]);
 
   const handleGenerate = async () => {
-    if (hasKey && !confirm('This will replace your existing API key. Continue?')) return;
+    if (
+      hasKey &&
+      !confirm('This will replace your existing API key. Continue?')
+    )
+      return;
     try {
       const result = await generateApiKey();
       const key = (result.data as { generateApiKey?: string })?.generateApiKey;
@@ -62,7 +71,10 @@ export default function ApiKeysPage() {
   };
 
   const handleRevoke = async () => {
-    if (!confirm('Revoke your API key? Any scripts using it will stop working.')) return;
+    if (
+      !confirm('Revoke your API key? Any scripts using it will stop working.')
+    )
+      return;
     try {
       await revokeApiKey();
       setNewKey(null);
@@ -82,14 +94,18 @@ export default function ApiKeysPage() {
 
   const maskKey = (key: string) => {
     if (key.length <= 8) return '••••••••';
-    return key.slice(0, 4) + '••••••••••••••••••••••••' + key.slice(-4);
+    return `${key.slice(0, 4)}••••••••••••••••••••••••${key.slice(-4)}`;
   };
 
   // Show loading while session or data is loading
   if (status === 'loading' || loading) {
     return (
       <>
-        <PageHeader title="API Keys" subtitle="Manage your API access" icon="Key" />
+        <PageHeader
+          title="API Keys"
+          subtitle="Manage your API access"
+          icon="Key"
+        />
         <div className="content-wrapper flex justify-center py-12">
           <LoadingSpinner size="lg" message="Loading API key data..." />
         </div>
@@ -104,12 +120,20 @@ export default function ApiKeysPage() {
 
   return (
     <>
-      <PageHeader title="API Keys" subtitle="Manage your API access" icon="Key" />
+      <PageHeader
+        title="API Keys"
+        subtitle="Manage your API access"
+        icon="Key"
+      />
       <div className="content-wrapper">
         {/* Navigation */}
         <div className="flex gap-4 mb-8">
-          <Link href="/admin" className="nav-tab">Users</Link>
-          <Link href="/admin/settings" className="nav-tab">Site Settings</Link>
+          <Link href="/admin" className="nav-tab">
+            Users
+          </Link>
+          <Link href="/admin/settings" className="nav-tab">
+            Site Settings
+          </Link>
           <span className="nav-tab-active">API Keys</span>
         </div>
 
@@ -117,18 +141,26 @@ export default function ApiKeysPage() {
         <div className="bg-white rounded-xl shadow-sm border p-6 mb-8">
           <h2 className="text-xl font-semibold mb-4">Your API Key</h2>
           <p className="text-gray-600 mb-6">
-            Use an API key to access the GraphQL API programmatically. Include it in the 
-            <code className="mx-1 px-2 py-1 bg-gray-100 rounded text-sm">X-API-Key</code> header.
+            Use an API key to access the GraphQL API programmatically. Include
+            it in the
+            <code className="mx-1 px-2 py-1 bg-gray-100 rounded text-sm">
+              X-API-Key
+            </code>{' '}
+            header.
           </p>
 
           {newKey && (
             <div className="mb-6 p-4 bg-green-50 border border-green-200 rounded-lg">
-              <p className="text-green-800 font-medium mb-2">🔑 New API Key Generated</p>
+              <p className="text-green-800 font-medium mb-2">
+                🔑 New API Key Generated
+              </p>
               <p className="text-green-700 text-sm mb-3">
                 Copy this key now—you won&apos;t be able to see it again!
               </p>
               <div className="flex items-center gap-2 bg-white border rounded p-2">
-                <code className="flex-1 text-sm font-mono break-all">{newKey}</code>
+                <code className="flex-1 text-sm font-mono break-all">
+                  {newKey}
+                </code>
                 <Button
                   onClick={() => copyToClipboard(newKey)}
                   size="sm"
@@ -153,7 +185,13 @@ export default function ApiKeysPage() {
                   onClick={() => setShowKey(!showKey)}
                   variant="ghost"
                   size="sm"
-                  icon={showKey ? <EyeOff className="w-3 h-3" /> : <Eye className="w-3 h-3" />}
+                  icon={
+                    showKey ? (
+                      <EyeOff className="w-3 h-3" />
+                    ) : (
+                      <Eye className="w-3 h-3" />
+                    )
+                  }
                 >
                   {showKey ? 'Hide' : 'Show'}
                 </Button>
@@ -163,7 +201,9 @@ export default function ApiKeysPage() {
 
           {!hasKey && !newKey && (
             <div className="mb-6 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
-              <p className="text-yellow-800">No API key configured. Generate one to enable API access.</p>
+              <p className="text-yellow-800">
+                No API key configured. Generate one to enable API access.
+              </p>
             </div>
           )}
 
@@ -193,4 +233,3 @@ export default function ApiKeysPage() {
     </>
   );
 }
-

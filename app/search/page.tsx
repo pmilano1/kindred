@@ -25,19 +25,25 @@ type LivingFilter = 'all' | 'living' | 'deceased';
 
 function SearchContent() {
   const searchParams = useSearchParams();
-  const initialQuery = searchParams.get('q') || '';
-  const [query, setQuery] = useState(initialQuery);
-  const [searched, setSearched] = useState(!!initialQuery);
-  const [executeSearch, { data, loading }] = useLazyQuery<SearchResult>(SEARCH_PEOPLE);
-  const hasAutoSearched = useRef(false);
+  const urlQuery = searchParams.get('q') || '';
+
+  const [localQuery, setLocalQuery] = useState(urlQuery);
+  const searchTermRef = useRef(urlQuery);
+  const [executeSearch, { data, loading, called }] = useLazyQuery<SearchResult>(SEARCH_PEOPLE);
+  const lastUrlQuery = useRef<string>('');
 
   // Filter and sort state
   const [sortBy, setSortBy] = useState<SortOption>('relevance');
   const [livingFilter, setLivingFilter] = useState<LivingFilter>('all');
   const [surnameFilter, setSurnameFilter] = useState<string>('');
 
-  const rawResults = useMemo(() =>
-    data?.search?.edges?.map(e => e.node) || [],
+  const searched = called;
+  // Derive displayed search term from URL or last searched
+  // eslint-disable-next-line react-hooks/refs -- ref is updated before executeSearch, safe to read
+  const displayedSearchTerm = urlQuery || searchTermRef.current;
+
+  const rawResults = useMemo(
+    () => data?.search?.edges?.map(e => e.node) || [],
     [data?.search?.edges]
   );
   const totalCount = data?.search?.pageInfo?.totalCount || 0;
@@ -83,23 +89,28 @@ function SearchContent() {
     return filtered;
   }, [rawResults, sortBy, livingFilter, surnameFilter]);
 
-  // Auto-search if query param provided
+  // Sync with URL query param - triggers search when URL changes (from GlobalSearch)
   useEffect(() => {
-    if (initialQuery && !hasAutoSearched.current) {
-      hasAutoSearched.current = true;
-      executeSearch({ variables: { query: initialQuery, first: 100 } });
+    if (urlQuery && urlQuery !== lastUrlQuery.current) {
+      lastUrlQuery.current = urlQuery;
+      searchTermRef.current = urlQuery;
+      executeSearch({ variables: { query: urlQuery, first: 100 } });
     }
-  }, [initialQuery, executeSearch]);
+  }, [urlQuery, executeSearch]);
 
   const handleSearch = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!query.trim()) return;
+    const searchQuery = localQuery.trim();
+    if (!searchQuery) return;
 
-    executeSearch({ variables: { query, first: 100 } });
-    setSearched(true);
+    searchTermRef.current = searchQuery;
+    executeSearch({ variables: { query: searchQuery, first: 100 } });
     // Reset filters on new search
     setSurnameFilter('');
   };
+
+  // Sync local input when URL query changes
+  const displayQuery = urlQuery || localQuery;
 
   return (
     <>
@@ -115,8 +126,8 @@ function SearchContent() {
               type="text"
               placeholder="Search for a person, place, or year..."
               className="flex-1"
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
+              value={displayQuery}
+              onChange={(e) => setLocalQuery(e.target.value)}
             />
             <Button type="submit" disabled={loading} loading={loading}>
               Search
@@ -128,7 +139,7 @@ function SearchContent() {
           <div>
             {/* Results summary */}
             <p className="text-sm text-[var(--text-muted)] mb-4 text-center">
-              Found {totalCount} result{totalCount !== 1 ? 's' : ''} for &ldquo;{query}&rdquo;
+              Found {totalCount} result{totalCount !== 1 ? 's' : ''} for &ldquo;{displayedSearchTerm}&rdquo;
               {results.length !== totalCount && ` (showing ${results.length} after filters)`}
             </p>
 

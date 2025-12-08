@@ -12,8 +12,10 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
-    // Generated files
+    // Performance: skip generated/cached files
     "coverage/**",
+    ".jest-cache/**",
+    "node_modules/**",
   ]),
 ]);
 

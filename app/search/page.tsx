@@ -4,7 +4,7 @@ import { useState, useEffect, useRef, Suspense, useMemo } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { useLazyQuery } from '@apollo/client/react';
 
-import { PageHeader, Button, Input } from '@/components/ui';
+import { PageHeader } from '@/components/ui';
 import PersonCard from '@/components/PersonCard';
 import { Person } from '@/lib/types';
 import { SEARCH_PEOPLE } from '@/lib/graphql/queries';
@@ -27,9 +27,8 @@ function SearchContent() {
   const searchParams = useSearchParams();
   const urlQuery = searchParams.get('q') || '';
 
-  const [localQuery, setLocalQuery] = useState(urlQuery);
   const searchTermRef = useRef(urlQuery);
-  const [executeSearch, { data, loading, called }] = useLazyQuery<SearchResult>(SEARCH_PEOPLE);
+  const [executeSearch, { data, called }] = useLazyQuery<SearchResult>(SEARCH_PEOPLE);
   const lastUrlQuery = useRef<string>('');
 
   // Filter and sort state
@@ -98,43 +97,14 @@ function SearchContent() {
     }
   }, [urlQuery, executeSearch]);
 
-  const handleSearch = async (e: React.FormEvent) => {
-    e.preventDefault();
-    const searchQuery = localQuery.trim();
-    if (!searchQuery) return;
-
-    searchTermRef.current = searchQuery;
-    executeSearch({ variables: { query: searchQuery, first: 100 } });
-    // Reset filters on new search
-    setSurnameFilter('');
-  };
-
-  // Sync local input when URL query changes
-  const displayQuery = urlQuery || localQuery;
-
   return (
     <>
       <PageHeader
-        title="Search"
-        subtitle="Find ancestors by name, place, or date"
+        title="Search Results"
+        subtitle={searched ? `Found ${totalCount} result${totalCount !== 1 ? 's' : ''} for "${displayedSearchTerm}"` : 'Use the search bar above to find family members'}
         icon="Search"
       />
       <div className="content-wrapper">
-        <form onSubmit={handleSearch} className="max-w-2xl mx-auto mb-8">
-          <div className="flex gap-2">
-            <Input
-              type="text"
-              placeholder="Search for a person, place, or year..."
-              className="flex-1"
-              value={displayQuery}
-              onChange={(e) => setLocalQuery(e.target.value)}
-            />
-            <Button type="submit" disabled={loading} loading={loading}>
-              Search
-            </Button>
-          </div>
-        </form>
-
         {searched && (
           <div>
             {/* Results summary */}

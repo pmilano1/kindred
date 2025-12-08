@@ -1,5 +1,6 @@
 'use client';
 
+import { NetworkStatus } from '@apollo/client';
 import { useMutation, useQuery } from '@apollo/client/react';
 import { Loader2 } from 'lucide-react';
 import Link from 'next/link';
@@ -55,13 +56,18 @@ interface ResearchQueueConnection {
 const PAGE_SIZE = 50;
 
 export default function ResearchQueueClient() {
-  const { data, loading, error, fetchMore } = useQuery<{
+  const { data, loading, error, fetchMore, networkStatus } = useQuery<{
     researchQueue: ResearchQueueConnection;
   }>(GET_RESEARCH_QUEUE, {
     variables: { first: PAGE_SIZE },
+    notifyOnNetworkStatusChange: true,
   });
   const [updatePriority] = useMutation(UPDATE_RESEARCH_PRIORITY);
   const [updateStatus] = useMutation(UPDATE_RESEARCH_STATUS);
+
+  // Only show full-page loading on initial load, not during fetchMore
+  const isInitialLoading = loading && networkStatus === NetworkStatus.loading;
+  const isFetchingMore = networkStatus === NetworkStatus.fetchMore;
 
   const queue = data?.researchQueue.edges.map((e) => e.node) || [];
   const hasNextPage = data?.researchQueue.pageInfo.hasNextPage ?? false;
@@ -87,13 +93,13 @@ export default function ResearchQueueClient() {
     });
   }, [hasNextPage, endCursor, loading, fetchMore]);
 
-  const { sentinelRef, isLoading: isLoadingMore } = useInfiniteScroll({
+  const { sentinelRef } = useInfiniteScroll({
     hasNextPage,
-    loading,
+    loading: isFetchingMore,
     onLoadMore: loadMore,
   });
 
-  if (loading) {
+  if (isInitialLoading) {
     return (
       <div className="max-w-6xl mx-auto">
         <div className="card p-6 text-center text-gray-500">
@@ -264,7 +270,7 @@ export default function ResearchQueueClient() {
             </table>
             {/* Infinite scroll sentinel */}
             <div ref={sentinelRef} className="h-4" aria-hidden="true" />
-            {isLoadingMore && (
+            {isFetchingMore && (
               <div className="flex justify-center py-4">
                 <Loader2 className="w-5 h-5 animate-spin text-green-600" />
                 <span className="ml-2 text-gray-600">Loading more...</span>

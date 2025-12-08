@@ -1,5 +1,6 @@
 'use client';
 
+import { NetworkStatus } from '@apollo/client';
 import { useQuery } from '@apollo/client/react';
 import { Loader2, UserPlus } from 'lucide-react';
 import { useRouter } from 'next/navigation';
@@ -48,10 +49,16 @@ export default function PeoplePage() {
   );
   const [showCreateModal, setShowCreateModal] = useState(false);
 
-  const { data, loading, fetchMore } = useQuery<{ people: PersonConnection }>(
-    GET_PEOPLE,
-    { variables: { first: PAGE_SIZE } },
-  );
+  const { data, loading, fetchMore, networkStatus } = useQuery<{
+    people: PersonConnection;
+  }>(GET_PEOPLE, {
+    variables: { first: PAGE_SIZE },
+    notifyOnNetworkStatusChange: true,
+  });
+
+  // Only show full-page loading on initial load, not during fetchMore
+  const isInitialLoading = loading && networkStatus === NetworkStatus.loading;
+  const isFetchingMore = networkStatus === NetworkStatus.fetchMore;
 
   const people = useMemo(
     () => data?.people.edges.map((e) => e.node) || [],
@@ -87,9 +94,9 @@ export default function PeoplePage() {
     });
   }, [hasNextPage, endCursor, loading, fetchMore]);
 
-  const { sentinelRef, isLoading: isLoadingMore } = useInfiniteScroll({
+  const { sentinelRef } = useInfiniteScroll({
     hasNextPage,
-    loading,
+    loading: isFetchingMore,
     onLoadMore: loadMore,
   });
 
@@ -128,7 +135,7 @@ export default function PeoplePage() {
           </Select>
         </div>
 
-        {loading ? (
+        {isInitialLoading ? (
           <div className="flex justify-center py-12">
             <LoadingSpinner size="lg" message="Loading people..." />
           </div>
@@ -146,7 +153,7 @@ export default function PeoplePage() {
             </div>
             {/* Infinite scroll sentinel */}
             <div ref={sentinelRef} className="h-4" aria-hidden="true" />
-            {isLoadingMore && (
+            {isFetchingMore && (
               <div className="flex justify-center py-8">
                 <Loader2 className="w-6 h-6 animate-spin text-green-600" />
                 <span className="ml-2 text-gray-600">Loading more...</span>

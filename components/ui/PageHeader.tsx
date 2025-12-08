@@ -20,6 +20,7 @@ import {
 import type { ReactNode } from 'react';
 import GlobalSearch from '../GlobalSearch';
 import { useSettings } from '../SettingsProvider';
+import UserMenu from '../UserMenu';
 
 // Map of icon names to components (for Server → Client serialization)
 const iconMap = {
@@ -97,6 +98,7 @@ export function PageHeader({
         <div className="page-header-actions flex items-center gap-4">
           {showSearch && <GlobalSearch />}
           {actions}
+          <UserMenu />
         </div>
       </div>
 

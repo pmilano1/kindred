@@ -6,7 +6,6 @@ import {
   ChevronRight,
   ClipboardList,
   LayoutDashboard,
-  LogOut,
   type LucideIcon,
   Settings,
   Shield,
@@ -16,7 +15,7 @@ import {
 import Image from 'next/image';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { signOut, useSession } from 'next-auth/react';
+import { useSession } from 'next-auth/react';
 import { Button } from '@/components/ui';
 import { useSettings } from './SettingsProvider';
 import { useSidebar } from './SidebarContext';
@@ -217,64 +216,6 @@ export default function Sidebar() {
           <ChevronLeft className="w-4 h-4" />
         )}
       </Button>
-
-      {/* User section */}
-      <div
-        className={`border-t border-white/10 ${isCollapsed ? 'p-3' : 'p-6'}`}
-      >
-        {isLoading ? (
-          <div className="animate-pulse">
-            <div
-              className={`h-4 bg-gray-700 rounded ${isCollapsed ? 'w-8' : 'w-24'} mb-2`}
-            ></div>
-            {!isCollapsed && (
-              <div className="h-3 bg-gray-700 rounded w-32"></div>
-            )}
-          </div>
-        ) : (
-          session?.user && (
-            <div className={isCollapsed ? 'flex flex-col items-center' : ''}>
-              {/* User avatar */}
-              <div
-                className={`flex items-center ${isCollapsed ? 'justify-center' : 'gap-3'} mb-2`}
-              >
-                <div
-                  className="w-8 h-8 rounded-full bg-gradient-to-br from-green-400 to-green-600
-                            flex items-center justify-center text-white text-sm font-semibold"
-                >
-                  {session.user.name?.charAt(0).toUpperCase() || 'U'}
-                </div>
-                {!isCollapsed && (
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm text-gray-300 truncate">
-                      {session.user.name}
-                    </p>
-                    <p className="text-xs text-gray-500 truncate">
-                      {session.user.email}
-                    </p>
-                  </div>
-                )}
-              </div>
-              {!isCollapsed && (
-                <p className="text-xs text-gray-600 capitalize mb-2">
-                  {session.user.role}
-                </p>
-              )}
-              <Tooltip label="Sign Out" show={isCollapsed}>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => signOut({ callbackUrl: '/login' })}
-                  className={`text-xs text-red-400 hover:text-red-300 ${isCollapsed ? 'p-2' : ''}`}
-                  icon={<LogOut className="w-3.5 h-3.5" />}
-                >
-                  {!isCollapsed && 'Sign Out'}
-                </Button>
-              </Tooltip>
-            </div>
-          )
-        )}
-      </div>
     </nav>
   );
 }

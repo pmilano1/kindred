@@ -145,18 +145,6 @@ describe('Sidebar', () => {
       expect(treeLink).toHaveClass('active');
     });
 
-    it('shows user name and email', () => {
-      render(<Sidebar />);
-
-      expect(screen.getByText('Test User')).toBeInTheDocument();
-      expect(screen.getByText('test@test.com')).toBeInTheDocument();
-    });
-
-    it('shows Sign Out button', () => {
-      render(<Sidebar />);
-      expect(screen.getByText('Sign Out')).toBeInTheDocument();
-    });
-
     it('does not show Admin link for non-admin users', () => {
       render(<Sidebar />);
       expect(screen.queryByText('Admin')).not.toBeInTheDocument();
@@ -187,15 +175,15 @@ describe('Sidebar', () => {
   });
 
   describe('when loading', () => {
-    it('shows loading state while session is loading', () => {
+    it('shows Admin link with reduced opacity while session is loading', () => {
       mockedUsePathname.mockReturnValue('/');
       mockedUseSession.mockReturnValue({ data: null, status: 'loading' });
 
       render(<Sidebar />);
 
-      // Should show loading skeleton (animate-pulse div)
-      const loadingDiv = document.querySelector('.animate-pulse');
-      expect(loadingDiv).toBeInTheDocument();
+      // Admin link should be visible but with reduced opacity during loading
+      const adminLink = screen.getByRole('link', { name: /Admin/i });
+      expect(adminLink).toHaveClass('opacity-50');
     });
   });
 

@@ -248,34 +248,49 @@ export async function sendInviteEmail({
 <!DOCTYPE html>
 <html>
 <head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <style>
-    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; line-height: 1.6; color: #333; }
-    .container { max-width: 600px; margin: 0 auto; padding: 20px; }
-    .header { background: linear-gradient(135deg, #1e3d22 0%, #0f1f11 100%); color: white; padding: 30px; text-align: center; border-radius: 8px 8px 0 0; }
-    .content { background: #f9fafb; padding: 30px; border: 1px solid #e5e7eb; }
-    .button { display: inline-block; background: #2c5530; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; margin: 20px 0; }
-    .footer { text-align: center; padding: 20px; color: #6b7280; font-size: 12px; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; line-height: 1.6; color: #1f2937; background-color: #f3f4f6; margin: 0; padding: 20px; }
+    .container { max-width: 600px; margin: 0 auto; background: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+    .header { background: #1f2937; color: #ffffff; padding: 32px 24px; text-align: center; }
+    .header h1 { margin: 0 0 8px 0; font-size: 28px; font-weight: 600; }
+    .header p { margin: 0; opacity: 0.9; font-size: 14px; }
+    .content { padding: 32px 24px; background: #ffffff; }
+    .content p { margin: 0 0 16px 0; color: #374151; }
+    .button { display: inline-block; background: #059669; color: #ffffff !important; padding: 14px 28px; text-decoration: none; border-radius: 6px; font-weight: 600; font-size: 16px; }
+    .button:hover { background: #047857; }
+    .link-fallback { font-size: 12px; color: #6b7280; word-break: break-all; margin-top: 16px; }
+    .note { background: #fef3c7; border: 1px solid #fcd34d; border-radius: 6px; padding: 12px 16px; margin: 20px 0; font-size: 13px; color: #92400e; }
+    .footer { text-align: center; padding: 20px 24px; background: #f9fafb; border-top: 1px solid #e5e7eb; }
+    .footer p { margin: 0; color: #6b7280; font-size: 12px; }
+    .footer a { color: #6b7280; }
+    .powered-by { font-size: 11px; color: #9ca3af; margin-top: 8px; }
   </style>
 </head>
 <body>
   <div class="container">
     <div class="header">
       <h1>🌳 ${APP_NAME}</h1>
-      <p>Genealogy Database</p>
+      <p>Family Tree</p>
     </div>
     <div class="content">
       <p>Hi there,</p>
-      <p><strong>${inviterName}</strong> has invited you to join the ${APP_NAME} genealogy database as a <strong>${role}</strong>.</p>
+      <p><strong>${inviterName}</strong> has invited you to join the <strong>${APP_NAME}</strong> family tree as a <strong>${role}</strong>.</p>
       <p>Click the button below to accept your invitation and create your account:</p>
-      <p style="text-align: center;">
+      <p style="text-align: center; margin: 24px 0;">
         <a href="${inviteUrl}" class="button">Accept Invitation</a>
       </p>
-      <p style="font-size: 12px; color: #6b7280;">Or copy this link: ${inviteUrl}</p>
+      <p class="link-fallback">Or copy this link: ${inviteUrl}</p>
       <p>This invitation will expire in 7 days.</p>
-      <p>Best regards,<br>${inviterName}</p>
+      <div class="note">
+        <strong>📬 Can't find this email?</strong> Please check your spam or junk folder and mark this message as "not spam" to ensure you receive future updates.
+      </div>
+      <p>Best regards,<br><strong>${inviterName}</strong></p>
     </div>
     <div class="footer">
-      <p>${APP_NAME} • <a href="${APP_URL}">${APP_URL.replace('https://', '')}</a></p>
+      <p><a href="${APP_URL}">${APP_URL.replace('https://', '')}</a></p>
+      <p class="powered-by">Powered by Kindred</p>
     </div>
   </div>
 </body>
@@ -284,14 +299,19 @@ export async function sendInviteEmail({
   const textBody = `
 ${inviterName} invited you to ${APP_NAME}
 
-You've been invited to join as a ${role}.
+You've been invited to join the ${APP_NAME} family tree as a ${role}.
 
 Accept your invitation: ${inviteUrl}
 
 This invitation will expire in 7 days.
 
+Can't find this email? Please check your spam or junk folder and mark this message as "not spam" to ensure you receive future updates.
+
 Best regards,
 ${inviterName}
+
+---
+Powered by Kindred
 `;
 
   try {
@@ -329,15 +349,23 @@ export async function sendWelcomeEmail({
 <!DOCTYPE html>
 <html>
 <head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <style>
-    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; line-height: 1.6; color: #333; }
-    .container { max-width: 600px; margin: 0 auto; padding: 20px; }
-    .header { background: linear-gradient(135deg, #1e3d22 0%, #0f1f11 100%); color: white; padding: 30px; text-align: center; border-radius: 8px 8px 0 0; }
-    .content { background: #f9fafb; padding: 30px; border: 1px solid #e5e7eb; }
-    .button { display: inline-block; background: #2c5530; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; margin: 20px 0; }
-    .footer { text-align: center; padding: 20px; color: #6b7280; font-size: 12px; }
-    .feature { margin: 15px 0; padding-left: 25px; position: relative; }
-    .feature::before { content: "✓"; position: absolute; left: 0; color: #2c5530; font-weight: bold; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; line-height: 1.6; color: #1f2937; background-color: #f3f4f6; margin: 0; padding: 20px; }
+    .container { max-width: 600px; margin: 0 auto; background: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+    .header { background: #1f2937; color: #ffffff; padding: 32px 24px; text-align: center; }
+    .header h1 { margin: 0; font-size: 28px; font-weight: 600; }
+    .content { padding: 32px 24px; background: #ffffff; }
+    .content p { margin: 0 0 16px 0; color: #374151; }
+    .content h3 { margin: 24px 0 16px 0; color: #1f2937; font-size: 18px; }
+    .button { display: inline-block; background: #059669; color: #ffffff !important; padding: 14px 28px; text-decoration: none; border-radius: 6px; font-weight: 600; font-size: 16px; }
+    .feature { margin: 12px 0; padding-left: 28px; position: relative; color: #374151; }
+    .feature::before { content: "✓"; position: absolute; left: 0; color: #059669; font-weight: bold; font-size: 16px; }
+    .footer { text-align: center; padding: 20px 24px; background: #f9fafb; border-top: 1px solid #e5e7eb; }
+    .footer p { margin: 0; color: #6b7280; font-size: 12px; }
+    .footer a { color: #6b7280; }
+    .powered-by { font-size: 11px; color: #9ca3af; margin-top: 8px; }
   </style>
 </head>
 <body>
@@ -346,20 +374,21 @@ export async function sendWelcomeEmail({
       <h1>🌳 Welcome to ${APP_NAME}!</h1>
     </div>
     <div class="content">
-      <p>Hi ${userName},</p>
+      <p>Hi <strong>${userName}</strong>,</p>
       <p>Your account has been created successfully. You now have access to explore and contribute to the family tree.</p>
       <h3>Getting Started</h3>
       <div class="feature">Browse the family tree and discover your ancestors</div>
       <div class="feature">View detailed person profiles with sources and media</div>
       <div class="feature">Search for specific family members</div>
       <div class="feature">Explore coats of arms and family crests</div>
-      <p style="text-align: center;">
+      <p style="text-align: center; margin: 24px 0;">
         <a href="${APP_URL}" class="button">Start Exploring</a>
       </p>
       <p>If you have any questions, please reach out to the site administrator.</p>
     </div>
     <div class="footer">
-      <p>${APP_NAME} • <a href="${APP_URL}">${APP_URL.replace('https://', '')}</a></p>
+      <p><a href="${APP_URL}">${APP_URL.replace('https://', '')}</a></p>
+      <p class="powered-by">Powered by Kindred</p>
     </div>
   </div>
 </body>
@@ -413,14 +442,23 @@ export async function sendPasswordResetEmail(
 <!DOCTYPE html>
 <html>
 <head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <style>
-    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; line-height: 1.6; color: #333; }
-    .container { max-width: 600px; margin: 0 auto; padding: 20px; }
-    .header { background: linear-gradient(135deg, #1e3d22 0%, #0f1f11 100%); color: white; padding: 30px; text-align: center; border-radius: 8px 8px 0 0; }
-    .content { background: #f9fafb; padding: 30px; border: 1px solid #e5e7eb; }
-    .button { display: inline-block; background: #2c5530; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; margin: 20px 0; }
-    .footer { text-align: center; padding: 20px; color: #6b7280; font-size: 12px; }
-    .warning { background: #fef3c7; border: 1px solid #f59e0b; padding: 12px; border-radius: 6px; margin: 15px 0; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; line-height: 1.6; color: #1f2937; background-color: #f3f4f6; margin: 0; padding: 20px; }
+    .container { max-width: 600px; margin: 0 auto; background: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+    .header { background: #1f2937; color: #ffffff; padding: 32px 24px; text-align: center; }
+    .header h1 { margin: 0 0 8px 0; font-size: 28px; font-weight: 600; }
+    .header p { margin: 0; opacity: 0.9; font-size: 14px; }
+    .content { padding: 32px 24px; background: #ffffff; }
+    .content p { margin: 0 0 16px 0; color: #374151; }
+    .button { display: inline-block; background: #059669; color: #ffffff !important; padding: 14px 28px; text-decoration: none; border-radius: 6px; font-weight: 600; font-size: 16px; }
+    .link-fallback { font-size: 12px; color: #6b7280; word-break: break-all; margin-top: 16px; }
+    .warning { background: #fef3c7; border: 1px solid #fcd34d; border-radius: 6px; padding: 12px 16px; margin: 20px 0; font-size: 13px; color: #92400e; }
+    .footer { text-align: center; padding: 20px 24px; background: #f9fafb; border-top: 1px solid #e5e7eb; }
+    .footer p { margin: 0; color: #6b7280; font-size: 12px; }
+    .footer a { color: #6b7280; }
+    .powered-by { font-size: 11px; color: #9ca3af; margin-top: 8px; }
   </style>
 </head>
 <body>
@@ -431,17 +469,18 @@ export async function sendPasswordResetEmail(
     </div>
     <div class="content">
       <p>Hi,</p>
-      <p>We received a request to reset your password for your ${APP_NAME} account.</p>
-      <p style="text-align: center;">
+      <p>We received a request to reset your password for your <strong>${APP_NAME}</strong> account.</p>
+      <p style="text-align: center; margin: 24px 0;">
         <a href="${resetUrl}" class="button">Reset Password</a>
       </p>
-      <p style="font-size: 12px; color: #6b7280;">Or copy this link: ${resetUrl}</p>
+      <p class="link-fallback">Or copy this link: ${resetUrl}</p>
       <div class="warning">
         <strong>⚠️ Security Notice:</strong> This link expires in 1 hour. If you didn't request this reset, please ignore this email.
       </div>
     </div>
     <div class="footer">
-      <p>${APP_NAME} • <a href="${APP_URL}">${APP_URL.replace('https://', '')}</a></p>
+      <p><a href="${APP_URL}">${APP_URL.replace('https://', '')}</a></p>
+      <p class="powered-by">Powered by Kindred</p>
     </div>
   </div>
 </body>

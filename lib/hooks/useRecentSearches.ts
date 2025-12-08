@@ -10,12 +10,22 @@ export interface RecentSearch {
   timestamp: number;
 }
 
+// Cache the last result to prevent useSyncExternalStore from thinking data changed
+let lastStored: string | null = null;
+let lastParsed: RecentSearch[] = [];
+
 // Helper to get searches from localStorage
 function getStoredSearches(): RecentSearch[] {
   if (typeof window === 'undefined') return [];
   try {
     const stored = localStorage.getItem(STORAGE_KEY);
-    return stored ? JSON.parse(stored) : [];
+    // Return cached result if localStorage hasn't changed
+    if (stored === lastStored) {
+      return lastParsed;
+    }
+    lastStored = stored;
+    lastParsed = stored ? JSON.parse(stored) : [];
+    return lastParsed;
   } catch {
     return [];
   }

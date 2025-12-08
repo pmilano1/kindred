@@ -27,7 +27,11 @@ export default function ApiKeysPage() {
   const [newKey, setNewKey] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
 
-  const { data, loading, refetch } = useQuery<UserData>(GET_ME);
+  // Skip query until session is confirmed
+  const isAuthenticated = status === 'authenticated' && !!session;
+  const { data, loading, refetch } = useQuery<UserData>(GET_ME, {
+    skip: !isAuthenticated,
+  });
   const [generateApiKey, { loading: generating }] = useMutation(GENERATE_API_KEY);
   const [revokeApiKey, { loading: revoking }] = useMutation(REVOKE_API_KEY);
 
@@ -38,7 +42,6 @@ export default function ApiKeysPage() {
     if (status === 'loading') return;
     if (!session) {
       router.push('/');
-      return;
     }
   }, [session, status, router]);
 
@@ -82,7 +85,8 @@ export default function ApiKeysPage() {
     return key.slice(0, 4) + '••••••••••••••••••••••••' + key.slice(-4);
   };
 
-  if (loading) {
+  // Show loading while session or data is loading
+  if (status === 'loading' || loading) {
     return (
       <>
         <PageHeader title="API Keys" subtitle="Manage your API access" icon="Key" />
@@ -91,6 +95,11 @@ export default function ApiKeysPage() {
         </div>
       </>
     );
+  }
+
+  // Don't render if not authenticated (redirect is happening)
+  if (!session) {
+    return null;
   }
 
   return (

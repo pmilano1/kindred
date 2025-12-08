@@ -129,10 +129,14 @@ function SearchContent() {
                 <div className="flex flex-wrap gap-4 items-center">
                   {/* Sort */}
                   <div className="flex items-center gap-2">
-                    <label className="text-sm font-medium text-[var(--text-muted)]">
+                    <label
+                      htmlFor="sort-select"
+                      className="text-sm font-medium text-[var(--text-muted)]"
+                    >
                       Sort:
                     </label>
                     <select
+                      id="sort-select"
                       value={sortBy}
                       onChange={(e) => setSortBy(e.target.value as SortOption)}
                       className="input-field text-sm py-1 px-2"
@@ -150,10 +154,14 @@ function SearchContent() {
 
                   {/* Living Filter */}
                   <div className="flex items-center gap-2">
-                    <label className="text-sm font-medium text-[var(--text-muted)]">
+                    <label
+                      htmlFor="living-select"
+                      className="text-sm font-medium text-[var(--text-muted)]"
+                    >
                       Status:
                     </label>
                     <select
+                      id="living-select"
                       value={livingFilter}
                       onChange={(e) =>
                         setLivingFilter(e.target.value as LivingFilter)
@@ -169,10 +177,14 @@ function SearchContent() {
                   {/* Surname Filter */}
                   {uniqueSurnames.length > 1 && (
                     <div className="flex items-center gap-2">
-                      <label className="text-sm font-medium text-[var(--text-muted)]">
+                      <label
+                        htmlFor="surname-select"
+                        className="text-sm font-medium text-[var(--text-muted)]"
+                      >
                         Surname:
                       </label>
                       <select
+                        id="surname-select"
                         value={surnameFilter}
                         onChange={(e) => setSurnameFilter(e.target.value)}
                         className="input-field text-sm py-1 px-2"
@@ -192,6 +204,7 @@ function SearchContent() {
                     surnameFilter ||
                     sortBy !== 'relevance') && (
                     <button
+                      type="button"
                       onClick={() => {
                         setLivingFilter('all');
                         setSurnameFilter('');

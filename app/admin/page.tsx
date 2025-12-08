@@ -49,6 +49,10 @@ interface Invitation {
   accepted_at: string | null;
 }
 
+interface CreateInvitationResult {
+  createInvitation: Invitation;
+}
+
 export default function AdminPage() {
   const { data: session, status } = useSession();
   const router = useRouter();
@@ -117,10 +121,8 @@ export default function AdminPage() {
       const result = await createInvitation({
         variables: { email: newEmail, role: newRole },
       });
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const invitation = (result.data as any)?.createInvitation as
-        | Invitation
-        | undefined;
+      const data = result.data as CreateInvitationResult | undefined;
+      const invitation = data?.createInvitation;
       if (invitation?.token) {
         setInviteUrl(
           `${window.location.origin}/login?invite=${invitation.token}`,

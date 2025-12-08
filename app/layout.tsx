@@ -36,7 +36,7 @@ export default async function RootLayout({
   children: React.ReactNode;
 }>) {
   // Fetch settings server-side (silently falls back to defaults during build)
-  let settings;
+  let settings: Awaited<ReturnType<typeof getSettings>> | undefined;
   try {
     settings = await getSettings();
   } catch {

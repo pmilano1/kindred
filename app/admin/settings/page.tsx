@@ -369,9 +369,9 @@ export default function SettingsPage() {
                       className="grid grid-cols-3 gap-4 items-start"
                     >
                       <div>
-                        <label className="block font-medium text-gray-700">
+                        <span className="block font-medium text-gray-700">
                           {SETTING_LABELS[row.key] || row.key}
-                        </label>
+                        </span>
                         <p className="text-sm text-gray-500">
                           {row.description}
                         </p>
@@ -576,8 +576,8 @@ export default function SettingsPage() {
                         View errors
                       </summary>
                       <ul className="mt-1 text-xs text-red-600 max-h-32 overflow-y-auto">
-                        {importResult.errors.map((err, i) => (
-                          <li key={i}>{err}</li>
+                        {importResult.errors.map((err) => (
+                          <li key={err}>{err}</li>
                         ))}
                       </ul>
                     </details>

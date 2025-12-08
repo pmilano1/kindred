@@ -613,73 +613,300 @@ export const resolvers = {
       };
     },
 
-    // Optimized ancestry traversal (single recursive CTE)
-    // Optimized ancestry traversal with caching
+    // Structured pedigree tree for lazy-loading ancestor view
+    // Returns a PedigreeNode with nested father/mother and hasMoreAncestors flag
     ancestors: async (
       _: unknown,
-      { personId, generations = 5 }: { personId: string; generations?: number },
+      { personId, generations = 3 }: { personId: string; generations?: number },
     ) => {
-      const cacheKey = `ancestors:${personId}:${generations}`;
-      const cached = getCached<Person[]>(cacheKey);
+      const cacheKey = `pedigree:${personId}:${generations}`;
+      const cached = getCached<unknown>(cacheKey);
       if (cached) return cached;
 
-      const { rows } = await pool.query(
+      // Fetch root person
+      const { rows: rootRows } = await pool.query(
+        'SELECT * FROM people WHERE id = $1',
+        [personId],
+      );
+      if (rootRows.length === 0) return null;
+
+      // Fetch all ancestors up to N+1 generations (extra to detect hasMoreAncestors)
+      // Also fetch parent relationships via families/children tables
+      const { rows: ancestorData } = await pool.query(
         `
         WITH RECURSIVE ancestry AS (
-          SELECT p.*, 1 as gen FROM people p
-          JOIN children c ON c.person_id = $1
-          JOIN families f ON c.family_id = f.id
-          WHERE p.id = f.husband_id OR p.id = f.wife_id
+          -- Base: the root person at gen 0
+          SELECT
+            p.*,
+            0 as gen,
+            NULL::text as child_id,
+            NULL::text as parent_role
+          FROM people p
+          WHERE p.id = $1
 
           UNION ALL
 
-          SELECT p.*, a.gen + 1 FROM ancestry a
+          -- Recursive: parents of people we've found
+          SELECT
+            p.*,
+            a.gen + 1 as gen,
+            a.id as child_id,
+            CASE WHEN p.id = f.husband_id THEN 'father' ELSE 'mother' END as parent_role
+          FROM ancestry a
           JOIN children c ON c.person_id = a.id
           JOIN families f ON c.family_id = f.id
           JOIN people p ON (p.id = f.husband_id OR p.id = f.wife_id)
           WHERE a.gen < $2
         )
-        SELECT DISTINCT ON (id) * FROM ancestry ORDER BY id, gen
-      `,
-        [personId, generations],
+        SELECT * FROM ancestry ORDER BY gen, id
+        `,
+        [personId, generations + 1], // +1 to detect if there are more ancestors
       );
 
-      setCache(cacheKey, rows);
-      return rows;
+      // Build lookup maps
+      const peopleById = new Map<string, Person>();
+      const parentLinks = new Map<
+        string,
+        { fatherId?: string; motherId?: string }
+      >();
+
+      for (const row of ancestorData) {
+        peopleById.set(row.id, row);
+        if (row.child_id && row.parent_role) {
+          const existing = parentLinks.get(row.child_id) || {};
+          if (row.parent_role === 'father') {
+            existing.fatherId = row.id;
+          } else {
+            existing.motherId = row.id;
+          }
+          parentLinks.set(row.child_id, existing);
+        }
+      }
+
+      // Build tree recursively
+      interface PedigreeNode {
+        id: string;
+        person: Person;
+        father?: PedigreeNode;
+        mother?: PedigreeNode;
+        generation: number;
+        hasMoreAncestors: boolean;
+      }
+
+      const buildNode = (
+        nodePersonId: string,
+        gen: number,
+      ): PedigreeNode | null => {
+        const person = peopleById.get(nodePersonId);
+        if (!person) return null;
+
+        const links = parentLinks.get(nodePersonId);
+        const isAtMaxGen = gen >= generations;
+
+        // For nodes at max generation, check if they have parents beyond what we fetched
+        let hasMore = false;
+        if (isAtMaxGen && links) {
+          // If we have parent links at max gen, there are more ancestors
+          hasMore = !!(links.fatherId || links.motherId);
+        }
+
+        const node: PedigreeNode = {
+          id: nodePersonId,
+          person,
+          generation: gen,
+          hasMoreAncestors: hasMore,
+        };
+
+        // Only recurse if not at max generation
+        if (!isAtMaxGen && links) {
+          if (links.fatherId) {
+            const father = buildNode(links.fatherId, gen + 1);
+            if (father) node.father = father;
+          }
+          if (links.motherId) {
+            const mother = buildNode(links.motherId, gen + 1);
+            if (mother) node.mother = mother;
+          }
+        }
+
+        return node;
+      };
+
+      const result = buildNode(personId, 0);
+      setCache(cacheKey, result);
+      return result;
     },
 
-    // Optimized descendant traversal with caching
+    // Structured descendant tree for lazy-loading descendant view
+    // Returns a DescendantNode with nested children and hasMoreDescendants flag
     descendants: async (
       _: unknown,
-      { personId, generations = 5 }: { personId: string; generations?: number },
+      { personId, generations = 3 }: { personId: string; generations?: number },
     ) => {
-      const cacheKey = `descendants:${personId}:${generations}`;
-      const cached = getCached<Person[]>(cacheKey);
+      const cacheKey = `descendant-tree:${personId}:${generations}`;
+      const cached = getCached<unknown>(cacheKey);
       if (cached) return cached;
 
-      const { rows } = await pool.query(
+      // Fetch root person
+      const { rows: rootRows } = await pool.query(
+        'SELECT * FROM people WHERE id = $1',
+        [personId],
+      );
+      if (rootRows.length === 0) return null;
+
+      // Fetch all descendants up to N+1 generations (extra to detect hasMoreDescendants)
+      // Include parent-child relationships and spouse info
+      const { rows: descendantData } = await pool.query(
         `
         WITH RECURSIVE descendancy AS (
-          SELECT p.*, 1 as gen FROM people p
-          JOIN children c ON c.person_id = p.id
-          JOIN families f ON c.family_id = f.id
-          WHERE f.husband_id = $1 OR f.wife_id = $1
+          -- Base: the root person at gen 0
+          SELECT
+            p.*,
+            0 as gen,
+            NULL::text as parent_id
+          FROM people p
+          WHERE p.id = $1
 
           UNION ALL
 
-          SELECT p.*, d.gen + 1 FROM descendancy d
+          -- Recursive: children of people we've found
+          SELECT
+            p.*,
+            d.gen + 1 as gen,
+            d.id as parent_id
+          FROM descendancy d
           JOIN families f ON (f.husband_id = d.id OR f.wife_id = d.id)
           JOIN children c ON c.family_id = f.id
           JOIN people p ON p.id = c.person_id
           WHERE d.gen < $2
         )
-        SELECT DISTINCT ON (id) * FROM descendancy ORDER BY id, gen
-      `,
-        [personId, generations],
+        SELECT * FROM descendancy ORDER BY gen, id
+        `,
+        [personId, generations + 1], // +1 to detect if there are more descendants
       );
 
-      setCache(cacheKey, rows);
-      return rows;
+      // Fetch spouse and marriage info for each person
+      const personIds = descendantData.map((r) => r.id);
+      const { rows: familyData } = await pool.query(
+        `
+        SELECT f.id, f.husband_id, f.wife_id, f.marriage_year
+        FROM families f
+        WHERE f.husband_id = ANY($1) OR f.wife_id = ANY($1)
+        `,
+        [personIds],
+      );
+
+      // Fetch spouse person data
+      const spouseIds = new Set<string>();
+      for (const f of familyData) {
+        if (f.husband_id && !personIds.includes(f.husband_id))
+          spouseIds.add(f.husband_id);
+        if (f.wife_id && !personIds.includes(f.wife_id))
+          spouseIds.add(f.wife_id);
+      }
+      const { rows: spouseData } =
+        spouseIds.size > 0
+          ? await pool.query('SELECT * FROM people WHERE id = ANY($1)', [
+              Array.from(spouseIds),
+            ])
+          : { rows: [] };
+
+      // Build lookup maps
+      const peopleById = new Map<string, Person>();
+      const genByPersonId = new Map<string, number>();
+      const childrenByParentId = new Map<string, string[]>();
+
+      for (const row of descendantData) {
+        peopleById.set(row.id, row);
+        genByPersonId.set(row.id, row.gen);
+        if (row.parent_id) {
+          const existing = childrenByParentId.get(row.parent_id) || [];
+          if (!existing.includes(row.id)) {
+            existing.push(row.id);
+          }
+          childrenByParentId.set(row.parent_id, existing);
+        }
+      }
+      for (const spouse of spouseData) {
+        peopleById.set(spouse.id, spouse);
+      }
+
+      // Build spouse lookup
+      const spouseByPersonId = new Map<
+        string,
+        { spouse: Person; marriageYear?: number }
+      >();
+      for (const f of familyData) {
+        if (f.husband_id && personIds.includes(f.husband_id) && f.wife_id) {
+          const spouse = peopleById.get(f.wife_id);
+          if (spouse) {
+            spouseByPersonId.set(f.husband_id, {
+              spouse,
+              marriageYear: f.marriage_year,
+            });
+          }
+        }
+        if (f.wife_id && personIds.includes(f.wife_id) && f.husband_id) {
+          const spouse = peopleById.get(f.husband_id);
+          if (spouse) {
+            spouseByPersonId.set(f.wife_id, {
+              spouse,
+              marriageYear: f.marriage_year,
+            });
+          }
+        }
+      }
+
+      // Build tree recursively
+      interface DescendantNode {
+        id: string;
+        person: Person;
+        spouse?: Person;
+        marriageYear?: number;
+        children: DescendantNode[];
+        generation: number;
+        hasMoreDescendants: boolean;
+      }
+
+      const buildNode = (
+        nodePersonId: string,
+        gen: number,
+      ): DescendantNode | null => {
+        const person = peopleById.get(nodePersonId);
+        if (!person) return null;
+
+        const childIds = childrenByParentId.get(nodePersonId) || [];
+        const isAtMaxGen = gen >= generations;
+
+        // For nodes at max generation, check if they have children beyond what we fetched
+        const hasMore = isAtMaxGen && childIds.length > 0;
+
+        const spouseInfo = spouseByPersonId.get(nodePersonId);
+
+        const node: DescendantNode = {
+          id: nodePersonId,
+          person,
+          spouse: spouseInfo?.spouse,
+          marriageYear: spouseInfo?.marriageYear ?? undefined,
+          children: [],
+          generation: gen,
+          hasMoreDescendants: hasMore,
+        };
+
+        // Only recurse if not at max generation
+        if (!isAtMaxGen) {
+          for (const childId of childIds) {
+            const childNode = buildNode(childId, gen + 1);
+            if (childNode) node.children.push(childNode);
+          }
+        }
+
+        return node;
+      };
+
+      const result = buildNode(personId, 0);
+      setCache(cacheKey, result);
+      return result;
     },
 
     // Timeline - grouped by year
@@ -1252,10 +1479,18 @@ export const resolvers = {
     ) => {
       requireAuth(context, 'editor');
 
+      // Generate a nanoid-style ID (12 chars alphanumeric)
+      const id = crypto
+        .randomBytes(9)
+        .toString('base64')
+        .replace(/[+/=]/g, '')
+        .substring(0, 12);
+
       const { rows } = await pool.query(
-        `INSERT INTO sources (person_id, source_type, source_name, source_url, action, content, confidence)
-         VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *`,
+        `INSERT INTO sources (id, person_id, source_type, source_name, source_url, action, content, confidence)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING *`,
         [
+          id,
           personId,
           input.source_type,
           input.source_name,

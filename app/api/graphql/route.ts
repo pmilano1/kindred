@@ -131,11 +131,33 @@ async function validateApiKey(apiKey: string) {
   return result.rows[0] || null;
 }
 
+// Dev-only impersonation when SKIP_AUTH=true
+const SKIP_AUTH =
+  process.env.SKIP_AUTH === 'true' && process.env.NODE_ENV === 'development';
+
 // Create handler with context from NextAuth session or API key
 const handler = startServerAndCreateNextHandler<NextRequest, Context>(server, {
   context: async (req) => {
     // Create fresh DataLoaders per request for batching
     const loaders = createLoaders();
+
+    // Dev-only: Impersonate user when SKIP_AUTH=true
+    // Use X-Dev-Role header to switch roles: admin, editor, viewer, anonymous
+    if (SKIP_AUTH) {
+      const devRole = req.headers.get('x-dev-role') || 'admin';
+      const validRoles = ['admin', 'editor', 'viewer', 'anonymous'];
+      const role = validRoles.includes(devRole) ? devRole : 'admin';
+
+      console.log(`[GraphQL] SKIP_AUTH enabled - impersonating ${role} user`);
+      return {
+        user: {
+          id: `dev-${role}`,
+          email: `dev-${role}@localhost`,
+          role,
+        },
+        loaders,
+      };
+    }
 
     // Check for API key in header first
     const apiKey = req.headers.get('x-api-key');

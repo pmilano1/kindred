@@ -1,7 +1,7 @@
 'use client';
 
-import { useState } from 'react';
 import Link from 'next/link';
+import { useState } from 'react';
 import { Button, Input, Label } from '@/components/ui';
 
 export default function ForgotPasswordPage() {
@@ -45,14 +45,17 @@ export default function ForgotPasswordPage() {
       <div className="bg-white/10 backdrop-blur-lg rounded-2xl p-8 shadow-2xl border border-white/20 max-w-md w-full mx-4">
         <div className="text-center mb-8">
           <h1 className="text-3xl font-bold text-white mb-2">Reset Password</h1>
-          <p className="text-slate-300">Enter your email to receive a reset link</p>
+          <p className="text-slate-300">
+            Enter your email to receive a reset link
+          </p>
         </div>
 
         {submitted ? (
           <div className="text-center">
             <div className="bg-green-500/20 border border-green-500/50 rounded-lg p-4 mb-6">
               <p className="text-green-200">
-                If an account exists with that email, you will receive a password reset link shortly.
+                If an account exists with that email, you will receive a
+                password reset link shortly.
               </p>
             </div>
             <Link href="/login" className="text-green-400 hover:text-green-300">
@@ -91,7 +94,10 @@ export default function ForgotPasswordPage() {
               Send Reset Link
             </Button>
 
-            <Link href="/login" className="block text-center text-slate-400 hover:text-white text-sm py-2">
+            <Link
+              href="/login"
+              className="block text-center text-slate-400 hover:text-white text-sm py-2"
+            >
               ← Back to login
             </Link>
           </form>
@@ -100,4 +106,3 @@ export default function ForgotPasswordPage() {
     </div>
   );
 }
-

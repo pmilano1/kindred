@@ -1,10 +1,10 @@
 'use client';
 
-import { useState, useEffect, ReactNode } from 'react';
+import { BookOpen, ChevronRight } from 'lucide-react';
 import Link from 'next/link';
-import ResearchPanel from './ResearchPanel';
+import { type ReactNode, useEffect, useState } from 'react';
 import { Button } from '@/components/ui';
-import { ChevronRight, BookOpen } from 'lucide-react';
+import ResearchPanel from './ResearchPanel';
 
 interface PersonSplitLayoutProps {
   personId: string;
@@ -12,7 +12,11 @@ interface PersonSplitLayoutProps {
   children: ReactNode;
 }
 
-export default function PersonSplitLayout({ personId, personName, children }: PersonSplitLayoutProps) {
+export default function PersonSplitLayout({
+  personId,
+  personName,
+  children,
+}: PersonSplitLayoutProps) {
   const [collapsed, setCollapsed] = useState(false);
 
   // Remember collapsed state
@@ -32,7 +36,7 @@ export default function PersonSplitLayout({ personId, personName, children }: Pe
   return (
     <div className="flex h-[calc(100vh-180px)] relative">
       {/* Main Content - Left Panel */}
-      <div 
+      <div
         className={`overflow-y-auto transition-all duration-300 pr-4 ${
           collapsed ? 'w-full' : 'w-3/5'
         }`}
@@ -50,7 +54,11 @@ export default function PersonSplitLayout({ personId, personName, children }: Pe
         }`}
         title={collapsed ? 'Show Research Panel' : 'Hide Research Panel'}
       >
-        {collapsed ? <BookOpen className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
+        {collapsed ? (
+          <BookOpen className="w-4 h-4" />
+        ) : (
+          <ChevronRight className="w-4 h-4" />
+        )}
       </Button>
 
       {/* Research Panel - Right Panel */}
@@ -63,7 +71,7 @@ export default function PersonSplitLayout({ personId, personName, children }: Pe
           <div className="sticky top-0 bg-white pb-2 mb-2 border-b">
             <div className="flex items-center justify-between">
               <h3 className="text-lg font-semibold">📚 Research</h3>
-              <Link 
+              <Link
                 href={`/tree?person=${personId}&view=ancestors`}
                 className="text-sm text-blue-600 hover:text-blue-800 flex items-center gap-1"
               >
@@ -72,7 +80,11 @@ export default function PersonSplitLayout({ personId, personName, children }: Pe
             </div>
           </div>
         )}
-        <ResearchPanel personId={personId} personName={personName} compact={true} />
+        <ResearchPanel
+          personId={personId}
+          personName={personName}
+          compact={true}
+        />
       </div>
 
       {/* Floating button when collapsed */}
@@ -89,4 +101,3 @@ export default function PersonSplitLayout({ personId, personName, children }: Pe
     </div>
   );
 }
-

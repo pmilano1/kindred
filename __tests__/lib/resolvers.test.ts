@@ -2,53 +2,56 @@
  * GraphQL Resolver Unit Tests
  * Tests core business logic with mocked database
  */
+import { beforeEach, describe, expect, it, type Mock, vi } from 'vitest';
+
+// vi.hoisted ensures mocks are available before vi.mock hoisting
+const { mockQuery } = vi.hoisted(() => ({
+  mockQuery: vi.fn(),
+}));
 
 // Mock the database pool - use factory function
-jest.mock('@/lib/pool', () => {
-  return {
-    pool: {
-      query: jest.fn(),
-    },
-  };
-});
+vi.mock('@/lib/pool', () => ({
+  pool: {
+    query: mockQuery,
+  },
+}));
 
 // Mock email functions
-jest.mock('@/lib/email', () => ({
-  sendInviteEmail: jest.fn().mockResolvedValue(true),
-  sendPasswordResetEmail: jest.fn().mockResolvedValue(true),
-  verifyEmailForSandbox: jest.fn().mockResolvedValue(true),
+vi.mock('@/lib/email', () => ({
+  sendInviteEmail: vi.fn().mockResolvedValue(true),
+  sendPasswordResetEmail: vi.fn().mockResolvedValue(true),
+  verifyEmailForSandbox: vi.fn().mockResolvedValue(true),
 }));
 
 // Mock users functions
-jest.mock('@/lib/users', () => ({
-  getUsers: jest.fn().mockResolvedValue([]),
-  getInvitations: jest.fn().mockResolvedValue([]),
-  createInvitation: jest.fn().mockResolvedValue({ id: 'inv-1', token: 'abc123' }),
-  deleteInvitation: jest.fn().mockResolvedValue(undefined),
-  updateUserRole: jest.fn().mockResolvedValue(undefined),
-  deleteUser: jest.fn().mockResolvedValue(undefined),
-  logAudit: jest.fn().mockResolvedValue(undefined),
+vi.mock('@/lib/users', () => ({
+  getUsers: vi.fn().mockResolvedValue([]),
+  getInvitations: vi.fn().mockResolvedValue([]),
+  createInvitation: vi.fn().mockResolvedValue({ id: 'inv-1', token: 'abc123' }),
+  deleteInvitation: vi.fn().mockResolvedValue(undefined),
+  updateUserRole: vi.fn().mockResolvedValue(undefined),
+  deleteUser: vi.fn().mockResolvedValue(undefined),
+  logAudit: vi.fn().mockResolvedValue(undefined),
 }));
 
 // Mock settings
-jest.mock('@/lib/settings', () => ({
-  getSettings: jest.fn().mockResolvedValue({
+vi.mock('@/lib/settings', () => ({
+  getSettings: vi.fn().mockResolvedValue({
     site_name: 'Test Family Tree',
     family_name: 'Test',
     theme_color: '#2c5530',
   }),
-  clearSettingsCache: jest.fn(),
+  clearSettingsCache: vi.fn(),
 }));
 
-import { resolvers, clearQueryCache } from '@/lib/graphql/resolvers';
-import { pool } from '@/lib/pool';
+import { clearQueryCache, resolvers } from '@/lib/graphql/resolvers';
 
-// Get the mocked pool.query
-const mockedQuery = pool.query as jest.Mock;
+// Use the mock we created above
+const mockedQuery = mockQuery as Mock;
 
 describe('GraphQL Resolvers', () => {
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
   });
 
   describe('Query.person', () => {
@@ -67,7 +70,7 @@ describe('GraphQL Resolvers', () => {
       expect(result).toEqual(mockPerson);
       expect(mockedQuery).toHaveBeenCalledWith(
         expect.stringContaining('SELECT'),
-        ['person-1']
+        ['person-1'],
       );
     });
 
@@ -91,10 +94,7 @@ describe('GraphQL Resolvers', () => {
       const result = await resolvers.Query.peopleList(null, { limit: 10 });
 
       expect(result).toEqual(mockPeople);
-      expect(mockedQuery).toHaveBeenCalledWith(
-        expect.any(String),
-        [10, 0]
-      );
+      expect(mockedQuery).toHaveBeenCalledWith(expect.any(String), [10, 0]);
     });
 
     it('enforces maximum limit of 10000', async () => {
@@ -102,10 +102,7 @@ describe('GraphQL Resolvers', () => {
 
       await resolvers.Query.peopleList(null, { limit: 50000 });
 
-      expect(mockedQuery).toHaveBeenCalledWith(
-        expect.any(String),
-        [10000, 0]
-      );
+      expect(mockedQuery).toHaveBeenCalledWith(expect.any(String), [10000, 0]);
     });
   });
 
@@ -120,7 +117,7 @@ describe('GraphQL Resolvers', () => {
 
       expect(result).toEqual(mockNotable);
       expect(mockedQuery).toHaveBeenCalledWith(
-        expect.stringContaining('is_notable = true')
+        expect.stringContaining('is_notable = true'),
       );
     });
   });
@@ -128,16 +125,18 @@ describe('GraphQL Resolvers', () => {
   describe('Query.stats', () => {
     it('returns database statistics', async () => {
       mockedQuery.mockResolvedValueOnce({
-        rows: [{
-          total_people: 500,
-          total_families: 200,
-          living_count: 50,
-          male_count: 250,
-          female_count: 250,
-          earliest_birth: 1750,
-          latest_birth: 2020,
-          with_familysearch_id: 100,
-        }],
+        rows: [
+          {
+            total_people: 500,
+            total_families: 200,
+            living_count: 50,
+            male_count: 250,
+            female_count: 250,
+            earliest_birth: 1750,
+            latest_birth: 2020,
+            with_familysearch_id: 100,
+          },
+        ],
       });
 
       const result = await resolvers.Query.stats();
@@ -178,7 +177,9 @@ describe('GraphQL Resolvers', () => {
       };
       mockedQuery.mockResolvedValueOnce({ rows: [mockUser] });
 
-      const context = { user: { id: 'user-1', email: 'test@example.com', role: 'admin' } };
+      const context = {
+        user: { id: 'user-1', email: 'test@example.com', role: 'admin' },
+      };
       const result = await resolvers.Query.me(null, {}, context);
 
       expect(result).toEqual(mockUser);
@@ -194,20 +195,24 @@ describe('GraphQL Resolvers', () => {
     it('generates a new API key for authenticated user', async () => {
       mockedQuery.mockResolvedValueOnce({ rows: [] }); // UPDATE query
 
-      const context = { user: { id: 'user-1', email: 'test@example.com', role: 'viewer' } };
+      const context = {
+        user: { id: 'user-1', email: 'test@example.com', role: 'viewer' },
+      };
       const result = await resolvers.Mutation.generateApiKey(null, {}, context);
 
       expect(typeof result).toBe('string');
       expect(result.length).toBe(64); // 32 bytes = 64 hex chars
       expect(mockedQuery).toHaveBeenCalledWith(
         expect.stringContaining('UPDATE users SET api_key'),
-        expect.arrayContaining(['user-1'])
+        expect.arrayContaining(['user-1']),
       );
     });
 
     it('throws when not authenticated', async () => {
       const context = {};
-      await expect(resolvers.Mutation.generateApiKey(null, {}, context)).rejects.toThrow();
+      await expect(
+        resolvers.Mutation.generateApiKey(null, {}, context),
+      ).rejects.toThrow();
     });
   });
 
@@ -215,19 +220,23 @@ describe('GraphQL Resolvers', () => {
     it('revokes API key for authenticated user', async () => {
       mockedQuery.mockResolvedValueOnce({ rows: [] }); // UPDATE query
 
-      const context = { user: { id: 'user-1', email: 'test@example.com', role: 'viewer' } };
+      const context = {
+        user: { id: 'user-1', email: 'test@example.com', role: 'viewer' },
+      };
       const result = await resolvers.Mutation.revokeApiKey(null, {}, context);
 
       expect(result).toBe(true);
       expect(mockedQuery).toHaveBeenCalledWith(
         expect.stringContaining('UPDATE users SET api_key = NULL'),
-        ['user-1']
+        ['user-1'],
       );
     });
 
     it('throws when not authenticated', async () => {
       const context = {};
-      await expect(resolvers.Mutation.revokeApiKey(null, {}, context)).rejects.toThrow();
+      await expect(
+        resolvers.Mutation.revokeApiKey(null, {}, context),
+      ).rejects.toThrow();
     });
   });
 
@@ -254,14 +263,19 @@ describe('GraphQL Resolvers', () => {
     it('handles after cursor for pagination', async () => {
       mockedQuery.mockReset();
       mockedQuery.mockResolvedValueOnce({ rows: [{ count: '100' }] });
-      mockedQuery.mockResolvedValueOnce({ rows: [{ id: 'p3', name_full: 'Person 3' }] });
+      mockedQuery.mockResolvedValueOnce({
+        rows: [{ id: 'p3', name_full: 'Person 3' }],
+      });
 
       const afterCursor = Buffer.from('p2').toString('base64');
-      const result = await resolvers.Query.people(null, { first: 10, after: afterCursor });
+      const result = await resolvers.Query.people(null, {
+        first: 10,
+        after: afterCursor,
+      });
 
       expect(mockedQuery).toHaveBeenCalledWith(
         expect.stringContaining('WHERE id >'),
-        expect.arrayContaining(['p2'])
+        expect.arrayContaining(['p2']),
       );
       expect(result.pageInfo.hasPreviousPage).toBe(true);
     });
@@ -269,14 +283,19 @@ describe('GraphQL Resolvers', () => {
     it('handles before cursor for backward pagination', async () => {
       mockedQuery.mockReset();
       mockedQuery.mockResolvedValueOnce({ rows: [{ count: '100' }] });
-      mockedQuery.mockResolvedValueOnce({ rows: [{ id: 'p1', name_full: 'Person 1' }] });
+      mockedQuery.mockResolvedValueOnce({
+        rows: [{ id: 'p1', name_full: 'Person 1' }],
+      });
 
       const beforeCursor = Buffer.from('p2').toString('base64');
-      const result = await resolvers.Query.people(null, { last: 10, before: beforeCursor });
+      const result = await resolvers.Query.people(null, {
+        last: 10,
+        before: beforeCursor,
+      });
 
       expect(mockedQuery).toHaveBeenCalledWith(
         expect.stringContaining('WHERE id <'),
-        expect.arrayContaining(['p2'])
+        expect.arrayContaining(['p2']),
       );
       expect(result.edges).toBeDefined();
     });
@@ -284,7 +303,9 @@ describe('GraphQL Resolvers', () => {
     it('handles default pagination without cursors', async () => {
       mockedQuery.mockReset();
       mockedQuery.mockResolvedValueOnce({ rows: [{ count: '50' }] });
-      mockedQuery.mockResolvedValueOnce({ rows: [{ id: 'p1', name_full: 'Person 1' }] });
+      mockedQuery.mockResolvedValueOnce({
+        rows: [{ id: 'p1', name_full: 'Person 1' }],
+      });
 
       const result = await resolvers.Query.people(null, {});
 
@@ -295,27 +316,39 @@ describe('GraphQL Resolvers', () => {
 
   describe('Query.users (admin)', () => {
     it('returns users list for admin', async () => {
-      const context = { user: { id: 'admin-1', email: 'admin@test.com', role: 'admin' } };
+      const context = {
+        user: { id: 'admin-1', email: 'admin@test.com', role: 'admin' },
+      };
       const result = await resolvers.Query.users(null, {}, context);
       expect(result).toEqual([]);
     });
 
     it('throws for non-admin', async () => {
-      const context = { user: { id: 'user-1', email: 'user@test.com', role: 'viewer' } };
-      await expect(resolvers.Query.users(null, {}, context)).rejects.toThrow('Admin access required');
+      const context = {
+        user: { id: 'user-1', email: 'user@test.com', role: 'viewer' },
+      };
+      await expect(resolvers.Query.users(null, {}, context)).rejects.toThrow(
+        'Admin access required',
+      );
     });
   });
 
   describe('Query.invitations (admin)', () => {
     it('returns invitations list for admin', async () => {
-      const context = { user: { id: 'admin-1', email: 'admin@test.com', role: 'admin' } };
+      const context = {
+        user: { id: 'admin-1', email: 'admin@test.com', role: 'admin' },
+      };
       const result = await resolvers.Query.invitations(null, {}, context);
       expect(result).toEqual([]);
     });
 
     it('throws for non-admin', async () => {
-      const context = { user: { id: 'user-1', email: 'user@test.com', role: 'editor' } };
-      await expect(resolvers.Query.invitations(null, {}, context)).rejects.toThrow('Admin access required');
+      const context = {
+        user: { id: 'user-1', email: 'user@test.com', role: 'editor' },
+      };
+      await expect(
+        resolvers.Query.invitations(null, {}, context),
+      ).rejects.toThrow('Admin access required');
     });
   });
 
@@ -333,7 +366,7 @@ describe('GraphQL Resolvers', () => {
       expect(result).toEqual(mockPeople);
       expect(mockedQuery).toHaveBeenCalledWith(
         expect.stringContaining('ORDER BY birth_year DESC'),
-        [10]
+        [10],
       );
     });
 
@@ -367,7 +400,11 @@ describe('GraphQL Resolvers', () => {
     it('returns people needing research', async () => {
       mockedQuery.mockReset();
       const mockQueue = [
-        { id: 'p1', name_full: 'Needs Research', research_status: 'brick_wall' },
+        {
+          id: 'p1',
+          name_full: 'Needs Research',
+          research_status: 'brick_wall',
+        },
         { id: 'p2', name_full: 'In Progress', research_status: 'in_progress' },
       ];
       mockedQuery.mockResolvedValueOnce({ rows: mockQueue });
@@ -377,7 +414,7 @@ describe('GraphQL Resolvers', () => {
       expect(result).toEqual(mockQueue);
       expect(mockedQuery).toHaveBeenCalledWith(
         expect.stringContaining("research_status != 'verified'"),
-        [50]
+        [50],
       );
     });
 
@@ -400,12 +437,15 @@ describe('GraphQL Resolvers', () => {
       ];
       mockedQuery.mockResolvedValueOnce({ rows: mockAncestors });
 
-      const result = await resolvers.Query.ancestors(null, { personId: 'p1', generations: 5 });
+      const result = await resolvers.Query.ancestors(null, {
+        personId: 'p1',
+        generations: 5,
+      });
 
       expect(result).toEqual(mockAncestors);
       expect(mockedQuery).toHaveBeenCalledWith(
         expect.stringContaining('WITH RECURSIVE ancestry'),
-        ['p1', 5]
+        ['p1', 5],
       );
     });
   });
@@ -419,12 +459,15 @@ describe('GraphQL Resolvers', () => {
       ];
       mockedQuery.mockResolvedValueOnce({ rows: mockDescendants });
 
-      const result = await resolvers.Query.descendants(null, { personId: 'p1', generations: 5 });
+      const result = await resolvers.Query.descendants(null, {
+        personId: 'p1',
+        generations: 5,
+      });
 
       expect(result).toEqual(mockDescendants);
       expect(mockedQuery).toHaveBeenCalledWith(
         expect.stringContaining('WITH RECURSIVE descendancy'),
-        ['p1', 5]
+        ['p1', 5],
       );
     });
   });
@@ -433,7 +476,13 @@ describe('GraphQL Resolvers', () => {
     it('returns events grouped by year', async () => {
       mockedQuery.mockReset();
       const mockPeople = [
-        { id: 'p1', name_full: 'Person 1', birth_year: 1950, death_year: 2020, living: false },
+        {
+          id: 'p1',
+          name_full: 'Person 1',
+          birth_year: 1950,
+          death_year: 2020,
+          living: false,
+        },
         { id: 'p2', name_full: 'Person 2', birth_year: 1950 },
       ];
       mockedQuery.mockResolvedValueOnce({ rows: mockPeople });
@@ -456,7 +505,10 @@ describe('GraphQL Resolvers', () => {
     it('returns all surname crests ordered by surname', async () => {
       mockedQuery.mockReset();
       const mockCrests = [
-        { surname: 'Beauharnais', coat_of_arms: 'https://example.com/crest.png' },
+        {
+          surname: 'Beauharnais',
+          coat_of_arms: 'https://example.com/crest.png',
+        },
         { surname: 'Milanese', coat_of_arms: 'https://example.com/crest2.png' },
       ];
       mockedQuery.mockResolvedValueOnce({ rows: mockCrests });
@@ -465,7 +517,7 @@ describe('GraphQL Resolvers', () => {
 
       expect(result).toEqual(mockCrests);
       expect(mockedQuery).toHaveBeenCalledWith(
-        expect.stringContaining('ORDER BY surname')
+        expect.stringContaining('ORDER BY surname'),
       );
     });
   });
@@ -473,15 +525,20 @@ describe('GraphQL Resolvers', () => {
   describe('Query.surnameCrest', () => {
     it('returns crest for specific surname (case insensitive)', async () => {
       mockedQuery.mockReset();
-      const mockCrest = { surname: 'Milanese', coat_of_arms: 'https://example.com/crest.png' };
+      const mockCrest = {
+        surname: 'Milanese',
+        coat_of_arms: 'https://example.com/crest.png',
+      };
       mockedQuery.mockResolvedValueOnce({ rows: [mockCrest] });
 
-      const result = await resolvers.Query.surnameCrest(null, { surname: 'milanese' });
+      const result = await resolvers.Query.surnameCrest(null, {
+        surname: 'milanese',
+      });
 
       expect(result).toEqual(mockCrest);
       expect(mockedQuery).toHaveBeenCalledWith(
         expect.stringContaining('LOWER(surname) = LOWER'),
-        ['milanese']
+        ['milanese'],
       );
     });
 
@@ -489,7 +546,9 @@ describe('GraphQL Resolvers', () => {
       mockedQuery.mockReset();
       mockedQuery.mockResolvedValueOnce({ rows: [] });
 
-      const result = await resolvers.Query.surnameCrest(null, { surname: 'Unknown' });
+      const result = await resolvers.Query.surnameCrest(null, {
+        surname: 'Unknown',
+      });
 
       expect(result).toBeNull();
     });
@@ -498,28 +557,40 @@ describe('GraphQL Resolvers', () => {
   describe('Mutation.updatePerson', () => {
     it('updates person fields', async () => {
       mockedQuery.mockReset();
-      const mockUpdatedPerson = { id: 'p1', name_full: 'Updated Name', birth_year: 1960 };
+      const mockUpdatedPerson = {
+        id: 'p1',
+        name_full: 'Updated Name',
+        birth_year: 1960,
+      };
       mockedQuery.mockResolvedValueOnce({ rows: [] }); // UPDATE
       mockedQuery.mockResolvedValueOnce({ rows: [mockUpdatedPerson] }); // SELECT
 
-      const context = { user: { id: 'user-1', email: 'test@example.com', role: 'editor' } };
+      const context = {
+        user: { id: 'user-1', email: 'test@example.com', role: 'editor' },
+      };
       const result = await resolvers.Mutation.updatePerson(
         null,
         { id: 'p1', input: { name_full: 'Updated Name', birth_year: 1960 } },
-        context
+        context,
       );
 
       expect(result).toEqual(mockUpdatedPerson);
       expect(mockedQuery).toHaveBeenCalledWith(
         expect.stringContaining('UPDATE people SET'),
-        expect.arrayContaining(['p1'])
+        expect.arrayContaining(['p1']),
       );
     });
 
     it('throws when not editor or admin', async () => {
-      const context = { user: { id: 'user-1', email: 'test@example.com', role: 'viewer' } };
+      const context = {
+        user: { id: 'user-1', email: 'test@example.com', role: 'viewer' },
+      };
       await expect(
-        resolvers.Mutation.updatePerson(null, { id: 'p1', input: { name_full: 'Test' } }, context)
+        resolvers.Mutation.updatePerson(
+          null,
+          { id: 'p1', input: { name_full: 'Test' } },
+          context,
+        ),
       ).rejects.toThrow('Editor access required');
     });
   });
@@ -531,16 +602,18 @@ describe('GraphQL Resolvers', () => {
       mockedQuery.mockResolvedValueOnce({ rows: [] }); // UPDATE
       mockedQuery.mockResolvedValueOnce({ rows: [mockPerson] }); // SELECT
 
-      const context = { user: { id: 'user-1', email: 'test@example.com', role: 'editor' } };
+      const context = {
+        user: { id: 'user-1', email: 'test@example.com', role: 'editor' },
+      };
       await resolvers.Mutation.updateResearchStatus(
         null,
         { personId: 'p1', status: 'verified' },
-        context
+        context,
       );
 
       expect(mockedQuery).toHaveBeenCalledWith(
         expect.stringContaining('research_status = $1'),
-        ['verified', 'p1']
+        ['verified', 'p1'],
       );
     });
   });
@@ -548,20 +621,29 @@ describe('GraphQL Resolvers', () => {
   describe('Mutation.setSurnameCrest', () => {
     it('inserts or updates surname crest', async () => {
       mockedQuery.mockReset();
-      const mockCrest = { surname: 'Milanese', coat_of_arms: 'https://new-crest.png' };
+      const mockCrest = {
+        surname: 'Milanese',
+        coat_of_arms: 'https://new-crest.png',
+      };
       mockedQuery.mockResolvedValueOnce({ rows: [mockCrest] });
 
-      const context = { user: { id: 'user-1', email: 'test@example.com', role: 'editor' } };
+      const context = {
+        user: { id: 'user-1', email: 'test@example.com', role: 'editor' },
+      };
       const result = await resolvers.Mutation.setSurnameCrest(
         null,
-        { surname: 'Milanese', coatOfArms: 'https://new-crest.png', description: 'Italian noble family' },
-        context
+        {
+          surname: 'Milanese',
+          coatOfArms: 'https://new-crest.png',
+          description: 'Italian noble family',
+        },
+        context,
       );
 
       expect(result).toEqual(mockCrest);
       expect(mockedQuery).toHaveBeenCalledWith(
         expect.stringContaining('ON CONFLICT (surname) DO UPDATE'),
-        expect.arrayContaining(['Milanese', 'https://new-crest.png'])
+        expect.arrayContaining(['Milanese', 'https://new-crest.png']),
       );
     });
   });
@@ -597,11 +679,17 @@ describe('GraphQL Resolvers', () => {
       mockedQuery.mockResolvedValue({ rows: mockAncestors });
 
       // First call - should hit database
-      await resolvers.Query.ancestors(null, { personId: 'cache-test', generations: 3 });
+      await resolvers.Query.ancestors(null, {
+        personId: 'cache-test',
+        generations: 3,
+      });
       const firstCallCount = mockedQuery.mock.calls.length;
 
       // Second call with same params - should use cache
-      await resolvers.Query.ancestors(null, { personId: 'cache-test', generations: 3 });
+      await resolvers.Query.ancestors(null, {
+        personId: 'cache-test',
+        generations: 3,
+      });
       const secondCallCount = mockedQuery.mock.calls.length;
 
       // If caching works, second call should not increase query count
@@ -615,11 +703,17 @@ describe('GraphQL Resolvers', () => {
       const mockAncestors = [{ id: 'a1', name_full: 'Grandfather', gen: 1 }];
       mockedQuery.mockResolvedValue({ rows: mockAncestors });
 
-      await resolvers.Query.ancestors(null, { personId: 'person-a', generations: 3 });
+      await resolvers.Query.ancestors(null, {
+        personId: 'person-a',
+        generations: 3,
+      });
       const firstCallCount = mockedQuery.mock.calls.length;
 
       // Different person - should hit database again
-      await resolvers.Query.ancestors(null, { personId: 'person-b', generations: 3 });
+      await resolvers.Query.ancestors(null, {
+        personId: 'person-b',
+        generations: 3,
+      });
       const secondCallCount = mockedQuery.mock.calls.length;
 
       expect(secondCallCount).toBeGreaterThan(firstCallCount);
@@ -633,11 +727,17 @@ describe('GraphQL Resolvers', () => {
       mockedQuery.mockResolvedValue({ rows: mockDescendants });
 
       // First call
-      await resolvers.Query.descendants(null, { personId: 'desc-cache-test', generations: 3 });
+      await resolvers.Query.descendants(null, {
+        personId: 'desc-cache-test',
+        generations: 3,
+      });
       const firstCallCount = mockedQuery.mock.calls.length;
 
       // Second call - cached
-      await resolvers.Query.descendants(null, { personId: 'desc-cache-test', generations: 3 });
+      await resolvers.Query.descendants(null, {
+        personId: 'desc-cache-test',
+        generations: 3,
+      });
       const secondCallCount = mockedQuery.mock.calls.length;
 
       expect(secondCallCount).toBe(firstCallCount);
@@ -648,10 +748,10 @@ describe('GraphQL Resolvers', () => {
     it('returns error for invalid invitation token', async () => {
       mockedQuery.mockResolvedValueOnce({ rows: [] }); // No valid invitation
 
-      const result = await resolvers.Mutation.registerWithInvitation(
-        null,
-        { token: 'invalid-token', password: 'Password123!' }
-      );
+      const result = await resolvers.Mutation.registerWithInvitation(null, {
+        token: 'invalid-token',
+        password: 'Password123!',
+      });
 
       expect(result.success).toBe(false);
       expect(result.message).toBe('Invalid or expired invitation');
@@ -660,15 +760,15 @@ describe('GraphQL Resolvers', () => {
     it('returns error if user already exists', async () => {
       // Valid invitation
       mockedQuery.mockResolvedValueOnce({
-        rows: [{ id: 'inv-1', email: 'test@example.com', role: 'viewer' }]
+        rows: [{ id: 'inv-1', email: 'test@example.com', role: 'viewer' }],
       });
       // User already exists
       mockedQuery.mockResolvedValueOnce({ rows: [{ id: 'existing-user' }] });
 
-      const result = await resolvers.Mutation.registerWithInvitation(
-        null,
-        { token: 'valid-token', password: 'Password123!' }
-      );
+      const result = await resolvers.Mutation.registerWithInvitation(null, {
+        token: 'valid-token',
+        password: 'Password123!',
+      });
 
       expect(result.success).toBe(false);
       expect(result.message).toBe('User already exists');
@@ -677,7 +777,7 @@ describe('GraphQL Resolvers', () => {
     it('creates user successfully with valid invitation', async () => {
       // Valid invitation
       mockedQuery.mockResolvedValueOnce({
-        rows: [{ id: 'inv-1', email: 'newuser@example.com', role: 'viewer' }]
+        rows: [{ id: 'inv-1', email: 'newuser@example.com', role: 'viewer' }],
       });
       // No existing user
       mockedQuery.mockResolvedValueOnce({ rows: [] });
@@ -686,10 +786,11 @@ describe('GraphQL Resolvers', () => {
       // Mark invitation as accepted
       mockedQuery.mockResolvedValueOnce({ rows: [] });
 
-      const result = await resolvers.Mutation.registerWithInvitation(
-        null,
-        { token: 'valid-token', password: 'Password123!', name: 'New User' }
-      );
+      const result = await resolvers.Mutation.registerWithInvitation(null, {
+        token: 'valid-token',
+        password: 'Password123!',
+        name: 'New User',
+      });
 
       expect(result.success).toBe(true);
       expect(result.message).toBe('Account created successfully');
@@ -701,10 +802,9 @@ describe('GraphQL Resolvers', () => {
     it('returns true even if user does not exist (no enumeration)', async () => {
       mockedQuery.mockResolvedValueOnce({ rows: [] }); // No user found
 
-      const result = await resolvers.Mutation.requestPasswordReset(
-        null,
-        { email: 'nonexistent@example.com' }
-      );
+      const result = await resolvers.Mutation.requestPasswordReset(null, {
+        email: 'nonexistent@example.com',
+      });
 
       expect(result).toBe(true);
     });
@@ -715,10 +815,9 @@ describe('GraphQL Resolvers', () => {
       // Insert token
       mockedQuery.mockResolvedValueOnce({ rows: [] });
 
-      const result = await resolvers.Mutation.requestPasswordReset(
-        null,
-        { email: 'user@example.com' }
-      );
+      const result = await resolvers.Mutation.requestPasswordReset(null, {
+        email: 'user@example.com',
+      });
 
       expect(result).toBe(true);
       expect(mockedQuery).toHaveBeenCalledTimes(2);
@@ -729,10 +828,10 @@ describe('GraphQL Resolvers', () => {
     it('returns error for invalid/expired token', async () => {
       mockedQuery.mockResolvedValueOnce({ rows: [] }); // No valid token
 
-      const result = await resolvers.Mutation.resetPassword(
-        null,
-        { token: 'invalid-token', newPassword: 'NewPassword123!' }
-      );
+      const result = await resolvers.Mutation.resetPassword(null, {
+        token: 'invalid-token',
+        newPassword: 'NewPassword123!',
+      });
 
       expect(result.success).toBe(false);
       expect(result.message).toBe('Invalid or expired reset token');
@@ -746,10 +845,10 @@ describe('GraphQL Resolvers', () => {
       // Mark token used
       mockedQuery.mockResolvedValueOnce({ rows: [] });
 
-      const result = await resolvers.Mutation.resetPassword(
-        null,
-        { token: 'valid-token', newPassword: 'NewPassword123!' }
-      );
+      const result = await resolvers.Mutation.resetPassword(null, {
+        token: 'valid-token',
+        newPassword: 'NewPassword123!',
+      });
 
       expect(result.success).toBe(true);
       expect(result.message).toBe('Password reset successfully');
@@ -759,7 +858,7 @@ describe('GraphQL Resolvers', () => {
 
   describe('Mutation.changePassword', () => {
     const mockContext = {
-      user: { id: 'user-1', email: 'user@test.com', role: 'admin' }
+      user: { id: 'user-1', email: 'user@test.com', role: 'admin' },
     };
 
     it('throws error for non-local auth users', async () => {
@@ -769,30 +868,30 @@ describe('GraphQL Resolvers', () => {
         resolvers.Mutation.changePassword(
           null,
           { currentPassword: 'old', newPassword: 'new' },
-          mockContext
-        )
+          mockContext,
+        ),
       ).rejects.toThrow('Password change not available for this account');
     });
 
     it('throws error for incorrect current password', async () => {
       // User with password hash (bcrypt hash of 'correctpassword')
       mockedQuery.mockResolvedValueOnce({
-        rows: [{ password_hash: '$2a$12$invalidhash' }]
+        rows: [{ password_hash: '$2a$12$invalidhash' }],
       });
 
       await expect(
         resolvers.Mutation.changePassword(
           null,
           { currentPassword: 'wrongpassword', newPassword: 'NewPassword123!' },
-          mockContext
-        )
+          mockContext,
+        ),
       ).rejects.toThrow('Current password is incorrect');
     });
   });
 
   describe('Mutation.updateEmailPreferences', () => {
     const mockContext = {
-      user: { id: 'user-1', email: 'user@test.com', role: 'admin' }
+      user: { id: 'user-1', email: 'user@test.com', role: 'admin' },
     };
 
     it('updates email preferences for authenticated user', async () => {
@@ -801,14 +900,14 @@ describe('GraphQL Resolvers', () => {
         research_updates: true,
         tree_changes: false,
         weekly_digest: true,
-        birthday_reminders: false
+        birthday_reminders: false,
       };
       mockedQuery.mockResolvedValueOnce({ rows: [mockPrefs] });
 
       const result = await resolvers.Mutation.updateEmailPreferences(
         null,
         { input: { research_updates: true, weekly_digest: true } },
-        mockContext
+        mockContext,
       );
 
       expect(result.user_id).toBe('user-1');
@@ -819,10 +918,10 @@ describe('GraphQL Resolvers', () => {
 
   describe('Mutation.createLocalUser', () => {
     const adminContext = {
-      user: { id: 'admin-1', email: 'admin@test.com', role: 'admin' }
+      user: { id: 'admin-1', email: 'admin@test.com', role: 'admin' },
     };
     const editorContext = {
-      user: { id: 'editor-1', email: 'editor@test.com', role: 'editor' }
+      user: { id: 'editor-1', email: 'editor@test.com', role: 'editor' },
     };
 
     it('creates a new local user when admin', async () => {
@@ -831,13 +930,26 @@ describe('GraphQL Resolvers', () => {
       mockedQuery.mockResolvedValueOnce({ rows: [] });
       // Insert user
       mockedQuery.mockResolvedValueOnce({
-        rows: [{ id: 'new-user-id', email: 'newuser@test.com', name: 'New User', role: 'viewer', created_at: new Date() }]
+        rows: [
+          {
+            id: 'new-user-id',
+            email: 'newuser@test.com',
+            name: 'New User',
+            role: 'viewer',
+            created_at: new Date(),
+          },
+        ],
       });
 
       const result = await resolvers.Mutation.createLocalUser(
         null,
-        { email: 'newuser@test.com', name: 'New User', role: 'viewer', password: 'SecurePass123!' },
-        adminContext
+        {
+          email: 'newuser@test.com',
+          name: 'New User',
+          role: 'viewer',
+          password: 'SecurePass123!',
+        },
+        adminContext,
       );
 
       expect(result.email).toBe('newuser@test.com');
@@ -845,7 +957,7 @@ describe('GraphQL Resolvers', () => {
       expect(result.role).toBe('viewer');
       expect(mockedQuery).toHaveBeenCalledWith(
         expect.stringContaining('INSERT INTO users'),
-        expect.any(Array)
+        expect.any(Array),
       );
     });
 
@@ -857,9 +969,14 @@ describe('GraphQL Resolvers', () => {
       await expect(
         resolvers.Mutation.createLocalUser(
           null,
-          { email: 'existing@test.com', name: 'Existing', role: 'viewer', password: 'Pass123!' },
-          adminContext
-        )
+          {
+            email: 'existing@test.com',
+            name: 'Existing',
+            role: 'viewer',
+            password: 'Pass123!',
+          },
+          adminContext,
+        ),
       ).rejects.toThrow('User with this email already exists');
     });
 
@@ -871,9 +988,14 @@ describe('GraphQL Resolvers', () => {
       await expect(
         resolvers.Mutation.createLocalUser(
           null,
-          { email: 'new@test.com', name: 'New', role: 'superadmin', password: 'Pass123!' },
-          adminContext
-        )
+          {
+            email: 'new@test.com',
+            name: 'New',
+            role: 'superadmin',
+            password: 'Pass123!',
+          },
+          adminContext,
+        ),
       ).rejects.toThrow('Invalid role');
     });
 
@@ -881,9 +1003,14 @@ describe('GraphQL Resolvers', () => {
       await expect(
         resolvers.Mutation.createLocalUser(
           null,
-          { email: 'new@test.com', name: 'New', role: 'viewer', password: 'Pass123!' },
-          editorContext
-        )
+          {
+            email: 'new@test.com',
+            name: 'New',
+            role: 'viewer',
+            password: 'Pass123!',
+          },
+          editorContext,
+        ),
       ).rejects.toThrow('Admin access required');
     });
 
@@ -891,9 +1018,14 @@ describe('GraphQL Resolvers', () => {
       await expect(
         resolvers.Mutation.createLocalUser(
           null,
-          { email: 'new@test.com', name: 'New', role: 'viewer', password: 'Pass123!' },
-          {}
-        )
+          {
+            email: 'new@test.com',
+            name: 'New',
+            role: 'viewer',
+            password: 'Pass123!',
+          },
+          {},
+        ),
       ).rejects.toThrow('Authentication required');
     });
 
@@ -903,22 +1035,35 @@ describe('GraphQL Resolvers', () => {
       mockedQuery.mockResolvedValueOnce({ rows: [] });
       // Insert user
       mockedQuery.mockResolvedValueOnce({
-        rows: [{ id: 'new-id', email: 'temp@test.com', name: 'Temp User', role: 'viewer', created_at: new Date() }]
+        rows: [
+          {
+            id: 'new-id',
+            email: 'temp@test.com',
+            name: 'Temp User',
+            role: 'viewer',
+            created_at: new Date(),
+          },
+        ],
       });
 
       const result = await resolvers.Mutation.createLocalUser(
         null,
-        { email: 'temp@test.com', name: 'Temp User', role: 'viewer', password: 'TempPass!', requirePasswordChange: true },
-        adminContext
+        {
+          email: 'temp@test.com',
+          name: 'Temp User',
+          role: 'viewer',
+          password: 'TempPass!',
+          requirePasswordChange: true,
+        },
+        adminContext,
       );
 
       expect(result.email).toBe('temp@test.com');
       // Verify the INSERT was called with requirePasswordChange = true
       expect(mockedQuery).toHaveBeenCalledWith(
         expect.stringContaining('require_password_change'),
-        expect.arrayContaining([true])
+        expect.arrayContaining([true]),
       );
     });
   });
 });
-

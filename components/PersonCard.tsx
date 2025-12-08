@@ -1,12 +1,15 @@
 import Link from 'next/link';
-import { Person } from '@/lib/types';
+import type { Person } from '@/lib/types';
 
 interface PersonCardProps {
   person: Person;
   showDetails?: boolean;
 }
 
-export default function PersonCard({ person, showDetails = false }: PersonCardProps) {
+export default function PersonCard({
+  person,
+  showDetails = false,
+}: PersonCardProps) {
   const isFemale = person.sex === 'F';
   const isLiving = person.living;
 
@@ -19,14 +22,21 @@ export default function PersonCard({ person, showDetails = false }: PersonCardPr
   };
 
   return (
-    <div className={`card person-card ${isFemale ? 'female' : ''} ${isLiving ? 'living' : ''}`}>
+    <div
+      className={`card person-card ${isFemale ? 'female' : ''} ${isLiving ? 'living' : ''}`}
+    >
       <div className="flex items-start justify-between">
         <div className="flex-1">
-          <Link href={`/person/${person.id}`} className="text-lg font-semibold text-gray-900 hover:text-green-700">
+          <Link
+            href={`/person/${person.id}`}
+            className="text-lg font-semibold text-gray-900 hover:text-green-700"
+          >
             {person.name_full}
           </Link>
           <div className="flex gap-2 mt-2">
-            <span className={`badge ${isFemale ? 'badge-female' : 'badge-male'}`}>
+            <span
+              className={`badge ${isFemale ? 'badge-female' : 'badge-male'}`}
+            >
               {isFemale ? 'Female' : 'Male'}
             </span>
             {isLiving && <span className="badge badge-living">Living</span>}
@@ -42,12 +52,9 @@ export default function PersonCard({ person, showDetails = false }: PersonCardPr
           {!isLiving && formatDate(person.death_year, person.death_place) && (
             <p>✝️ Died: {formatDate(person.death_year, person.death_place)}</p>
           )}
-          {person.burial_place && (
-            <p>🪦 Burial: {person.burial_place}</p>
-          )}
+          {person.burial_place && <p>🪦 Burial: {person.burial_place}</p>}
         </div>
       )}
     </div>
   );
 }
-

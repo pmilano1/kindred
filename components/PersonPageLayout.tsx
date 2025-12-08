@@ -1,7 +1,13 @@
 'use client';
 
-import { useState, useEffect, ReactNode } from 'react';
-import { TreeDeciduous, Users, ChevronLeft, ChevronRight, BookOpen } from 'lucide-react';
+import {
+  BookOpen,
+  ChevronLeft,
+  ChevronRight,
+  TreeDeciduous,
+  Users,
+} from 'lucide-react';
+import { type ReactNode, useEffect, useState } from 'react';
 import { Button, ButtonLink } from '@/components/ui';
 import ResearchPanel from './ResearchPanel';
 
@@ -11,7 +17,11 @@ interface PersonPageLayoutProps {
   children: ReactNode;
 }
 
-export default function PersonPageLayout({ personId, personName, children }: PersonPageLayoutProps) {
+export default function PersonPageLayout({
+  personId,
+  personName,
+  children,
+}: PersonPageLayoutProps) {
   const [isCollapsed, setIsCollapsed] = useState(false);
 
   // Persist collapsed state in localStorage
@@ -31,7 +41,7 @@ export default function PersonPageLayout({ personId, personName, children }: Per
   return (
     <div className="flex h-[calc(100vh-180px)] relative">
       {/* Main Content - Left Side */}
-      <div 
+      <div
         className={`overflow-y-auto transition-all duration-300 ${
           isCollapsed ? 'w-full pr-12' : 'w-3/5 pr-4'
         }`}
@@ -60,7 +70,7 @@ export default function PersonPageLayout({ personId, personName, children }: Per
       </div>
 
       {/* Research Panel - Right Side */}
-      <div 
+      <div
         className={`transition-all duration-300 overflow-hidden ${
           isCollapsed ? 'w-0' : 'w-2/5'
         }`}
@@ -77,11 +87,17 @@ export default function PersonPageLayout({ personId, personName, children }: Per
         onClick={toggleCollapsed}
         className={`absolute top-0 z-10 bg-amber-100 hover:bg-amber-200 text-amber-800
           p-2 rounded-l shadow-md transition-all duration-300 ${
-          isCollapsed ? 'right-0' : 'right-[40%]'
-        }`}
+            isCollapsed ? 'right-0' : 'right-[40%]'
+          }`}
         title={isCollapsed ? 'Show Research Panel' : 'Hide Research Panel'}
       >
-        {isCollapsed ? <><BookOpen className="w-4 h-4" /> <ChevronLeft className="w-4 h-4" /></> : <ChevronRight className="w-4 h-4" />}
+        {isCollapsed ? (
+          <>
+            <BookOpen className="w-4 h-4" /> <ChevronLeft className="w-4 h-4" />
+          </>
+        ) : (
+          <ChevronRight className="w-4 h-4" />
+        )}
       </Button>
 
       {/* Floating button when collapsed */}
@@ -98,4 +114,3 @@ export default function PersonPageLayout({ personId, personName, children }: Per
     </div>
   );
 }
-

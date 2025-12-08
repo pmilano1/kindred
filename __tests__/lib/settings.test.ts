@@ -2,27 +2,29 @@
  * Settings Module Tests
  * Tests caching behavior and default values
  */
+import { beforeEach, describe, expect, it, Mock, vi } from 'vitest';
 
-// Mock the database pool
-const mockQuery = jest.fn();
-jest.mock('@/lib/pool', () => ({
+// Create mock function before vi.mock
+const mockQuery = vi.fn();
+
+vi.mock('@/lib/pool', () => ({
   pool: { query: mockQuery },
 }));
 
 describe('Settings', () => {
   beforeEach(() => {
-    jest.clearAllMocks();
-    jest.resetModules();
+    vi.clearAllMocks();
+    vi.resetModules();
   });
 
   describe('Default settings', () => {
     it('has correct default values', async () => {
       // Mock empty settings table
       mockQuery.mockResolvedValueOnce({ rows: [] });
-      
+
       const { getSettings } = await import('@/lib/settings');
       const settings = await getSettings();
-      
+
       expect(settings.site_name).toBe('Family Tree');
       expect(settings.family_name).toBe('Family');
       expect(settings.theme_color).toBe('#4F46E5');
@@ -44,10 +46,10 @@ describe('Settings', () => {
           { key: 'theme_color', value: '#2c5530' },
         ],
       });
-      
+
       const { getSettings } = await import('@/lib/settings');
       const settings = await getSettings();
-      
+
       expect(settings.site_name).toBe('Milanese Family');
       expect(settings.family_name).toBe('Milanese');
       expect(settings.theme_color).toBe('#2c5530');
@@ -63,10 +65,10 @@ describe('Settings', () => {
           { key: 'show_coats_of_arms', value: 'false' },
         ],
       });
-      
+
       const { getSettings } = await import('@/lib/settings');
       const settings = await getSettings();
-      
+
       expect(settings.require_login).toBe(false);
       expect(settings.show_living_details).toBe(true);
       expect(settings.show_coats_of_arms).toBe(false);
@@ -79,10 +81,10 @@ describe('Settings', () => {
           { key: 'default_tree_generations', value: '6' },
         ],
       });
-      
+
       const { getSettings } = await import('@/lib/settings');
       const settings = await getSettings();
-      
+
       expect(settings.living_cutoff_years).toBe(120);
       expect(settings.default_tree_generations).toBe(6);
     });
@@ -91,19 +93,18 @@ describe('Settings', () => {
   describe('Date format validation', () => {
     it('accepts valid date formats', async () => {
       const formats = ['MDY', 'DMY', 'ISO'];
-      
+
       for (const format of formats) {
-        jest.resetModules();
+        vi.resetModules();
         mockQuery.mockResolvedValueOnce({
           rows: [{ key: 'date_format', value: format }],
         });
-        
+
         const { getSettings } = await import('@/lib/settings');
         const settings = await getSettings();
-        
+
         expect(settings.date_format).toBe(format);
       }
     });
   });
 });
-

@@ -57,9 +57,15 @@ export async function getSettings(): Promise<SiteSettings> {
       logo_url: dbSettings.logo_url || null,
       require_login: dbSettings.require_login !== 'false',
       show_living_details: dbSettings.show_living_details === 'true',
-      living_cutoff_years: parseInt(dbSettings.living_cutoff_years) || DEFAULT_SETTINGS.living_cutoff_years,
-      date_format: (dbSettings.date_format as SiteSettings['date_format']) || DEFAULT_SETTINGS.date_format,
-      default_tree_generations: parseInt(dbSettings.default_tree_generations) || DEFAULT_SETTINGS.default_tree_generations,
+      living_cutoff_years:
+        parseInt(dbSettings.living_cutoff_years) ||
+        DEFAULT_SETTINGS.living_cutoff_years,
+      date_format:
+        (dbSettings.date_format as SiteSettings['date_format']) ||
+        DEFAULT_SETTINGS.date_format,
+      default_tree_generations:
+        parseInt(dbSettings.default_tree_generations) ||
+        DEFAULT_SETTINGS.default_tree_generations,
       show_coats_of_arms: dbSettings.show_coats_of_arms !== 'false',
       admin_email: dbSettings.admin_email || null,
       footer_text: dbSettings.footer_text || null,
@@ -69,8 +75,10 @@ export async function getSettings(): Promise<SiteSettings> {
     return settings;
   } catch (error) {
     // During build/SSG, database isn't available - this is expected
-    const isConnectionError = error instanceof Error &&
-      ('code' in error && (error as NodeJS.ErrnoException).code === 'ECONNREFUSED');
+    const isConnectionError =
+      error instanceof Error &&
+      'code' in error &&
+      (error as NodeJS.ErrnoException).code === 'ECONNREFUSED';
     if (!isConnectionError) {
       console.error('Failed to load settings, using defaults:', error);
     }
@@ -84,22 +92,28 @@ export function clearSettingsCache() {
 }
 
 // Format a date according to site settings
-export function formatDate(date: string | null, format: SiteSettings['date_format']): string {
+export function formatDate(
+  date: string | null,
+  format: SiteSettings['date_format'],
+): string {
   if (!date) return '';
-  
+
   // Try to parse the date
   const parts = date.match(/(\d+)/g);
   if (!parts || parts.length < 3) return date;
-  
-  const [year, month, day] = parts.length === 3 && parts[0].length === 4 
-    ? parts 
-    : [parts[2], parts[0], parts[1]];
-  
+
+  const [year, month, day] =
+    parts.length === 3 && parts[0].length === 4
+      ? parts
+      : [parts[2], parts[0], parts[1]];
+
   switch (format) {
-    case 'DMY': return `${day}/${month}/${year}`;
-    case 'ISO': return `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
+    case 'DMY':
+      return `${day}/${month}/${year}`;
+    case 'ISO':
+      return `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
     case 'MDY':
-    default: return `${month}/${day}/${year}`;
+    default:
+      return `${month}/${day}/${year}`;
   }
 }
-

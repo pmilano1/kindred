@@ -41,9 +41,9 @@ export async function GET() {
   };
 
   // Check auth configuration
-  status.auth.configured = 
-    status.auth.googleClientId && 
-    status.auth.googleClientSecret && 
+  status.auth.configured =
+    status.auth.googleClientId &&
+    status.auth.googleClientSecret &&
     status.auth.nextAuthSecret;
 
   // Check database connection
@@ -84,18 +84,18 @@ export async function GET() {
       }
     }
   } catch (error) {
-    status.database.error = error instanceof Error ? error.message : 'Unknown error';
+    status.database.error =
+      error instanceof Error ? error.message : 'Unknown error';
   } finally {
     if (pool) await pool.end();
   }
 
   // Overall configured status
-  status.configured = 
-    status.database.connected && 
-    status.database.tablesExist && 
-    status.auth.configured && 
+  status.configured =
+    status.database.connected &&
+    status.database.tablesExist &&
+    status.auth.configured &&
     status.admin.exists;
 
   return NextResponse.json(status);
 }
-

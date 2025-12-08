@@ -1,11 +1,11 @@
 'use client';
 
-import { useState, useRef } from 'react';
 import { useMutation } from '@apollo/client/react';
+import { FileText, Image as ImageIcon, Trash2, Upload, X } from 'lucide-react';
 import NextImage from 'next/image';
-import { Image as ImageIcon, FileText, Upload, Trash2, X } from 'lucide-react';
+import { useRef, useState } from 'react';
 import { Button } from '@/components/ui';
-import { UPLOAD_MEDIA, DELETE_MEDIA } from '@/lib/graphql/queries';
+import { DELETE_MEDIA, UPLOAD_MEDIA } from '@/lib/graphql/queries';
 
 interface MediaItem {
   id: string;
@@ -24,7 +24,12 @@ interface MediaGalleryProps {
   onMediaChange?: () => void;
 }
 
-export default function MediaGallery({ personId, media, canEdit, onMediaChange }: MediaGalleryProps) {
+export default function MediaGallery({
+  personId,
+  media,
+  canEdit,
+  onMediaChange,
+}: MediaGalleryProps) {
   const [uploading, setUploading] = useState(false);
   const [selectedMedia, setSelectedMedia] = useState<MediaItem | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -91,12 +96,15 @@ export default function MediaGallery({ personId, media, canEdit, onMediaChange }
     return <FileText className="w-8 h-8" />;
   };
 
-  const getMediaUrl = (item: MediaItem) => item.url || `/api/media/${item.filename}`;
+  const getMediaUrl = (item: MediaItem) =>
+    item.url || `/api/media/${item.filename}`;
 
   return (
     <div className="card p-6 mb-6">
       <div className="flex justify-between items-center mb-4">
-        <h3 className="section-title">📷 Photos & Documents ({media.length})</h3>
+        <h3 className="section-title">
+          📷 Photos & Documents ({media.length})
+        </h3>
         {canEdit && (
           <>
             <input
@@ -154,8 +162,14 @@ export default function MediaGallery({ personId, media, canEdit, onMediaChange }
 
       {/* Lightbox */}
       {selectedMedia && (
-        <div className="fixed inset-0 bg-background/95 backdrop-blur-sm z-50 flex items-center justify-center p-4" onClick={() => setSelectedMedia(null)}>
-          <div className="relative max-w-4xl max-h-full" onClick={(e) => e.stopPropagation()}>
+        <div
+          className="fixed inset-0 bg-background/95 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+          onClick={() => setSelectedMedia(null)}
+        >
+          <div
+            className="relative max-w-4xl max-h-full"
+            onClick={(e) => e.stopPropagation()}
+          >
             <Button
               variant="ghost"
               size="icon"
@@ -174,12 +188,24 @@ export default function MediaGallery({ personId, media, canEdit, onMediaChange }
                 unoptimized
               />
             ) : (
-              <iframe src={getMediaUrl(selectedMedia)} title={selectedMedia.original_filename} className="w-[80vw] h-[80vh] bg-card rounded-lg shadow-lg" />
+              <iframe
+                src={getMediaUrl(selectedMedia)}
+                title={selectedMedia.original_filename}
+                className="w-[80vw] h-[80vh] bg-card rounded-lg shadow-lg"
+              />
             )}
             <div className="mt-4 text-center">
-              <p className="text-foreground font-medium">{selectedMedia.caption || selectedMedia.original_filename}</p>
+              <p className="text-foreground font-medium">
+                {selectedMedia.caption || selectedMedia.original_filename}
+              </p>
               {canEdit && (
-                <Button variant="destructive" size="sm" className="mt-3" onClick={() => handleDelete(selectedMedia.id)} icon={<Trash2 className="w-4 h-4" />}>
+                <Button
+                  variant="destructive"
+                  size="sm"
+                  className="mt-3"
+                  onClick={() => handleDelete(selectedMedia.id)}
+                  icon={<Trash2 className="w-4 h-4" />}
+                >
                   Delete
                 </Button>
               )}
@@ -190,4 +216,3 @@ export default function MediaGallery({ personId, media, canEdit, onMediaChange }
     </div>
   );
 }
-

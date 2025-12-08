@@ -1,10 +1,18 @@
-import { Pool } from 'pg';
+import type { Pool } from 'pg';
 
 interface Migration {
   version: number;
   name: string;
   up: (pool: Pool) => Promise<string[]>;
 }
+
+// Migration lock to prevent concurrent runs
+const MIGRATION_LOCK_ID = 12345; // Arbitrary unique lock ID for advisory lock
+let migrationPromise: Promise<{
+  success: boolean;
+  results: string[];
+  message: string;
+}> | null = null;
 
 // Define all migrations in order
 export const migrations: Migration[] = [
@@ -59,13 +67,17 @@ export const migrations: Migration[] = [
           sent_at TIMESTAMP DEFAULT NOW()
         )
       `);
-      await pool.query('CREATE INDEX IF NOT EXISTS idx_email_log_recipient ON email_log(recipient)');
-      await pool.query('CREATE INDEX IF NOT EXISTS idx_email_log_sent_at ON email_log(sent_at)');
+      await pool.query(
+        'CREATE INDEX IF NOT EXISTS idx_email_log_recipient ON email_log(recipient)',
+      );
+      await pool.query(
+        'CREATE INDEX IF NOT EXISTS idx_email_log_sent_at ON email_log(sent_at)',
+      );
       results.push('Created email_log table');
 
       await pool.query(`
         CREATE TABLE IF NOT EXISTS email_preferences (
-          user_id VARCHAR(50) PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+          user_id UUID PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
           research_updates BOOLEAN DEFAULT true,
           tree_changes BOOLEAN DEFAULT false,
           weekly_digest BOOLEAN DEFAULT false,
@@ -93,7 +105,11 @@ export const migrations: Migration[] = [
         'CREATE INDEX IF NOT EXISTS idx_people_living ON people(living)',
       ];
       for (const sql of indexes) {
-        try { await pool.query(sql); } catch { /* ignore */ }
+        try {
+          await pool.query(sql);
+        } catch {
+          /* ignore */
+        }
       }
       return ['Created tree traversal indexes'];
     },
@@ -115,14 +131,16 @@ export const migrations: Migration[] = [
       await pool.query(`
         CREATE TABLE IF NOT EXISTS password_reset_tokens (
           id SERIAL PRIMARY KEY,
-          user_id VARCHAR(50) REFERENCES users(id) ON DELETE CASCADE,
+          user_id UUID REFERENCES users(id) ON DELETE CASCADE,
           token VARCHAR(255) UNIQUE NOT NULL,
           expires_at TIMESTAMP NOT NULL,
           used_at TIMESTAMP,
           created_at TIMESTAMP DEFAULT NOW()
         )
       `);
-      await pool.query('CREATE INDEX IF NOT EXISTS idx_reset_tokens_token ON password_reset_tokens(token)');
+      await pool.query(
+        'CREATE INDEX IF NOT EXISTS idx_reset_tokens_token ON password_reset_tokens(token)',
+      );
       return ['Added local auth columns and password_reset_tokens table'];
     },
   },
@@ -144,7 +162,9 @@ export const migrations: Migration[] = [
         WHERE table_name = 'people' AND column_name = 'search_vector'
       `);
       if (check.rows.length === 0) {
-        await pool.query('ALTER TABLE people ADD COLUMN search_vector tsvector');
+        await pool.query(
+          'ALTER TABLE people ADD COLUMN search_vector tsvector',
+        );
       }
       await pool.query(`
         CREATE OR REPLACE FUNCTION people_search_vector_update() RETURNS trigger AS $$
@@ -161,14 +181,20 @@ export const migrations: Migration[] = [
         END
         $$ LANGUAGE plpgsql
       `);
-      await pool.query('DROP TRIGGER IF EXISTS people_search_vector_trigger ON people');
+      await pool.query(
+        'DROP TRIGGER IF EXISTS people_search_vector_trigger ON people',
+      );
       await pool.query(`
         CREATE TRIGGER people_search_vector_trigger
           BEFORE INSERT OR UPDATE ON people
           FOR EACH ROW EXECUTE FUNCTION people_search_vector_update()
       `);
-      await pool.query('CREATE INDEX IF NOT EXISTS idx_people_search_vector ON people USING GIN(search_vector)');
-      await pool.query('CREATE INDEX IF NOT EXISTS idx_people_name_trgm ON people USING GIN(immutable_unaccent(name_full) gin_trgm_ops)');
+      await pool.query(
+        'CREATE INDEX IF NOT EXISTS idx_people_search_vector ON people USING GIN(search_vector)',
+      );
+      await pool.query(
+        'CREATE INDEX IF NOT EXISTS idx_people_name_trgm ON people USING GIN(immutable_unaccent(name_full) gin_trgm_ops)',
+      );
       await pool.query(`
         UPDATE people SET search_vector =
           setweight(to_tsvector('simple', immutable_unaccent(COALESCE(name_full, ''))), 'A') ||
@@ -195,44 +221,99 @@ async function getCurrentVersion(pool: Pool): Promise<number> {
       applied_at TIMESTAMP DEFAULT NOW()
     )
   `);
-  const { rows } = await pool.query('SELECT MAX(version) as version FROM schema_migrations');
+  const { rows } = await pool.query(
+    'SELECT MAX(version) as version FROM schema_migrations',
+  );
   return rows[0]?.version || 0;
 }
 
-// Run pending migrations
-export async function runMigrations(pool: Pool): Promise<{ success: boolean; results: string[]; message: string }> {
+// Run pending migrations with advisory lock
+export async function runMigrations(
+  pool: Pool,
+): Promise<{ success: boolean; results: string[]; message: string }> {
   const results: string[] = [];
-  
+
   try {
-    const currentVersion = await getCurrentVersion(pool);
-    results.push(`Current schema version: ${currentVersion}`);
-    
-    const pendingMigrations = migrations.filter(m => m.version > currentVersion);
-    
-    if (pendingMigrations.length === 0) {
-      results.push('Database is up to date');
-      return { success: true, results, message: 'No pending migrations' };
+    // Try to acquire advisory lock (non-blocking)
+    const lockResult = await pool.query(
+      'SELECT pg_try_advisory_lock($1) as acquired',
+      [MIGRATION_LOCK_ID],
+    );
+    const lockAcquired = lockResult.rows[0]?.acquired;
+
+    if (!lockAcquired) {
+      results.push('Another migration is in progress, waiting...');
+      // Wait and retry with blocking lock
+      await pool.query('SELECT pg_advisory_lock($1)', [MIGRATION_LOCK_ID]);
     }
-    
-    results.push(`Found ${pendingMigrations.length} pending migration(s)`);
-    
-    for (const migration of pendingMigrations) {
-      results.push(`Running migration ${migration.version}: ${migration.name}`);
-      const migrationResults = await migration.up(pool);
-      results.push(...migrationResults);
-      
-      // Record migration
-      await pool.query(
-        'INSERT INTO schema_migrations (version, name) VALUES ($1, $2)',
-        [migration.version, migration.name]
+
+    try {
+      const currentVersion = await getCurrentVersion(pool);
+      results.push(`Current schema version: ${currentVersion}`);
+
+      const pendingMigrations = migrations.filter(
+        (m) => m.version > currentVersion,
       );
-      results.push(`Completed migration ${migration.version}`);
+
+      if (pendingMigrations.length === 0) {
+        results.push('Database is up to date');
+        return { success: true, results, message: 'No pending migrations' };
+      }
+
+      results.push(`Found ${pendingMigrations.length} pending migration(s)`);
+
+      for (const migration of pendingMigrations) {
+        results.push(
+          `Running migration ${migration.version}: ${migration.name}`,
+        );
+        const migrationResults = await migration.up(pool);
+        results.push(...migrationResults);
+
+        // Record migration
+        await pool.query(
+          'INSERT INTO schema_migrations (version, name) VALUES ($1, $2)',
+          [migration.version, migration.name],
+        );
+        results.push(`Completed migration ${migration.version}`);
+      }
+
+      return { success: true, results, message: 'Migrations completed' };
+    } finally {
+      // Always release the lock
+      await pool.query('SELECT pg_advisory_unlock($1)', [MIGRATION_LOCK_ID]);
     }
-    
-    return { success: true, results, message: 'Migrations completed' };
   } catch (error) {
     results.push(`Migration failed: ${(error as Error).message}`);
     return { success: false, results, message: (error as Error).message };
+  }
+}
+
+/**
+ * Ensure migrations are run on startup.
+ * This is idempotent and safe to call multiple times.
+ * Uses a singleton promise to prevent concurrent runs within the same process.
+ */
+export async function ensureMigrations(
+  pool: Pool,
+): Promise<{ success: boolean; results: string[]; message: string }> {
+  // Return existing promise if migration is already in progress
+  if (migrationPromise) {
+    return migrationPromise;
+  }
+
+  // Start migration and cache the promise
+  migrationPromise = runMigrations(pool);
+
+  try {
+    const result = await migrationPromise;
+    // Log migration results for visibility
+    if (result.results.length > 0) {
+      console.log('[Migrations]', result.message, result.results.join(' | '));
+    }
+    return result;
+  } catch (error) {
+    console.error('[Migrations] Failed:', error);
+    throw error;
   }
 }
 
@@ -244,17 +325,16 @@ export async function getMigrationStatus(pool: Pool): Promise<{
   appliedMigrations: { version: number; name: string; applied_at: Date }[];
 }> {
   const currentVersion = await getCurrentVersion(pool);
-  const latestVersion = Math.max(...migrations.map(m => m.version), 0);
-  
+  const latestVersion = Math.max(...migrations.map((m) => m.version), 0);
+
   const { rows } = await pool.query(
-    'SELECT version, name, applied_at FROM schema_migrations ORDER BY version'
+    'SELECT version, name, applied_at FROM schema_migrations ORDER BY version',
   );
-  
+
   return {
     currentVersion,
     latestVersion,
-    pendingCount: migrations.filter(m => m.version > currentVersion).length,
+    pendingCount: migrations.filter((m) => m.version > currentVersion).length,
     appliedMigrations: rows,
   };
 }
-

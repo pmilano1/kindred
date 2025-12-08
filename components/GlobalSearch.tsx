@@ -1,12 +1,12 @@
 'use client';
 
-import { useState, useRef, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
 import { useLazyQuery } from '@apollo/client/react';
-import { Search, X, Clock, Trash2 } from 'lucide-react';
+import { Clock, Search, Trash2, X } from 'lucide-react';
+import { useRouter } from 'next/navigation';
+import { useEffect, useRef, useState } from 'react';
 import { SEARCH_PEOPLE } from '@/lib/graphql/queries';
-import { Person } from '@/lib/types';
 import { useRecentSearches } from '@/lib/hooks/useRecentSearches';
+import type { Person } from '@/lib/types';
 
 interface SearchResult {
   search: {
@@ -20,12 +20,17 @@ export default function GlobalSearch() {
   const [query, setQuery] = useState('');
   const [isFocused, setIsFocused] = useState(false);
   const [selectedIndex, setSelectedIndex] = useState(-1);
-  const [executeSearch, { data, loading }] = useLazyQuery<SearchResult>(SEARCH_PEOPLE);
+  const [executeSearch, { data, loading }] =
+    useLazyQuery<SearchResult>(SEARCH_PEOPLE);
   const inputRef = useRef<HTMLInputElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
-  const { searches: recentSearches, addSearch, clearSearches } = useRecentSearches();
+  const {
+    searches: recentSearches,
+    addSearch,
+    clearSearches,
+  } = useRecentSearches();
 
-  const results = data?.search?.edges?.map(e => e.node) || [];
+  const results = data?.search?.edges?.map((e) => e.node) || [];
 
   // Search when query changes
   useEffect(() => {
@@ -49,13 +54,17 @@ export default function GlobalSearch() {
   const totalItems = showRecent
     ? recentSearches.length
     : showResults
-      ? results.length + (data?.search?.totalCount && data.search.totalCount > 8 ? 1 : 0)
+      ? results.length +
+        (data?.search?.totalCount && data.search.totalCount > 8 ? 1 : 0)
       : 0;
 
   // Close on click outside
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
-      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
+      if (
+        containerRef.current &&
+        !containerRef.current.contains(e.target as Node)
+      ) {
         setIsFocused(false);
       }
     };
@@ -83,12 +92,12 @@ export default function GlobalSearch() {
     } else if (e.key === 'ArrowDown') {
       e.preventDefault();
       if (isOpen && totalItems > 0) {
-        setSelectedIndex(prev => (prev + 1) % totalItems);
+        setSelectedIndex((prev) => (prev + 1) % totalItems);
       }
     } else if (e.key === 'ArrowUp') {
       e.preventDefault();
       if (isOpen && totalItems > 0) {
-        setSelectedIndex(prev => (prev - 1 + totalItems) % totalItems);
+        setSelectedIndex((prev) => (prev - 1 + totalItems) % totalItems);
       }
     } else if (e.key === 'Enter') {
       if (selectedIndex >= 0 && isOpen) {
@@ -128,7 +137,10 @@ export default function GlobalSearch() {
           className="bg-transparent text-white placeholder-white/50 px-3 py-2 w-48 focus:w-64 transition-all outline-none text-sm"
         />
         {query && (
-          <button onClick={() => handleQueryChange('')} className="pr-3 text-white/60 hover:text-white">
+          <button
+            onClick={() => handleQueryChange('')}
+            className="pr-3 text-white/60 hover:text-white"
+          >
             <X className="w-4 h-4" />
           </button>
         )}
@@ -145,7 +157,10 @@ export default function GlobalSearch() {
                   <Clock className="w-3 h-3" /> Recent Searches
                 </span>
                 <button
-                  onClick={(e) => { e.stopPropagation(); clearSearches(); }}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    clearSearches();
+                  }}
                   className="text-xs text-[var(--muted-foreground)] hover:text-[var(--foreground)] flex items-center gap-1"
                 >
                   <Trash2 className="w-3 h-3" /> Clear
@@ -156,7 +171,9 @@ export default function GlobalSearch() {
                   key={search.timestamp}
                   onClick={() => handleRecentClick(search.query)}
                   className={`w-full px-4 py-2 text-left border-b border-[var(--border)] last:border-b-0 transition-colors flex items-center gap-2 ${
-                    selectedIndex === index ? 'bg-[var(--accent)]' : 'hover:bg-[var(--accent)]'
+                    selectedIndex === index
+                      ? 'bg-[var(--accent)]'
+                      : 'hover:bg-[var(--accent)]'
                   }`}
                 >
                   <Clock className="w-3 h-3 text-[var(--muted-foreground)]" />
@@ -169,15 +186,22 @@ export default function GlobalSearch() {
           {showResults && (
             <>
               {loading ? (
-                <div className="p-4 text-center text-[var(--muted-foreground)] text-sm">Searching...</div>
+                <div className="p-4 text-center text-[var(--muted-foreground)] text-sm">
+                  Searching...
+                </div>
               ) : results.length > 0 ? (
                 <>
                   {results.map((person, index) => (
                     <button
                       key={person.id}
-                      onClick={() => { addSearch(query); handleSelect(person.id); }}
+                      onClick={() => {
+                        addSearch(query);
+                        handleSelect(person.id);
+                      }}
                       className={`w-full px-4 py-3 text-left border-b border-[var(--border)] last:border-b-0 transition-colors ${
-                        selectedIndex === index ? 'bg-[var(--accent)]' : 'hover:bg-[var(--accent)]'
+                        selectedIndex === index
+                          ? 'bg-[var(--accent)]'
+                          : 'hover:bg-[var(--accent)]'
                       }`}
                     >
                       <div className="font-medium">{person.name_full}</div>
@@ -191,9 +215,15 @@ export default function GlobalSearch() {
                   ))}
                   {data?.search?.totalCount && data.search.totalCount > 8 && (
                     <button
-                      onClick={() => { addSearch(query); router.push(`/search?q=${encodeURIComponent(query)}`); setIsFocused(false); }}
+                      onClick={() => {
+                        addSearch(query);
+                        router.push(`/search?q=${encodeURIComponent(query)}`);
+                        setIsFocused(false);
+                      }}
                       className={`w-full px-4 py-2 text-center text-sm text-blue-600 dark:text-blue-400 ${
-                        selectedIndex === results.length ? 'bg-[var(--accent)]' : 'hover:bg-[var(--accent)]'
+                        selectedIndex === results.length
+                          ? 'bg-[var(--accent)]'
+                          : 'hover:bg-[var(--accent)]'
                       }`}
                     >
                       View all {data.search.totalCount} results →
@@ -201,7 +231,9 @@ export default function GlobalSearch() {
                   )}
                 </>
               ) : (
-                <div className="p-4 text-center text-[var(--muted-foreground)] text-sm">No results found</div>
+                <div className="p-4 text-center text-[var(--muted-foreground)] text-sm">
+                  No results found
+                </div>
               )}
             </>
           )}
@@ -210,4 +242,3 @@ export default function GlobalSearch() {
     </div>
   );
 }
-

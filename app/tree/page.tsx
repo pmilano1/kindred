@@ -1,34 +1,42 @@
 'use client';
 
-import { useState, useEffect, useCallback, useMemo, Suspense } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
-import dynamic from 'next/dynamic';
 import { useQuery } from '@apollo/client/react';
-import { ArrowUp, ArrowDown } from 'lucide-react';
-import { PageHeader, Button } from '@/components/ui';
+import { ArrowDown, ArrowUp } from 'lucide-react';
+import dynamic from 'next/dynamic';
+import { useRouter, useSearchParams } from 'next/navigation';
+import { Suspense, useCallback, useEffect, useMemo, useState } from 'react';
 import LoadingSpinner from '@/components/LoadingSpinner';
-import { Person } from '@/lib/types';
+import { Button, PageHeader } from '@/components/ui';
 import { GET_PEOPLE_LIST } from '@/lib/graphql/queries';
+import type { Person } from '@/lib/types';
 
-const FamilyTree = dynamic(() => import('@/components/FamilyTree'), { ssr: false });
+const FamilyTree = dynamic(() => import('@/components/FamilyTree'), {
+  ssr: false,
+});
 
 function TreePageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { data, loading } = useQuery<{ peopleList: Person[] }>(GET_PEOPLE_LIST, {
-    variables: { limit: 1000 },
-  });
+  const { data, loading } = useQuery<{ peopleList: Person[] }>(
+    GET_PEOPLE_LIST,
+    {
+      variables: { limit: 1000 },
+    },
+  );
   const people = useMemo(() => data?.peopleList || [], [data?.peopleList]);
   const [selectedPerson, setSelectedPerson] = useState<string>('');
   const [showAncestors, setShowAncestors] = useState(true);
 
   // Update URL when state changes
-  const updateUrl = useCallback((personId: string, ancestors: boolean) => {
-    const params = new URLSearchParams();
-    if (personId) params.set('person', personId);
-    params.set('view', ancestors ? 'ancestors' : 'descendants');
-    router.replace(`/tree?${params.toString()}`, { scroll: false });
-  }, [router]);
+  const updateUrl = useCallback(
+    (personId: string, ancestors: boolean) => {
+      const params = new URLSearchParams();
+      if (personId) params.set('person', personId);
+      params.set('view', ancestors ? 'ancestors' : 'descendants');
+      router.replace(`/tree?${params.toString()}`, { scroll: false });
+    },
+    [router],
+  );
 
   // Read initial state from URL params and set default person
   /* eslint-disable react-hooks/set-state-in-effect */
@@ -43,12 +51,16 @@ function TreePageContent() {
       setSelectedPerson(urlPerson);
     } else if (!selectedPerson) {
       // Find a recent person as the default starting point
-      const defaultPerson = people.find((p: Person) => p.birth_year && p.birth_year > 1950);
+      const defaultPerson = people.find(
+        (p: Person) => p.birth_year && p.birth_year > 1950,
+      );
       if (defaultPerson) {
         setSelectedPerson(defaultPerson.id);
         updateUrl(defaultPerson.id, urlView !== 'descendants');
       } else {
-        const recent = people.find((p: Person) => p.birth_year && p.birth_year > 1900);
+        const recent = people.find(
+          (p: Person) => p.birth_year && p.birth_year > 1900,
+        );
         if (recent) {
           setSelectedPerson(recent.id);
           updateUrl(recent.id, urlView !== 'descendants');
@@ -81,7 +93,7 @@ function TreePageContent() {
     updateUrl(personId, showAncestors);
   };
 
-  const selected = people.find(p => p.id === selectedPerson);
+  const selected = people.find((p) => p.id === selectedPerson);
 
   return (
     <>
@@ -92,17 +104,34 @@ function TreePageContent() {
       />
       <div className="content-wrapper">
         <div className="tree-controls">
-          <select className="tree-select" value={selectedPerson} onChange={(e) => handlePersonChange(e.target.value)}>
+          <select
+            className="tree-select"
+            value={selectedPerson}
+            onChange={(e) => handlePersonChange(e.target.value)}
+          >
             <option value="">Select a person...</option>
             <optgroup label="Living Family Members">
-              {people.filter(p => p.living).sort((a, b) => (b.birth_year || 0) - (a.birth_year || 0)).map(p => (
-                <option key={p.id} value={p.id}>{p.name_full} {p.birth_year ? `(b. ${p.birth_year})` : ''}</option>
-              ))}
+              {people
+                .filter((p) => p.living)
+                .sort((a, b) => (b.birth_year || 0) - (a.birth_year || 0))
+                .map((p) => (
+                  <option key={p.id} value={p.id}>
+                    {p.name_full} {p.birth_year ? `(b. ${p.birth_year})` : ''}
+                  </option>
+                ))}
             </optgroup>
             <optgroup label="Ancestors">
-              {people.filter(p => !p.living).sort((a, b) => (b.birth_year || 0) - (a.birth_year || 0)).map(p => (
-                <option key={p.id} value={p.id}>{p.name_full} {p.birth_year ? `(${p.birth_year}–${p.death_year || '?'})` : ''}</option>
-              ))}
+              {people
+                .filter((p) => !p.living)
+                .sort((a, b) => (b.birth_year || 0) - (a.birth_year || 0))
+                .map((p) => (
+                  <option key={p.id} value={p.id}>
+                    {p.name_full}{' '}
+                    {p.birth_year
+                      ? `(${p.birth_year}–${p.death_year || '?'})`
+                      : ''}
+                  </option>
+                ))}
             </optgroup>
           </select>
           <Button
@@ -130,7 +159,8 @@ function TreePageContent() {
             <div className="text-center p-4 border-b">
               <h2 className="text-xl font-bold">{selected.name_full}</h2>
               <p className="text-gray-500 text-sm">
-                {selected.birth_year && `${selected.birth_year}`}{selected.death_year && ` – ${selected.death_year}`}
+                {selected.birth_year && `${selected.birth_year}`}
+                {selected.death_year && ` – ${selected.death_year}`}
                 {selected.birth_place && ` • ${selected.birth_place}`}
               </p>
             </div>
@@ -144,7 +174,11 @@ function TreePageContent() {
             </div>
           </div>
         ) : (
-          <div className="tree-container flex items-center justify-center"><p className="text-gray-500">Select a person to view their family tree</p></div>
+          <div className="tree-container flex items-center justify-center">
+            <p className="text-gray-500">
+              Select a person to view their family tree
+            </p>
+          </div>
         )}
       </div>
     </>
@@ -153,20 +187,22 @@ function TreePageContent() {
 
 export default function TreePage() {
   return (
-    <Suspense fallback={
-      <>
-        <PageHeader
-          title="Family Tree"
-          subtitle="Interactive visualization of family connections"
-          icon="TreeDeciduous"
-        />
-        <div className="content-wrapper">
-          <div className="tree-container flex items-center justify-center">
-            <LoadingSpinner size="lg" message="Loading family tree..." />
+    <Suspense
+      fallback={
+        <>
+          <PageHeader
+            title="Family Tree"
+            subtitle="Interactive visualization of family connections"
+            icon="TreeDeciduous"
+          />
+          <div className="content-wrapper">
+            <div className="tree-container flex items-center justify-center">
+              <LoadingSpinner size="lg" message="Loading family tree..." />
+            </div>
           </div>
-        </div>
-      </>
-    }>
+        </>
+      }
+    >
       <TreePageContent />
     </Suspense>
   );

@@ -1,18 +1,28 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { auth } from '@/lib/auth';
-import { writeFile, mkdir } from 'fs/promises';
-import { join } from 'path';
 import crypto from 'crypto';
+import { mkdir, writeFile } from 'fs/promises';
+import { type NextRequest, NextResponse } from 'next/server';
+import { join } from 'path';
+import { auth } from '@/lib/auth';
 
 // Configure max file size (10MB)
 const MAX_FILE_SIZE = 10 * 1024 * 1024;
-const ALLOWED_TYPES = ['image/jpeg', 'image/png', 'image/gif', 'image/webp', 'application/pdf'];
+const ALLOWED_TYPES = [
+  'image/jpeg',
+  'image/png',
+  'image/gif',
+  'image/webp',
+  'application/pdf',
+];
 
 export async function POST(request: NextRequest) {
   try {
     // Check authentication
     const session = await auth();
-    if (!session || !session.user.role || !['admin', 'editor'].includes(session.user.role)) {
+    if (
+      !session ||
+      !session.user.role ||
+      !['admin', 'editor'].includes(session.user.role)
+    ) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
@@ -25,17 +35,26 @@ export async function POST(request: NextRequest) {
     }
 
     if (!personId) {
-      return NextResponse.json({ error: 'No personId provided' }, { status: 400 });
+      return NextResponse.json(
+        { error: 'No personId provided' },
+        { status: 400 },
+      );
     }
 
     // Validate file type
     if (!ALLOWED_TYPES.includes(file.type)) {
-      return NextResponse.json({ error: 'Invalid file type. Allowed: JPEG, PNG, GIF, WebP, PDF' }, { status: 400 });
+      return NextResponse.json(
+        { error: 'Invalid file type. Allowed: JPEG, PNG, GIF, WebP, PDF' },
+        { status: 400 },
+      );
     }
 
     // Validate file size
     if (file.size > MAX_FILE_SIZE) {
-      return NextResponse.json({ error: 'File too large. Maximum size: 10MB' }, { status: 400 });
+      return NextResponse.json(
+        { error: 'File too large. Maximum size: 10MB' },
+        { status: 400 },
+      );
     }
 
     // Generate unique filename
@@ -68,11 +87,10 @@ export async function POST(request: NextRequest) {
         file_size: file.size,
         storage_path: `uploads/${personId}/${filename}`,
         media_type: mediaType,
-      }
+      },
     });
   } catch (error) {
     console.error('Upload error:', error);
     return NextResponse.json({ error: 'Upload failed' }, { status: 500 });
   }
 }
-

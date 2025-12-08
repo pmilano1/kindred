@@ -19,4 +19,3 @@ export default function TreeLink({ personId, className = '' }: TreeLinkProps) {
     </Link>
   );
 }
-

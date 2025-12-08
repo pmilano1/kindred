@@ -1,16 +1,24 @@
 /**
  * PersonCard Component Tests
  */
+
 import { render, screen } from '@testing-library/react';
+import { describe, expect, it, vi } from 'vitest';
 import PersonCard from '@/components/PersonCard';
-import { Person } from '@/lib/types';
+import type { Person } from '@/lib/types';
 
 // Mock next/link
-jest.mock('next/link', () => {
-  return function MockLink({ children, href }: { children: React.ReactNode; href: string }) {
+vi.mock('next/link', () => ({
+  default: function MockLink({
+    children,
+    href,
+  }: {
+    children: React.ReactNode;
+    href: string;
+  }) {
     return <a href={href}>{children}</a>;
-  };
-});
+  },
+}));
 
 const createMockPerson = (overrides: Partial<Person> = {}): Person => ({
   id: 'test-person-id',
@@ -49,7 +57,7 @@ describe('PersonCard', () => {
   it('renders person name with link', () => {
     const person = createMockPerson();
     render(<PersonCard person={person} />);
-    
+
     const link = screen.getByRole('link', { name: 'John Doe' });
     expect(link).toHaveAttribute('href', '/person/test-person-id');
   });
@@ -57,28 +65,28 @@ describe('PersonCard', () => {
   it('shows Male badge for male person', () => {
     const person = createMockPerson({ sex: 'M' });
     render(<PersonCard person={person} />);
-    
+
     expect(screen.getByText('Male')).toBeInTheDocument();
   });
 
   it('shows Female badge for female person', () => {
     const person = createMockPerson({ sex: 'F', name_full: 'Jane Doe' });
     render(<PersonCard person={person} />);
-    
+
     expect(screen.getByText('Female')).toBeInTheDocument();
   });
 
   it('shows Living badge for living person', () => {
     const person = createMockPerson({ living: true, death_year: null });
     render(<PersonCard person={person} />);
-    
+
     expect(screen.getByText('Living')).toBeInTheDocument();
   });
 
   it('does not show Living badge for deceased person', () => {
     const person = createMockPerson({ living: false });
     render(<PersonCard person={person} />);
-    
+
     expect(screen.queryByText('Living')).not.toBeInTheDocument();
   });
 
@@ -86,7 +94,7 @@ describe('PersonCard', () => {
     it('shows birth information', () => {
       const person = createMockPerson();
       render(<PersonCard person={person} showDetails />);
-      
+
       expect(screen.getByText(/Born:/)).toBeInTheDocument();
       expect(screen.getByText(/1950/)).toBeInTheDocument();
     });
@@ -94,7 +102,7 @@ describe('PersonCard', () => {
     it('shows death information for deceased', () => {
       const person = createMockPerson();
       render(<PersonCard person={person} showDetails />);
-      
+
       expect(screen.getByText(/Died:/)).toBeInTheDocument();
       expect(screen.getByText(/2020/)).toBeInTheDocument();
     });
@@ -102,14 +110,14 @@ describe('PersonCard', () => {
     it('does not show death for living person', () => {
       const person = createMockPerson({ living: true, death_year: null });
       render(<PersonCard person={person} showDetails />);
-      
+
       expect(screen.queryByText(/Died:/)).not.toBeInTheDocument();
     });
 
     it('shows burial place', () => {
       const person = createMockPerson();
       render(<PersonCard person={person} showDetails />);
-      
+
       expect(screen.getByText(/Burial:/)).toBeInTheDocument();
       expect(screen.getByText(/Rose Hills Cemetery/)).toBeInTheDocument();
     });
@@ -119,10 +127,9 @@ describe('PersonCard', () => {
     it('does not show birth/death details', () => {
       const person = createMockPerson();
       render(<PersonCard person={person} />);
-      
+
       expect(screen.queryByText(/Born:/)).not.toBeInTheDocument();
       expect(screen.queryByText(/Died:/)).not.toBeInTheDocument();
     });
   });
 });
-

@@ -2,20 +2,21 @@
  * Auth Helper Tests
  * Tests for role-based access control and permission checks
  */
+import { describe, expect, it, vi } from 'vitest';
 
 // Mock the pool
-jest.mock('@/lib/pool', () => ({
-  pool: { query: jest.fn() },
+vi.mock('@/lib/pool', () => ({
+  pool: { query: vi.fn() },
 }));
 
 // Mock next-auth
-jest.mock('next-auth', () => ({
+vi.mock('next-auth', () => ({
   __esModule: true,
-  default: jest.fn(),
+  default: vi.fn(),
 }));
 
 // Mock the auth config
-jest.mock('@/auth.config', () => ({
+vi.mock('@/auth.config', () => ({
   __esModule: true,
   default: {
     providers: [],
@@ -76,7 +77,7 @@ describe('Auth Helpers', () => {
 
   describe('Role hierarchy', () => {
     const roles = ['viewer', 'editor', 'admin'];
-    
+
     const hasPermission = (userRole: string, requiredRole: string): boolean => {
       const roleIndex = roles.indexOf(userRole);
       const requiredIndex = roles.indexOf(requiredRole);
@@ -107,14 +108,20 @@ describe('Auth Helpers', () => {
       user?: { id: string; email: string; role: string };
     }
 
-    const requireAuth = (context: Context, requiredRole: 'viewer' | 'editor' | 'admin' = 'viewer') => {
+    const requireAuth = (
+      context: Context,
+      requiredRole: 'viewer' | 'editor' | 'admin' = 'viewer',
+    ) => {
       if (!context.user) {
         throw new Error('Authentication required');
       }
       if (requiredRole === 'admin' && context.user.role !== 'admin') {
         throw new Error('Admin access required');
       }
-      if (requiredRole === 'editor' && !['admin', 'editor'].includes(context.user.role)) {
+      if (
+        requiredRole === 'editor' &&
+        !['admin', 'editor'].includes(context.user.role)
+      ) {
         throw new Error('Editor access required');
       }
       return context.user;
@@ -131,7 +138,9 @@ describe('Auth Helpers', () => {
 
     it('throws for viewer needing editor', () => {
       const ctx = { user: { id: '1', email: 'test@test.com', role: 'viewer' } };
-      expect(() => requireAuth(ctx, 'editor')).toThrow('Editor access required');
+      expect(() => requireAuth(ctx, 'editor')).toThrow(
+        'Editor access required',
+      );
     });
 
     it('allows admin for any role', () => {
@@ -142,4 +151,3 @@ describe('Auth Helpers', () => {
     });
   });
 });
-

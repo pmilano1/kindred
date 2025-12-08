@@ -2,6 +2,7 @@
  * Utility Function Tests
  * Tests for string manipulation, date formatting, name parsing
  */
+import { describe, expect, it } from 'vitest';
 
 describe('Utility Functions', () => {
   describe('Accent stripping', () => {
@@ -45,7 +46,9 @@ describe('Utility Functions', () => {
     });
 
     it('truncates long names with ellipsis', () => {
-      expect(truncateName('Count Philippe de Kersaint-Gilly').length).toBeLessThanOrEqual(maxNameLen);
+      expect(
+        truncateName('Count Philippe de Kersaint-Gilly').length,
+      ).toBeLessThanOrEqual(maxNameLen);
       expect(truncateName('Count Philippe de Kersaint-Gilly')).toContain('…');
     });
 
@@ -57,13 +60,14 @@ describe('Utility Functions', () => {
 
   describe('Cursor encoding/decoding', () => {
     const encodeCursor = (id: string) => Buffer.from(id).toString('base64');
-    const decodeCursor = (cursor: string) => Buffer.from(cursor, 'base64').toString('utf-8');
+    const decodeCursor = (cursor: string) =>
+      Buffer.from(cursor, 'base64').toString('utf-8');
 
     it('encodes and decodes cursor correctly', () => {
       const id = 'person-12345';
       const encoded = encodeCursor(id);
       const decoded = decodeCursor(encoded);
-      
+
       expect(decoded).toBe(id);
       expect(encoded).not.toBe(id); // Should be different
     });
@@ -79,7 +83,10 @@ describe('Utility Functions', () => {
   });
 
   describe('Date formatting', () => {
-    const formatDate = (year: number | null, place: string | null): string | null => {
+    const formatDate = (
+      year: number | null,
+      place: string | null,
+    ): string | null => {
       if (!year && !place) return null;
       const parts: (string | number)[] = [];
       if (year) parts.push(year);
@@ -134,7 +141,14 @@ describe('Utility Functions', () => {
   });
 
   describe('Research status values', () => {
-    const validStatuses = ['not_started', 'in_progress', 'partial', 'verified', 'needs_review', 'brick_wall'];
+    const validStatuses = [
+      'not_started',
+      'in_progress',
+      'partial',
+      'verified',
+      'needs_review',
+      'brick_wall',
+    ];
 
     it('has all expected status values', () => {
       expect(validStatuses).toContain('not_started');
@@ -148,10 +162,9 @@ describe('Utility Functions', () => {
     it('priority range is 0-10', () => {
       const minPriority = 0;
       const maxPriority = 10;
-      
+
       expect(minPriority).toBeGreaterThanOrEqual(0);
       expect(maxPriority).toBeLessThanOrEqual(10);
     });
   });
 });
-

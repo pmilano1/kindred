@@ -3,10 +3,11 @@
  * Note: Direct API route testing requires Next.js test environment
  * These tests verify data transformation logic
  */
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 // Mock the database pool module
-const mockQuery = jest.fn();
-jest.mock('@/lib/pool', () => ({
+const mockQuery = vi.fn();
+vi.mock('@/lib/pool', () => ({
   pool: {
     query: mockQuery,
   },
@@ -14,7 +15,7 @@ jest.mock('@/lib/pool', () => ({
 
 describe('Tree data structure', () => {
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
   });
 
   it('database query returns expected person fields', () => {
@@ -69,13 +70,13 @@ describe('Tree data structure', () => {
   it('name truncation works correctly', () => {
     const maxNameLen = 18;
     const longName = 'Count Philippe de Kersaint-Gilly';
-    const displayName = longName.length > maxNameLen
-      ? longName.substring(0, maxNameLen - 2) + '…'
-      : longName;
+    const displayName =
+      longName.length > maxNameLen
+        ? longName.substring(0, maxNameLen - 2) + '…'
+        : longName;
 
     // substring(0, 16) = "Count Philippe d" + "…" = 17 chars
     expect(displayName).toBe('Count Philippe d…');
     expect(displayName.length).toBeLessThanOrEqual(maxNameLen);
   });
 });
-

@@ -1,7 +1,7 @@
 'use client';
 
-import { useEffect, useState } from 'react';
 import { AlertTriangle, CheckCircle } from 'lucide-react';
+import { useEffect, useState } from 'react';
 
 interface EmailConfig {
   configured: boolean;
@@ -18,7 +18,9 @@ interface EmailConfigWarningProps {
  * Displays a warning banner when email is not configured.
  * Only visible to admins.
  */
-export function EmailConfigWarning({ showSuccess = false }: EmailConfigWarningProps) {
+export function EmailConfigWarning({
+  showSuccess = false,
+}: EmailConfigWarningProps) {
   const [config, setConfig] = useState<EmailConfig | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -62,11 +64,23 @@ export function EmailConfigWarning({ showSuccess = false }: EmailConfigWarningPr
         <div>
           <p className="font-medium text-amber-800">Email Not Configured</p>
           <p className="text-sm text-amber-700">
-            Invitation emails will not be sent. Configure email by setting environment variables:
+            Invitation emails will not be sent. Configure email by setting
+            environment variables:
           </p>
           <ul className="text-sm text-amber-700 mt-2 list-disc list-inside">
-            <li><strong>AWS SES:</strong> Set <code className="bg-amber-100 px-1 rounded">EMAIL_FROM</code> (e.g., &quot;App Name &lt;noreply@example.com&gt;&quot;)</li>
-            <li><strong>SMTP:</strong> Set <code className="bg-amber-100 px-1 rounded">SMTP_HOST</code>, <code className="bg-amber-100 px-1 rounded">SMTP_PORT</code>, and optionally <code className="bg-amber-100 px-1 rounded">SMTP_USER</code>/<code className="bg-amber-100 px-1 rounded">SMTP_PASSWORD</code></li>
+            <li>
+              <strong>AWS SES:</strong> Set{' '}
+              <code className="bg-amber-100 px-1 rounded">EMAIL_FROM</code>{' '}
+              (e.g., &quot;App Name &lt;noreply@example.com&gt;&quot;)
+            </li>
+            <li>
+              <strong>SMTP:</strong> Set{' '}
+              <code className="bg-amber-100 px-1 rounded">SMTP_HOST</code>,{' '}
+              <code className="bg-amber-100 px-1 rounded">SMTP_PORT</code>, and
+              optionally{' '}
+              <code className="bg-amber-100 px-1 rounded">SMTP_USER</code>/
+              <code className="bg-amber-100 px-1 rounded">SMTP_PASSWORD</code>
+            </li>
           </ul>
         </div>
       </div>
@@ -77,4 +91,3 @@ export function EmailConfigWarning({ showSuccess = false }: EmailConfigWarningPr
 }
 
 export default EmailConfigWarning;
-

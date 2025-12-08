@@ -1,25 +1,25 @@
 'use client';
 
-import { ReactNode } from 'react';
-import { useSettings } from '../SettingsProvider';
 import {
-  LayoutDashboard,
-  Users,
-  Search,
-  Clock,
-  Network,
-  Shield,
-  Key,
-  Settings,
-  Sliders,
-  User,
   BookOpen,
-  FlaskConical,
-  ClipboardList,
   Calendar,
+  ClipboardList,
+  Clock,
+  FlaskConical,
+  Key,
+  LayoutDashboard,
+  Network,
+  Search,
+  Settings,
+  Shield,
+  Sliders,
   TreeDeciduous,
+  User,
+  Users,
 } from 'lucide-react';
+import type { ReactNode } from 'react';
 import GlobalSearch from '../GlobalSearch';
+import { useSettings } from '../SettingsProvider';
 
 // Map of icon names to components (for Server → Client serialization)
 const iconMap = {
@@ -119,4 +119,3 @@ export function PageHeader({
 }
 
 export default PageHeader;
-

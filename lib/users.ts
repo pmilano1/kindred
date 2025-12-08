@@ -1,10 +1,10 @@
-import { pool } from './pool';
-import { AppUser, Invitation } from './auth-types';
 import crypto from 'crypto';
+import type { AppUser, Invitation } from './auth-types';
+import { pool } from './pool';
 
 export async function getUsers(): Promise<AppUser[]> {
   const result = await pool.query(
-    `SELECT id, email, name, image, role, invited_by, invited_at, created_at, last_login, last_accessed, api_key FROM users ORDER BY created_at DESC`
+    `SELECT id, email, name, image, role, invited_by, invited_at, created_at, last_login, last_accessed, api_key FROM users ORDER BY created_at DESC`,
   );
   return result.rows;
 }
@@ -24,7 +24,7 @@ export async function deleteUser(id: string): Promise<void> {
 
 export async function getInvitations(): Promise<Invitation[]> {
   const result = await pool.query(
-    'SELECT * FROM invitations ORDER BY created_at DESC'
+    'SELECT * FROM invitations ORDER BY created_at DESC',
   );
   return result.rows;
 }
@@ -32,7 +32,7 @@ export async function getInvitations(): Promise<Invitation[]> {
 export async function createInvitation(
   email: string,
   role: string,
-  invitedBy: string
+  invitedBy: string,
 ): Promise<Invitation> {
   const token = crypto.randomBytes(32).toString('hex');
   const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000); // 7 days
@@ -41,7 +41,7 @@ export async function createInvitation(
     `INSERT INTO invitations (email, role, invited_by, token, expires_at)
      VALUES ($1, $2, $3, $4, $5)
      RETURNING *`,
-    [email, role, invitedBy, token, expiresAt]
+    [email, role, invitedBy, token, expiresAt],
   );
   return result.rows[0];
 }
@@ -54,12 +54,12 @@ export async function logAudit(
   userId: string,
   action: string,
   details: Record<string, unknown>,
-  ipAddress?: string
+  ipAddress?: string,
 ): Promise<void> {
   await pool.query(
     `INSERT INTO audit_log (user_id, action, details, ip_address)
      VALUES ($1, $2, $3, $4)`,
-    [userId, action, details, ipAddress || null]
+    [userId, action, details, ipAddress || null],
   );
 }
 
@@ -70,8 +70,7 @@ export async function getAuditLog(limit: number = 100) {
      LEFT JOIN users u ON al.user_id = u.id 
      ORDER BY al.created_at DESC 
      LIMIT $1`,
-    [limit]
+    [limit],
   );
   return result.rows;
 }
-

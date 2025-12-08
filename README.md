@@ -1,21 +1,23 @@
 # Kindred
 
 [![CI](https://github.com/pmilano1/kindred/actions/workflows/ci.yml/badge.svg)](https://github.com/pmilano1/kindred/actions/workflows/ci.yml)
-[![Tests](https://img.shields.io/badge/tests-132%20passing-brightgreen)](https://github.com/pmilano1/kindred)
+[![Tests](https://img.shields.io/badge/tests-158%20passing-brightgreen)](https://github.com/pmilano1/kindred)
 
-A modern genealogy web application built with Next.js 15, featuring interactive family tree visualization, research tracking, and role-based access control.
+A modern, self-hostable genealogy web application built with Next.js 15, featuring interactive family tree visualization, research tracking, and role-based access control.
 
 ## Features
 
 - 🌳 Interactive family tree visualization with D3.js
 - 👤 Detailed person profiles with life events and timelines
-- 🔍 Search across people, places, and dates
+- 🔍 Global search across people, places, and dates
 - 📊 Research queue for tracking genealogy work
 - 🏰 Notable relatives discovery (finds famous ancestors/cousins)
-- 🛡️ Role-based access (admin, editor, viewer)
-- 🎨 Customizable branding and settings
-- 🔐 Google OAuth authentication
-- 📧 Email invitations for family members (AWS SES)
+- 🛡️ Role-based access control (admin, editor, viewer)
+- 🎨 Customizable branding, themes, and settings
+- 🔐 Multiple auth options (Google OAuth, local passwords)
+- 📧 Email invitations (AWS SES or SMTP)
+- 🐳 Docker-ready for self-hosting
+- 🔑 API key support for integrations
 
 ## Quick Start
 
@@ -115,7 +117,53 @@ Open [http://localhost:3000](http://localhost:3000)
 
 ## Deployment
 
-### AWS App Runner (Recommended)
+### Docker (Self-Hosting)
+
+```bash
+docker run -d \
+  -p 3000:3000 \
+  -e DATABASE_URL=postgresql://user:pass@host:5432/genealogy \
+  -e NEXTAUTH_URL=https://family.yourdomain.com \
+  -e NEXTAUTH_SECRET=your-secret-key \
+  -e INITIAL_ADMIN_PASSWORD=changeme \
+  ghcr.io/pmilano1/kindred:latest
+```
+
+On first startup with `INITIAL_ADMIN_PASSWORD` set, an admin user is created:
+- **Email:** `admin@kindred.local` (override with `INITIAL_ADMIN_EMAIL`)
+- **Password:** Your `INITIAL_ADMIN_PASSWORD` value
+- You'll be prompted to change the password on first login
+
+### Docker Compose
+
+```yaml
+services:
+  kindred:
+    image: ghcr.io/pmilano1/kindred:latest
+    ports:
+      - "3000:3000"
+    environment:
+      DATABASE_URL: postgresql://genealogy:password@db:5432/genealogy
+      NEXTAUTH_URL: http://localhost:3000
+      NEXTAUTH_SECRET: generate-a-random-secret
+      INITIAL_ADMIN_PASSWORD: changeme
+    depends_on:
+      - db
+
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: genealogy
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: genealogy
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+volumes:
+  postgres_data:
+```
+
+### AWS App Runner
 
 The project includes GitHub Actions workflows for automated deployment:
 
@@ -125,16 +173,94 @@ The project includes GitHub Actions workflows for automated deployment:
 
 See `CONTRIBUTING.md` for the full workflow.
 
-### Environment Variables for Production
+### Environment Variables
 
-| Variable | Description |
-|----------|-------------|
-| `DATABASE_URL` | PostgreSQL connection string with SSL |
-| `NEXTAUTH_URL` | Production URL (e.g., https://family.yourdomain.com) |
-| `NEXTAUTH_SECRET` | Random 32+ character secret |
-| `GOOGLE_CLIENT_ID` | Google OAuth client ID |
-| `GOOGLE_CLIENT_SECRET` | Google OAuth client secret |
-| `AUTH_TRUST_HOST` | Set to `true` for proxied environments |
+| Variable | Required | Description |
+|----------|----------|-------------|
+| `DATABASE_URL` | Yes | PostgreSQL connection string |
+| `NEXTAUTH_URL` | Yes | Public URL of your deployment |
+| `NEXTAUTH_SECRET` | Yes | Random 32+ character secret |
+| `GOOGLE_CLIENT_ID` | No | Google OAuth client ID |
+| `GOOGLE_CLIENT_SECRET` | No | Google OAuth client secret |
+| `INITIAL_ADMIN_PASSWORD` | No | Bootstrap admin password (first run only) |
+| `INITIAL_ADMIN_EMAIL` | No | Bootstrap admin email (default: admin@kindred.local) |
+| `AUTH_TRUST_HOST` | No | Set to `true` for proxied environments |
+
+### Email Configuration (Optional)
+
+Email is used for user invitations. Choose one provider:
+
+**AWS SES:**
+```env
+EMAIL_PROVIDER=ses
+AWS_REGION=us-east-1
+AWS_ACCESS_KEY_ID=your-key
+AWS_SECRET_ACCESS_KEY=your-secret
+EMAIL_FROM=noreply@yourdomain.com
+```
+
+**SMTP:**
+```env
+EMAIL_PROVIDER=smtp
+SMTP_HOST=smtp.gmail.com
+SMTP_PORT=587
+SMTP_USER=your-email@gmail.com
+SMTP_PASS=your-app-password
+EMAIL_FROM=your-email@gmail.com
+```
+
+> 💡 **No email configured?** Use `INITIAL_ADMIN_PASSWORD` to bootstrap the first admin user without email.
+
+## GraphQL API
+
+Kindred exposes a GraphQL API for data access and integrations.
+
+### GraphQL Playground
+
+Access the interactive GraphQL playground at:
+```
+http://localhost:3000/api/graphql
+```
+
+Open this URL in your browser to explore the schema, run queries, and test mutations.
+
+### API Key Authentication
+
+For programmatic access, create an API key in Admin → API Keys:
+
+```bash
+curl -X POST https://your-domain.com/api/graphql \
+  -H "Content-Type: application/json" \
+  -H "X-API-Key: your-api-key" \
+  -d '{"query": "{ stats { total_people total_families } }"}'
+```
+
+### Example Queries
+
+```graphql
+# Get recent people
+query {
+  recentPeople(limit: 10) {
+    id
+    name_full
+    birth_year
+    birth_place
+  }
+}
+
+# Search for people
+query {
+  search(query: "John", first: 20) {
+    edges {
+      node {
+        id
+        name_full
+      }
+    }
+    totalCount
+  }
+}
+```
 
 ## Data Management
 

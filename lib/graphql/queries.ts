@@ -498,14 +498,24 @@ export const GET_FAMILIES = gql`
 
 export const GET_RESEARCH_QUEUE = gql`
   ${PERSON_CARD_FIELDS}
-  query GetResearchQueue($limit: Int) {
-    researchQueue(limit: $limit) {
-      ...PersonCardFields
-      research_status
-      research_priority
-      last_researched
-      research_tip
-      source_count
+  query GetResearchQueue($first: Int, $after: String) {
+    researchQueue(first: $first, after: $after) {
+      edges {
+        node {
+          ...PersonCardFields
+          research_status
+          research_priority
+          last_researched
+          research_tip
+          source_count
+        }
+        cursor
+      }
+      pageInfo {
+        hasNextPage
+        endCursor
+        totalCount
+      }
     }
   }
 `;

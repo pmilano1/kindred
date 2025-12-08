@@ -1,7 +1,7 @@
 'use client';
 
 import { useQuery } from '@apollo/client/react';
-import { UserPlus } from 'lucide-react';
+import { Loader2, UserPlus } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useSession } from 'next-auth/react';
 import { useCallback, useMemo, useState } from 'react';
@@ -18,6 +18,7 @@ import {
   SelectValue,
 } from '@/components/ui';
 import { GET_PEOPLE } from '@/lib/graphql/queries';
+import { useInfiniteScroll } from '@/lib/hooks';
 import type { Person } from '@/lib/types';
 
 const PAGE_SIZE = 50;
@@ -71,7 +72,7 @@ export default function PeoplePage() {
   }, [filter, people]);
 
   const loadMore = useCallback(() => {
-    if (!hasNextPage || !endCursor) return;
+    if (!hasNextPage || !endCursor || loading) return;
     fetchMore({
       variables: { first: PAGE_SIZE, after: endCursor },
       updateQuery: (prev, { fetchMoreResult }) => {
@@ -84,7 +85,13 @@ export default function PeoplePage() {
         };
       },
     });
-  }, [hasNextPage, endCursor, fetchMore]);
+  }, [hasNextPage, endCursor, loading, fetchMore]);
+
+  const { sentinelRef, isLoading: isLoadingMore } = useInfiniteScroll({
+    hasNextPage,
+    loading,
+    onLoadMore: loadMore,
+  });
 
   return (
     <>
@@ -137,11 +144,12 @@ export default function PeoplePage() {
                 <PersonCard key={person.id} person={person} showDetails />
               ))}
             </div>
-            {hasNextPage && (
-              <div className="text-center mt-8">
-                <Button onClick={loadMore} size="lg">
-                  Load More
-                </Button>
+            {/* Infinite scroll sentinel */}
+            <div ref={sentinelRef} className="h-4" aria-hidden="true" />
+            {isLoadingMore && (
+              <div className="flex justify-center py-8">
+                <Loader2 className="w-6 h-6 animate-spin text-green-600" />
+                <span className="ml-2 text-gray-600">Loading more...</span>
               </div>
             )}
           </>

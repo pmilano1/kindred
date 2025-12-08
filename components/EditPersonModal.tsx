@@ -36,11 +36,14 @@ export default function EditPersonModal({
   const canEdit =
     session?.user?.role === 'admin' || session?.user?.role === 'editor';
 
+  // Sentinel value for "no selection" since Radix UI Select doesn't allow empty string values
+  const SEX_UNKNOWN = 'unknown';
+
   const [formData, setFormData] = useState({
     name_full: '',
     name_given: '',
     name_surname: '',
-    sex: '',
+    sex: SEX_UNKNOWN,
     birth_date: '',
     birth_year: '',
     birth_place: '',
@@ -70,7 +73,7 @@ export default function EditPersonModal({
         name_full: person.name_full || '',
         name_given: person.name_given || '',
         name_surname: person.name_surname || '',
-        sex: person.sex || '',
+        sex: person.sex || SEX_UNKNOWN,
         birth_date: person.birth_date || '',
         birth_year: person.birth_year?.toString() || '',
         birth_place: person.birth_place || '',
@@ -122,7 +125,6 @@ export default function EditPersonModal({
     const stringFields = [
       'name_given',
       'name_surname',
-      'sex',
       'birth_date',
       'birth_place',
       'death_date',
@@ -145,6 +147,10 @@ export default function EditPersonModal({
         input[field] = value.trim() || null;
       }
     }
+
+    // Handle sex field specially - convert sentinel value back to null
+    input.sex =
+      formData.sex && formData.sex !== SEX_UNKNOWN ? formData.sex : null;
 
     // Handle year fields
     input.birth_year = formData.birth_year
@@ -215,7 +221,7 @@ export default function EditPersonModal({
                     <SelectValue placeholder="Unknown" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">Unknown</SelectItem>
+                    <SelectItem value={SEX_UNKNOWN}>Unknown</SelectItem>
                     <SelectItem value="M">Male</SelectItem>
                     <SelectItem value="F">Female</SelectItem>
                   </SelectContent>

@@ -7,6 +7,7 @@ import { useQuery, useMutation } from '@apollo/client/react';
 import { Send, UserPlus, Trash2, Copy, Mail, RefreshCw } from 'lucide-react';
 import { PageHeader, Button, Input, Label, Checkbox, Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui';
 import LoadingSpinner from '@/components/LoadingSpinner';
+import EmailConfigWarning from '@/components/EmailConfigWarning';
 import {
   GET_USERS,
   GET_INVITATIONS,
@@ -188,6 +189,9 @@ export default function AdminPage() {
           <a href="/admin/settings" className="nav-tab">Site Settings</a>
           <a href="/admin/api-keys" className="nav-tab">API Keys</a>
         </div>
+
+        {/* Email Configuration Warning */}
+        <EmailConfigWarning />
 
         {/* Add User Section */}
         <div className="bg-white rounded-xl shadow-sm border p-6 mb-8">

@@ -14,7 +14,6 @@ export default defineConfig({
 
     // Performance optimizations (per Vitest docs)
     pool: 'threads', // Faster than forks for larger projects
-    isolate: false, // Reuse environment across tests - major speedup
     fileParallelism: true, // Run test files in parallel
 
 

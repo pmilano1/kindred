@@ -1,5 +1,11 @@
 import '@testing-library/jest-dom/vitest'
-import { vi } from 'vitest'
+import { vi, afterEach } from 'vitest'
+import { cleanup } from '@testing-library/react'
+
+// Clean up after each test to prevent DOM state bleed
+afterEach(() => {
+  cleanup()
+})
 
 // Jest compatibility - expose vi as jest for existing tests
 // Create a jest-like object with all the methods tests use

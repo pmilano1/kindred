@@ -4,10 +4,11 @@ import { useQuery } from '@apollo/client/react';
 import { ArrowDown, ArrowUp } from 'lucide-react';
 import dynamic from 'next/dynamic';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { Suspense, useCallback, useEffect, useMemo, useState } from 'react';
+import { Suspense, useCallback, useEffect, useState } from 'react';
 import LoadingSpinner from '@/components/LoadingSpinner';
+import PersonSearchSelect from '@/components/PersonSearchSelect';
 import { Button, PageHeader } from '@/components/ui';
-import { GET_PEOPLE_LIST } from '@/lib/graphql/queries';
+import { GET_PERSON } from '@/lib/graphql/queries';
 import type { Person } from '@/lib/types';
 
 const FamilyTree = dynamic(() => import('@/components/FamilyTree'), {
@@ -17,15 +18,19 @@ const FamilyTree = dynamic(() => import('@/components/FamilyTree'), {
 function TreePageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { data, loading } = useQuery<{ peopleList: Person[] }>(
-    GET_PEOPLE_LIST,
-    {
-      variables: { limit: 1000 },
-    },
-  );
-  const people = useMemo(() => data?.peopleList || [], [data?.peopleList]);
   const [selectedPerson, setSelectedPerson] = useState<string>('');
   const [showAncestors, setShowAncestors] = useState(true);
+
+  // Fetch selected person details
+  const { data: personData, loading } = useQuery<{ person: Person }>(
+    GET_PERSON,
+    {
+      variables: { id: selectedPerson },
+      skip: !selectedPerson,
+    },
+  );
+
+  const selected = personData?.person;
 
   // Update URL when state changes
   const updateUrl = useCallback(
@@ -38,42 +43,18 @@ function TreePageContent() {
     [router],
   );
 
-  // Read initial state from URL params and set default person
-  /* eslint-disable react-hooks/set-state-in-effect */
+  // Read initial state from URL params
   useEffect(() => {
-    if (people.length === 0) return;
-
     const urlPerson = searchParams.get('person');
     const urlView = searchParams.get('view');
 
-    // Use URL param if valid, otherwise find default
-    if (urlPerson && people.find((p: Person) => p.id === urlPerson)) {
+    if (urlPerson && !selectedPerson) {
       setSelectedPerson(urlPerson);
-    } else if (!selectedPerson) {
-      // Find a recent person as the default starting point
-      const defaultPerson = people.find(
-        (p: Person) => p.birth_year && p.birth_year > 1950,
-      );
-      if (defaultPerson) {
-        setSelectedPerson(defaultPerson.id);
-        updateUrl(defaultPerson.id, urlView !== 'descendants');
-      } else {
-        const recent = people.find(
-          (p: Person) => p.birth_year && p.birth_year > 1900,
-        );
-        if (recent) {
-          setSelectedPerson(recent.id);
-          updateUrl(recent.id, urlView !== 'descendants');
-        }
-      }
     }
-
-    // Set view mode from URL
     if (urlView === 'descendants') {
       setShowAncestors(false);
     }
-  }, [people, searchParams, updateUrl, selectedPerson]);
-  /* eslint-enable react-hooks/set-state-in-effect */
+  }, [searchParams, selectedPerson]);
 
   // Handle person selection change
   const handlePersonChange = (personId: string) => {
@@ -93,8 +74,6 @@ function TreePageContent() {
     updateUrl(personId, showAncestors);
   };
 
-  const selected = people.find((p) => p.id === selectedPerson);
-
   return (
     <>
       <PageHeader
@@ -104,36 +83,11 @@ function TreePageContent() {
       />
       <div className="content-wrapper">
         <div className="tree-controls">
-          <select
-            className="tree-select"
+          <PersonSearchSelect
             value={selectedPerson}
-            onChange={(e) => handlePersonChange(e.target.value)}
-          >
-            <option value="">Select a person...</option>
-            <optgroup label="Living Family Members">
-              {people
-                .filter((p) => p.living)
-                .sort((a, b) => (b.birth_year || 0) - (a.birth_year || 0))
-                .map((p) => (
-                  <option key={p.id} value={p.id}>
-                    {p.name_full} {p.birth_year ? `(b. ${p.birth_year})` : ''}
-                  </option>
-                ))}
-            </optgroup>
-            <optgroup label="Ancestors">
-              {people
-                .filter((p) => !p.living)
-                .sort((a, b) => (b.birth_year || 0) - (a.birth_year || 0))
-                .map((p) => (
-                  <option key={p.id} value={p.id}>
-                    {p.name_full}{' '}
-                    {p.birth_year
-                      ? `(${p.birth_year}–${p.death_year || '?'})`
-                      : ''}
-                  </option>
-                ))}
-            </optgroup>
-          </select>
+            onChange={handlePersonChange}
+            placeholder="Search for a person..."
+          />
           <Button
             variant={showAncestors ? 'primary' : 'secondary'}
             onClick={() => handleViewChange(true)}
@@ -152,7 +106,7 @@ function TreePageContent() {
 
         {loading ? (
           <div className="tree-container flex items-center justify-center">
-            <LoadingSpinner size="lg" message="Loading family data..." />
+            <LoadingSpinner size="lg" message="Loading..." />
           </div>
         ) : selected ? (
           <div className="card">
@@ -176,7 +130,7 @@ function TreePageContent() {
         ) : (
           <div className="tree-container flex items-center justify-center">
             <p className="text-gray-500">
-              Select a person to view their family tree
+              Search for a person to view their family tree
             </p>
           </div>
         )}

@@ -345,8 +345,8 @@ export const typeDefs = `#graphql
     ancestors(personId: ID!, generations: Int): [Person!]!
     descendants(personId: ID!, generations: Int): [Person!]!
 
-    # Timeline
-    timeline: [TimelineYear!]!
+    # Timeline (with optional year range filtering)
+    timeline(startYear: Int, endYear: Int): [TimelineYear!]!
 
     # Surname crests (coat of arms by surname)
     surnameCrests: [SurnameCrest!]!

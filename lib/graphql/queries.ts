@@ -535,6 +535,11 @@ export const GET_USERS = gql`
       created_at
       last_login
       last_accessed
+      person_id
+      linked_person {
+        id
+        name_full
+      }
     }
   }
 `;
@@ -595,6 +600,29 @@ export const CREATE_LOCAL_USER = gql`
       name
       role
       created_at
+    }
+  }
+`;
+
+export const LINK_USER_TO_PERSON = gql`
+  mutation LinkUserToPerson($userId: ID!, $personId: ID) {
+    linkUserToPerson(userId: $userId, personId: $personId) {
+      id
+      email
+      person_id
+      linked_person {
+        id
+        name_full
+      }
+    }
+  }
+`;
+
+export const SET_MY_PERSON = gql`
+  mutation SetMyPerson($personId: ID) {
+    setMyPerson(personId: $personId) {
+      id
+      person_id
     }
   }
 `;

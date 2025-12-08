@@ -185,6 +185,8 @@ export const typeDefs = `#graphql
     last_login: String
     last_accessed: String
     api_key: String
+    person_id: String
+    linked_person: Person
   }
 
   type Invitation {
@@ -499,6 +501,7 @@ export const typeDefs = `#graphql
     deleteInvitation(id: ID!): Boolean
     createLocalUser(email: String!, name: String!, role: String!, password: String!, requirePasswordChange: Boolean): User!
     updateUserRole(userId: ID!, role: String!): User
+    linkUserToPerson(userId: ID!, personId: ID): User
     deleteUser(userId: ID!): Boolean
 
     # Service account mutations (requires admin role)
@@ -508,6 +511,9 @@ export const typeDefs = `#graphql
     # Settings mutations (requires admin role)
     updateSettings(input: SettingsInput!): SiteSettings!
     runMigrations: MigrationResult!
+
+    # User profile mutations (current user)
+    setMyPerson(personId: ID): User
 
     # API Key mutations (user can manage their own key)
     generateApiKey: String!

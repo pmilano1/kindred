@@ -4,6 +4,7 @@ import { useQuery } from '@apollo/client/react';
 import { ArrowDown, ArrowUp } from 'lucide-react';
 import dynamic from 'next/dynamic';
 import { useRouter, useSearchParams } from 'next/navigation';
+import { useSession } from 'next-auth/react';
 import { Suspense, useCallback, useEffect, useState } from 'react';
 import LoadingSpinner from '@/components/LoadingSpinner';
 import PersonSearchSelect from '@/components/PersonSearchSelect';
@@ -18,8 +19,10 @@ const FamilyTree = dynamic(() => import('@/components/FamilyTree'), {
 function TreePageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const { data: session } = useSession();
   const [selectedPerson, setSelectedPerson] = useState<string>('');
   const [showAncestors, setShowAncestors] = useState(true);
+  const [initialized, setInitialized] = useState(false);
 
   // Fetch selected person details
   const { data: personData, loading } = useQuery<{ person: Person }>(
@@ -43,18 +46,34 @@ function TreePageContent() {
     [router],
   );
 
-  // Read initial state from URL params
+  // Read initial state from URL params, fall back to user's linked person
   useEffect(() => {
+    if (initialized) return;
+
     const urlPerson = searchParams.get('person');
     const urlView = searchParams.get('view');
 
-    if (urlPerson && !selectedPerson) {
+    if (urlPerson) {
+      // URL param takes priority
       setSelectedPerson(urlPerson);
+      setInitialized(true);
+    } else if (session?.user?.personId) {
+      // Fall back to user's linked person
+      setSelectedPerson(session.user.personId);
+      updateUrl(session.user.personId, showAncestors);
+      setInitialized(true);
     }
+
     if (urlView === 'descendants') {
       setShowAncestors(false);
     }
-  }, [searchParams, selectedPerson]);
+  }, [
+    searchParams,
+    session?.user?.personId,
+    initialized,
+    showAncestors,
+    updateUrl,
+  ]);
 
   // Handle person selection change
   const handlePersonChange = (personId: string) => {

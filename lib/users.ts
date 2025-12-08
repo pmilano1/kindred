@@ -4,7 +4,7 @@ import { pool } from './pool';
 
 export async function getUsers(): Promise<AppUser[]> {
   const result = await pool.query(
-    `SELECT id, email, name, image, role, invited_by, invited_at, created_at, last_login, last_accessed, api_key FROM users ORDER BY created_at DESC`,
+    `SELECT id, email, name, image, role, invited_by, invited_at, created_at, last_login, last_accessed, api_key, person_id FROM users ORDER BY created_at DESC`,
   );
   return result.rows;
 }
@@ -16,6 +16,16 @@ export async function getUser(id: string): Promise<AppUser | null> {
 
 export async function updateUserRole(id: string, role: string): Promise<void> {
   await pool.query('UPDATE users SET role = $1 WHERE id = $2', [role, id]);
+}
+
+export async function linkUserToPerson(
+  userId: string,
+  personId: string | null,
+): Promise<void> {
+  await pool.query('UPDATE users SET person_id = $1 WHERE id = $2', [
+    personId,
+    userId,
+  ]);
 }
 
 export async function deleteUser(id: string): Promise<void> {

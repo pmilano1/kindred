@@ -1,10 +1,12 @@
+# syntax=docker/dockerfile:1
 FROM node:20-alpine AS base
 
 # Install dependencies only when needed
 FROM base AS deps
 WORKDIR /app
 COPY package.json package-lock.json ./
-RUN npm ci
+# Use BuildKit cache mount for npm cache
+RUN --mount=type=cache,target=/root/.npm npm ci
 
 # Build the application
 FROM base AS builder
@@ -19,7 +21,8 @@ ENV NEXTAUTH_URL=${NEXTAUTH_URL}
 
 # Do NOT set DATABASE_URL here - it must only exist at runtime
 
-RUN npm run build
+# Use BuildKit cache mount for Next.js build cache
+RUN --mount=type=cache,target=/app/.next/cache npm run build
 
 # Production image
 FROM base AS runner

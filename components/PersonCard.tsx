@@ -4,11 +4,52 @@ import type { Person } from '@/lib/types';
 interface PersonCardProps {
   person: Person;
   showDetails?: boolean;
+  showCompleteness?: boolean;
+}
+
+function CompletenessIndicator({ score }: { score: number }) {
+  const getColor = () => {
+    if (score >= 80) return 'text-green-600 bg-green-100';
+    if (score >= 50) return 'text-amber-600 bg-amber-100';
+    return 'text-red-600 bg-red-100';
+  };
+
+  return (
+    <div
+      className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium ${getColor()}`}
+      title={`${score}% complete`}
+    >
+      <svg
+        className="w-3 h-3"
+        viewBox="0 0 36 36"
+        role="img"
+        aria-label={`${score}% complete`}
+      >
+        <path
+          className="opacity-20"
+          d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="3"
+        />
+        <path
+          d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="3"
+          strokeDasharray={`${score}, 100`}
+          strokeLinecap="round"
+        />
+      </svg>
+      <span>{score}%</span>
+    </div>
+  );
 }
 
 export default function PersonCard({
   person,
   showDetails = false,
+  showCompleteness = true,
 }: PersonCardProps) {
   const isFemale = person.sex === 'F';
   const isLiving = person.living;
@@ -33,13 +74,16 @@ export default function PersonCard({
           >
             {person.name_full}
           </Link>
-          <div className="flex gap-2 mt-2">
+          <div className="flex flex-wrap gap-2 mt-2">
             <span
               className={`badge ${isFemale ? 'badge-female' : 'badge-male'}`}
             >
               {isFemale ? 'Female' : 'Male'}
             </span>
             {isLiving && <span className="badge badge-living">Living</span>}
+            {showCompleteness && person.completeness_score !== undefined && (
+              <CompletenessIndicator score={person.completeness_score} />
+            )}
           </div>
         </div>
       </div>

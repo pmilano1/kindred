@@ -315,6 +315,25 @@ export const resolvers = {
 
     stats: async () => {
       const { rows } = await pool.query(`
+        WITH completeness AS (
+          SELECT
+            p.id,
+            (
+              CASE WHEN p.name_full IS NOT NULL THEN 10 ELSE 0 END +
+              CASE WHEN p.birth_date IS NOT NULL THEN 15
+                   WHEN p.birth_year IS NOT NULL THEN 10 ELSE 0 END +
+              CASE WHEN p.birth_place IS NOT NULL THEN 10 ELSE 0 END +
+              CASE WHEN p.living = true THEN 15
+                   WHEN p.death_date IS NOT NULL THEN 15
+                   WHEN p.death_year IS NOT NULL THEN 10 ELSE 0 END +
+              CASE WHEN p.living = true THEN 10
+                   WHEN p.death_place IS NOT NULL THEN 10 ELSE 0 END +
+              CASE WHEN EXISTS (SELECT 1 FROM children c JOIN families f ON c.family_id = f.id WHERE c.person_id = p.id) THEN 15 ELSE 0 END +
+              CASE WHEN COALESCE(p.source_count, 0) > 0 THEN 15 ELSE 0 END +
+              CASE WHEN EXISTS (SELECT 1 FROM media m WHERE m.person_id = p.id) THEN 10 ELSE 0 END
+            ) as score
+          FROM people p
+        )
         SELECT
           (SELECT COUNT(*) FROM people) as total_people,
           (SELECT COUNT(*) FROM families) as total_families,
@@ -323,13 +342,36 @@ export const resolvers = {
           (SELECT COUNT(*) FROM people WHERE living = true) as living_count,
           (SELECT MIN(birth_year) FROM people WHERE birth_year IS NOT NULL) as earliest_birth,
           (SELECT MAX(birth_year) FROM people WHERE birth_year IS NOT NULL) as latest_birth,
-          (SELECT COUNT(*) FROM people WHERE familysearch_id IS NOT NULL) as with_familysearch_id
+          (SELECT COUNT(*) FROM people WHERE familysearch_id IS NOT NULL) as with_familysearch_id,
+          (SELECT COALESCE(AVG(score)::int, 0) FROM completeness) as average_completeness,
+          (SELECT COUNT(*) FROM completeness WHERE score >= 80) as complete_count,
+          (SELECT COUNT(*) FROM completeness WHERE score >= 50 AND score < 80) as partial_count,
+          (SELECT COUNT(*) FROM completeness WHERE score < 50) as incomplete_count
       `);
       return rows[0];
     },
 
     dashboardStats: async () => {
       const { rows } = await pool.query(`
+        WITH completeness AS (
+          SELECT
+            p.id,
+            (
+              CASE WHEN p.name_full IS NOT NULL THEN 10 ELSE 0 END +
+              CASE WHEN p.birth_date IS NOT NULL THEN 15
+                   WHEN p.birth_year IS NOT NULL THEN 10 ELSE 0 END +
+              CASE WHEN p.birth_place IS NOT NULL THEN 10 ELSE 0 END +
+              CASE WHEN p.living = true THEN 15
+                   WHEN p.death_date IS NOT NULL THEN 15
+                   WHEN p.death_year IS NOT NULL THEN 10 ELSE 0 END +
+              CASE WHEN p.living = true THEN 10
+                   WHEN p.death_place IS NOT NULL THEN 10 ELSE 0 END +
+              CASE WHEN EXISTS (SELECT 1 FROM children c JOIN families f ON c.family_id = f.id WHERE c.person_id = p.id) THEN 15 ELSE 0 END +
+              CASE WHEN COALESCE(p.source_count, 0) > 0 THEN 15 ELSE 0 END +
+              CASE WHEN EXISTS (SELECT 1 FROM media m WHERE m.person_id = p.id) THEN 10 ELSE 0 END
+            ) as score
+          FROM people p
+        )
         SELECT
           (SELECT COUNT(*) FROM people) as total_people,
           (SELECT COUNT(*) FROM families) as total_families,
@@ -338,7 +380,10 @@ export const resolvers = {
           (SELECT MIN(birth_year) FROM people WHERE birth_year IS NOT NULL) as earliest_birth,
           (SELECT MAX(birth_year) FROM people WHERE birth_year IS NOT NULL) as latest_birth,
           (SELECT COUNT(*) FROM people WHERE living = true) as living_count,
-          (SELECT COUNT(*) FROM people WHERE birth_year IS NULL OR birth_place IS NULL) as incomplete_count
+          (SELECT COUNT(*) FROM people WHERE birth_year IS NULL OR birth_place IS NULL) as incomplete_count,
+          (SELECT COALESCE(AVG(score)::int, 0) FROM completeness) as average_completeness,
+          (SELECT COUNT(*) FROM completeness WHERE score >= 80) as complete_count,
+          (SELECT COUNT(*) FROM completeness WHERE score >= 50 AND score < 80) as partial_count
       `);
       return rows[0];
     },
@@ -2277,6 +2322,133 @@ export const resolvers = {
 
       setCache(cacheKey, result);
       return result;
+    },
+
+    // Data completeness score (0-100)
+    completeness_score: async (
+      person: {
+        id: string;
+        name_full: string | null;
+        birth_date: string | null;
+        birth_year: number | null;
+        birth_place: string | null;
+        death_date: string | null;
+        death_year: number | null;
+        death_place: string | null;
+        living: boolean;
+        source_count: number | null;
+      },
+      _: unknown,
+      ctx: Context,
+    ): Promise<number> => {
+      let score = 0;
+
+      // Name (10%)
+      if (person.name_full) score += 10;
+
+      // Birth date (15%)
+      if (person.birth_date) score += 15;
+      else if (person.birth_year) score += 10;
+
+      // Birth place (10%)
+      if (person.birth_place) score += 10;
+
+      // Death date (15%) - only if not living
+      if (person.living) {
+        score += 15; // Living people get full death date credit
+      } else if (person.death_date) {
+        score += 15;
+      } else if (person.death_year) {
+        score += 10;
+      }
+
+      // Death place (10%) - only if not living
+      if (person.living) {
+        score += 10;
+      } else if (person.death_place) {
+        score += 10;
+      }
+
+      // At least one parent (15%)
+      const families = await ctx.loaders.familiesAsChildLoader.load(person.id);
+      if (families.length > 0) score += 15;
+
+      // At least one source (15%)
+      if ((person.source_count ?? 0) > 0) score += 15;
+
+      // Photo/media (10%)
+      const media = await ctx.loaders.mediaLoader.load(person.id);
+      if (media.length > 0) score += 10;
+
+      return score;
+    },
+
+    // Detailed completeness breakdown
+    completeness_details: async (
+      person: {
+        id: string;
+        name_full: string | null;
+        birth_date: string | null;
+        birth_year: number | null;
+        birth_place: string | null;
+        death_date: string | null;
+        death_year: number | null;
+        death_place: string | null;
+        living: boolean;
+        source_count: number | null;
+      },
+      _: unknown,
+      ctx: Context,
+    ) => {
+      const has_name = !!person.name_full;
+      const has_birth_date = !!(person.birth_date || person.birth_year);
+      const has_birth_place = !!person.birth_place;
+      const has_death_date =
+        person.living || !!(person.death_date || person.death_year);
+      const has_death_place = person.living || !!person.death_place;
+
+      const families = await ctx.loaders.familiesAsChildLoader.load(person.id);
+      const has_parents = families.length > 0;
+
+      const has_sources = (person.source_count ?? 0) > 0;
+
+      const media = await ctx.loaders.mediaLoader.load(person.id);
+      const has_media = media.length > 0;
+
+      // Calculate score
+      let score = 0;
+      if (has_name) score += 10;
+      if (has_birth_date) score += 15;
+      if (has_birth_place) score += 10;
+      if (has_death_date) score += 15;
+      if (has_death_place) score += 10;
+      if (has_parents) score += 15;
+      if (has_sources) score += 15;
+      if (has_media) score += 10;
+
+      // Build missing fields list
+      const missing_fields: string[] = [];
+      if (!has_name) missing_fields.push('name');
+      if (!has_birth_date) missing_fields.push('birth_date');
+      if (!has_birth_place) missing_fields.push('birth_place');
+      if (!has_death_date) missing_fields.push('death_date');
+      if (!has_death_place) missing_fields.push('death_place');
+      if (!has_parents) missing_fields.push('parents');
+      if (!has_sources) missing_fields.push('sources');
+      if (!has_media) missing_fields.push('media');
+
+      return {
+        score,
+        has_name,
+        has_birth_date,
+        has_birth_place,
+        has_death_date,
+        has_death_place,
+        has_parents,
+        has_sources,
+        has_media,
+        missing_fields,
+      };
     },
 
     // Computed research tip based on gaps (Issue #195)

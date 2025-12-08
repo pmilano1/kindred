@@ -41,6 +41,22 @@ export interface Person {
   is_placeholder: boolean;
   // Computed research tip
   research_tip?: string | null;
+  // Data completeness
+  completeness_score?: number;
+  completeness_details?: CompletenessDetails;
+}
+
+export interface CompletenessDetails {
+  score: number;
+  has_name: boolean;
+  has_birth_date: boolean;
+  has_birth_place: boolean;
+  has_death_date: boolean;
+  has_death_place: boolean;
+  has_parents: boolean;
+  has_sources: boolean;
+  has_media: boolean;
+  missing_fields: string[];
 }
 
 // Unified life event (combines residence, occupation, and other events)
@@ -84,6 +100,10 @@ export interface Stats {
   earliest_birth: number | null;
   latest_birth: number | null;
   with_familysearch_id: number;
+  average_completeness: number;
+  complete_count: number;
+  partial_count: number;
+  incomplete_count: number;
 }
 
 // Unified Source type - combines sources and research activity

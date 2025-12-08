@@ -46,6 +46,10 @@ export const typeDefs = `#graphql
     # Computed research tip for queue prioritization
     research_tip: String
 
+    # Data completeness score (0-100)
+    completeness_score: Int
+    completeness_details: CompletenessDetails
+
     # Relationships (batched via DataLoader)
     parents: [Person!]!
     siblings: [Person!]!
@@ -127,6 +131,20 @@ export const typeDefs = `#graphql
     url: String!
   }
 
+  # Data completeness tracking
+  type CompletenessDetails {
+    score: Int!
+    has_name: Boolean!
+    has_birth_date: Boolean!
+    has_birth_place: Boolean!
+    has_death_date: Boolean!
+    has_death_place: Boolean!
+    has_parents: Boolean!
+    has_sources: Boolean!
+    has_media: Boolean!
+    missing_fields: [String!]!
+  }
+
   # ===========================================
   # SURNAME CRESTS (Coat of Arms by surname)
   # ===========================================
@@ -155,6 +173,10 @@ export const typeDefs = `#graphql
     earliest_birth: Int
     latest_birth: Int
     with_familysearch_id: Int!
+    average_completeness: Int!
+    complete_count: Int!
+    partial_count: Int!
+    incomplete_count: Int!
   }
 
   # ===========================================
@@ -301,6 +323,9 @@ export const typeDefs = `#graphql
     latest_birth: Int
     living_count: Int!
     incomplete_count: Int!
+    average_completeness: Int!
+    complete_count: Int!
+    partial_count: Int!
   }
 
   input EmailPreferencesInput {

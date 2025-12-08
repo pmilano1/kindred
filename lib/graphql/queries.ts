@@ -16,6 +16,7 @@ export const PERSON_CARD_FIELDS = gql`
     death_year
     death_place
     burial_place
+    completeness_score
   }
 `;
 
@@ -65,6 +66,19 @@ export const PERSON_FULL_FIELDS = gql`
     last_researched
     is_notable
     notable_description
+    completeness_score
+    completeness_details {
+      score
+      has_name
+      has_birth_date
+      has_birth_place
+      has_death_date
+      has_death_place
+      has_parents
+      has_sources
+      has_media
+      missing_fields
+    }
   }
 `;
 
@@ -419,6 +433,10 @@ export const GET_STATS = gql`
       earliest_birth
       latest_birth
       with_familysearch_id
+      average_completeness
+      complete_count
+      partial_count
+      incomplete_count
     }
   }
 `;
@@ -435,6 +453,9 @@ export const GET_DASHBOARD = gql`
       latest_birth
       living_count
       incomplete_count
+      average_completeness
+      complete_count
+      partial_count
     }
     recentActivity(limit: $activityLimit) {
       id

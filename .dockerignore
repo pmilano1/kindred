@@ -1,8 +1,48 @@
+# Dependencies
 node_modules
+
+# Build output
 .next
+out
+coverage
+
+# Version control
 .git
 .gitignore
+
+# Documentation
 README.md
+CONTRIBUTING.md
+LICENSE
+*.md
+
+# Docker
 Dockerfile
 .dockerignore
+
+# IDE/Editor
+.vscode
+.idea
+*.swp
+*.swo
+
+# Testing
+__tests__
+*.test.ts
+*.test.tsx
+*.spec.ts
+*.spec.tsx
+vitest.config.mts
+vitest.setup.tsx
+
+# Development
+.env
+.env.local
+.env.*.local
+.eslintrc*
+.prettierrc*
+biome.json
+
+# CI/CD
+.github
 

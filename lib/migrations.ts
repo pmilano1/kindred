@@ -209,6 +209,97 @@ export const migrations: Migration[] = [
       return ['Created full-text search infrastructure'];
     },
   },
+  {
+    version: 6,
+    name: 'estimated_dates_and_placeholders',
+    up: async (pool: Pool) => {
+      const results: string[] = [];
+
+      // Add date accuracy columns (EXACT, ESTIMATED, RANGE, UNKNOWN)
+      await pool.query(`
+        ALTER TABLE people
+        ADD COLUMN IF NOT EXISTS birth_date_accuracy VARCHAR(20) DEFAULT 'UNKNOWN',
+        ADD COLUMN IF NOT EXISTS death_date_accuracy VARCHAR(20) DEFAULT 'UNKNOWN'
+      `);
+      results.push('Added birth_date_accuracy and death_date_accuracy columns');
+
+      // Add year range columns for estimated/ranged dates
+      await pool.query(`
+        ALTER TABLE people
+        ADD COLUMN IF NOT EXISTS birth_year_min INT,
+        ADD COLUMN IF NOT EXISTS birth_year_max INT,
+        ADD COLUMN IF NOT EXISTS death_year_min INT,
+        ADD COLUMN IF NOT EXISTS death_year_max INT
+      `);
+      results.push('Added birth/death year min/max range columns');
+
+      // Add placeholder flag for unknown parents
+      await pool.query(`
+        ALTER TABLE people
+        ADD COLUMN IF NOT EXISTS is_placeholder BOOLEAN NOT NULL DEFAULT false
+      `);
+      results.push('Added is_placeholder column');
+
+      // Create index for placeholder filtering
+      await pool.query(`
+        CREATE INDEX IF NOT EXISTS idx_people_is_placeholder
+        ON people(is_placeholder) WHERE is_placeholder = true
+      `);
+      results.push('Created index for placeholder people');
+
+      // Add research scoring weight settings
+      const weightSettings = [
+        [
+          'research_weight_missing_core_dates',
+          '30',
+          'Weight for missing birth/death years',
+          'research',
+        ],
+        [
+          'research_weight_missing_places',
+          '15',
+          'Weight for missing birth/death places',
+          'research',
+        ],
+        [
+          'research_weight_estimated_dates',
+          '20',
+          'Weight for estimated/ranged dates',
+          'research',
+        ],
+        [
+          'research_weight_placeholder_parent',
+          '40',
+          'Weight for having placeholder parents',
+          'research',
+        ],
+        [
+          'research_weight_low_sources',
+          '25',
+          'Weight for zero or low source count',
+          'research',
+        ],
+        [
+          'research_weight_manual_priority',
+          '10',
+          'Multiplier for manual research_priority',
+          'research',
+        ],
+      ];
+
+      for (const [key, value, description, category] of weightSettings) {
+        await pool.query(
+          `INSERT INTO settings (key, value, description, category)
+           VALUES ($1, $2, $3, $4)
+           ON CONFLICT (key) DO NOTHING`,
+          [key, value, description, category],
+        );
+      }
+      results.push('Added research scoring weight settings');
+
+      return results;
+    },
+  },
 ];
 
 // Get current database version

@@ -328,18 +328,67 @@ export const resolvers = {
     },
 
     researchQueue: async (_: unknown, { limit = 50 }: { limit?: number }) => {
+      // Get configurable weights from settings
+      const settings = await getSettings();
+      const wMissingDates = settings.research_weight_missing_core_dates;
+      const wMissingPlaces = settings.research_weight_missing_places;
+      const wEstimatedDates = settings.research_weight_estimated_dates;
+      const wPlaceholderParent = settings.research_weight_placeholder_parent;
+      const wLowSources = settings.research_weight_low_sources;
+      const wManualPriority = settings.research_weight_manual_priority;
+
       const { rows } = await pool.query(
         `
-        SELECT * FROM people
-        WHERE research_status != 'verified' OR research_status IS NULL
+        WITH placeholder_parents AS (
+          -- Find people who have at least one placeholder parent
+          SELECT DISTINCT c.person_id
+          FROM children c
+          JOIN families f ON c.family_id = f.id
+          JOIN people parent ON (parent.id = f.husband_id OR parent.id = f.wife_id)
+          WHERE parent.is_placeholder = true
+        ),
+        scored_people AS (
+          SELECT p.*,
+            -- Compute automatic score based on gaps
+            (
+              -- Missing core dates (birth/death year)
+              CASE WHEN p.birth_year IS NULL THEN $2 ELSE 0 END +
+              CASE WHEN NOT p.living AND p.death_year IS NULL THEN $2 ELSE 0 END +
+              -- Missing places
+              CASE WHEN p.birth_place IS NULL OR p.birth_place = '' THEN $3 ELSE 0 END +
+              CASE WHEN NOT p.living AND (p.death_place IS NULL OR p.death_place = '') THEN $3 ELSE 0 END +
+              -- Estimated/ranged dates (not exact)
+              CASE WHEN p.birth_date_accuracy IN ('ESTIMATED', 'RANGE') THEN $4 ELSE 0 END +
+              CASE WHEN p.death_date_accuracy IN ('ESTIMATED', 'RANGE') THEN $4 ELSE 0 END +
+              -- Placeholder parents
+              CASE WHEN pp.person_id IS NOT NULL THEN $5 ELSE 0 END +
+              -- Low/no sources
+              CASE WHEN COALESCE(p.source_count, 0) = 0 THEN $6 ELSE 0 END +
+              -- Manual priority boost
+              COALESCE(p.research_priority, 0) * $7
+            ) AS auto_score
+          FROM people p
+          LEFT JOIN placeholder_parents pp ON pp.person_id = p.id
+          WHERE (p.research_status != 'verified' OR p.research_status IS NULL)
+            AND p.is_placeholder = false
+        )
+        SELECT * FROM scored_people
         ORDER BY
-          research_priority DESC NULLS LAST,
+          auto_score DESC,
           (research_status = 'brick_wall') DESC,
           (research_status = 'in_progress') DESC,
           last_researched NULLS FIRST
         LIMIT $1
       `,
-        [Math.min(limit, 100)],
+        [
+          Math.min(limit, 100),
+          wMissingDates,
+          wMissingPlaces,
+          wEstimatedDates,
+          wPlaceholderParent,
+          wLowSources,
+          wManualPriority,
+        ],
       );
       // Convert Date objects to ISO strings for serialization
       return rows.map((row: Record<string, unknown>) => ({
@@ -2035,6 +2084,93 @@ export const resolvers = {
 
       setCache(cacheKey, result);
       return result;
+    },
+
+    // Computed research tip based on gaps (Issue #195)
+    research_tip: async (
+      person: {
+        id: string;
+        birth_year: number | null;
+        birth_place: string | null;
+        death_year: number | null;
+        death_place: string | null;
+        birth_date_accuracy: string | null;
+        death_date_accuracy: string | null;
+        source_count: number | null;
+        living: boolean;
+        is_placeholder: boolean;
+      },
+      _: unknown,
+      ctx: Context,
+    ): Promise<string | null> => {
+      // Don't generate tips for placeholder people
+      if (person.is_placeholder) return null;
+
+      // Check for placeholder parents (highest priority)
+      const families = await ctx.loaders.familiesAsChildLoader.load(person.id);
+      if (families.length > 0) {
+        const parentIds = families.flatMap((f) =>
+          [f.husband_id, f.wife_id].filter(Boolean),
+        ) as string[];
+        if (parentIds.length > 0) {
+          const parents = (
+            await ctx.loaders.personLoader.loadMany(parentIds)
+          ).filter(Boolean) as Array<{
+            is_placeholder?: boolean;
+            sex?: string;
+          }>;
+          const placeholderParent = parents.find((p) => p.is_placeholder);
+          if (placeholderParent) {
+            const parentType =
+              placeholderParent.sex === 'M' ? 'father' : 'mother';
+            return `Identify unknown ${parentType} – current parent is a placeholder`;
+          }
+        }
+      }
+
+      // Missing birth year (high priority)
+      if (person.birth_year === null) {
+        return 'Find birth record to establish birth year';
+      }
+
+      // Missing death year for deceased person
+      if (!person.living && person.death_year === null) {
+        return 'Find death record to establish death year';
+      }
+
+      // Estimated/ranged birth date
+      if (
+        person.birth_date_accuracy === 'ESTIMATED' ||
+        person.birth_date_accuracy === 'RANGE'
+      ) {
+        return 'Refine estimated birth date using census or vital records';
+      }
+
+      // Estimated/ranged death date
+      if (
+        person.death_date_accuracy === 'ESTIMATED' ||
+        person.death_date_accuracy === 'RANGE'
+      ) {
+        return 'Refine estimated death date using vital records or obituaries';
+      }
+
+      // Missing birth place
+      if (!person.birth_place) {
+        return 'Find birth location from census or vital records';
+      }
+
+      // Missing death place for deceased
+      if (!person.living && !person.death_place) {
+        return 'Find death location from vital records or obituaries';
+      }
+
+      // No sources attached
+      if ((person.source_count ?? 0) === 0) {
+        return 'Attach at least one high-quality source to verify data';
+      }
+
+      // All gaps filled - suggest review
+      return 'Review existing sources for additional details';
     },
   },
 

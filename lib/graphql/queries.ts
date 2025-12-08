@@ -504,6 +504,8 @@ export const GET_RESEARCH_QUEUE = gql`
       research_status
       research_priority
       last_researched
+      research_tip
+      source_count
     }
   }
 `;

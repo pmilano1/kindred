@@ -36,6 +36,8 @@ interface ResearchPerson {
   research_priority: number | null;
   research_notes_count?: number;
   last_researched?: string | null;
+  research_tip?: string | null;
+  source_count?: number | null;
 }
 
 export default function ResearchQueueClient() {
@@ -114,6 +116,9 @@ export default function ResearchQueueClient() {
                   <th className="py-2 px-3 text-sm font-semibold">Years</th>
                   <th className="py-2 px-3 text-sm font-semibold">Status</th>
                   <th className="py-2 px-3 text-sm font-semibold">
+                    Research Tip
+                  </th>
+                  <th className="py-2 px-3 text-sm font-semibold">
                     Last Researched
                   </th>
                 </tr>
@@ -191,6 +196,16 @@ export default function ResearchQueueClient() {
                             )}
                           </SelectContent>
                         </Select>
+                      </td>
+                      <td className="py-3 px-3 text-sm text-gray-600 max-w-xs">
+                        {person.research_tip ? (
+                          <span className="flex items-start gap-1">
+                            <span className="text-amber-500">💡</span>
+                            <span>{person.research_tip}</span>
+                          </span>
+                        ) : (
+                          <span className="text-gray-400">—</span>
+                        )}
                       </td>
                       <td className="py-3 px-3 text-sm text-gray-500">
                         {person.last_researched

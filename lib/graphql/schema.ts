@@ -274,6 +274,35 @@ export const typeDefs = `#graphql
     birthday_reminders: Boolean!
   }
 
+  # Dashboard types
+  type ActivityEntry {
+    id: ID!
+    action: String!
+    details: String
+    user_name: String
+    user_email: String
+    created_at: String!
+    person_id: String
+    person_name: String
+  }
+
+  type IncompleteProfile {
+    person: Person!
+    missing_fields: [String!]!
+    suggestion: String!
+  }
+
+  type DashboardStats {
+    total_people: Int!
+    total_families: Int!
+    total_sources: Int!
+    total_media: Int!
+    earliest_birth: Int
+    latest_birth: Int
+    living_count: Int!
+    incomplete_count: Int!
+  }
+
   input EmailPreferencesInput {
     research_updates: Boolean
     tree_changes: Boolean
@@ -353,7 +382,12 @@ export const typeDefs = `#graphql
 
     # Stats & Research
     stats: Stats!
+    dashboardStats: DashboardStats!
     researchQueue(first: Int, after: String): PersonConnection!
+
+    # Dashboard
+    recentActivity(limit: Int): [ActivityEntry!]!
+    incompleteProfiles(limit: Int): [IncompleteProfile!]!
 
     # Ancestry traversal (optimized single query)
     ancestors(personId: ID!, generations: Int): [Person!]!

@@ -328,6 +328,108 @@ export const resolvers = {
       return rows[0];
     },
 
+    dashboardStats: async () => {
+      const { rows } = await pool.query(`
+        SELECT
+          (SELECT COUNT(*) FROM people) as total_people,
+          (SELECT COUNT(*) FROM families) as total_families,
+          (SELECT COUNT(*) FROM sources) as total_sources,
+          (SELECT COUNT(*) FROM media) as total_media,
+          (SELECT MIN(birth_year) FROM people WHERE birth_year IS NOT NULL) as earliest_birth,
+          (SELECT MAX(birth_year) FROM people WHERE birth_year IS NOT NULL) as latest_birth,
+          (SELECT COUNT(*) FROM people WHERE living = true) as living_count,
+          (SELECT COUNT(*) FROM people WHERE birth_year IS NULL OR birth_place IS NULL) as incomplete_count
+      `);
+      return rows[0];
+    },
+
+    recentActivity: async (_: unknown, { limit = 10 }: { limit?: number }) => {
+      const { rows } = await pool.query(
+        `
+        SELECT
+          al.id,
+          al.action,
+          al.details::text as details,
+          u.name as user_name,
+          u.email as user_email,
+          al.created_at,
+          al.details->>'person_id' as person_id,
+          al.details->>'person_name' as person_name
+        FROM audit_log al
+        LEFT JOIN users u ON al.user_id = u.id
+        ORDER BY al.created_at DESC
+        LIMIT $1
+        `,
+        [Math.min(limit, 50)],
+      );
+      return rows;
+    },
+
+    incompleteProfiles: async (
+      _: unknown,
+      { limit = 10 }: { limit?: number },
+    ) => {
+      const { rows } = await pool.query(
+        `
+        SELECT
+          p.*,
+          COALESCE(p.notes, p.description) as description,
+          CASE
+            WHEN p.birth_year IS NULL THEN 'birth_year'
+            WHEN p.birth_place IS NULL THEN 'birth_place'
+            WHEN p.death_year IS NULL AND p.living = false THEN 'death_year'
+            WHEN p.death_place IS NULL AND p.living = false THEN 'death_place'
+            ELSE 'parents'
+          END as primary_missing
+        FROM people p
+        WHERE
+          p.birth_year IS NULL
+          OR p.birth_place IS NULL
+          OR (p.living = false AND p.death_year IS NULL)
+          OR NOT EXISTS (
+            SELECT 1 FROM children c
+            JOIN families f ON c.family_id = f.id
+            WHERE c.person_id = p.id
+          )
+        ORDER BY p.research_priority DESC NULLS LAST, p.name_full
+        LIMIT $1
+        `,
+        [Math.min(limit, 20)],
+      );
+
+      return rows.map(
+        (row: {
+          primary_missing: string;
+          birth_year: number | null;
+          birth_place: string | null;
+          death_year: number | null;
+          death_place: string | null;
+          living: boolean;
+        }) => {
+          const missingFields: string[] = [];
+          if (!row.birth_year) missingFields.push('birth_year');
+          if (!row.birth_place) missingFields.push('birth_place');
+          if (!row.living && !row.death_year) missingFields.push('death_year');
+          if (!row.living && !row.death_place)
+            missingFields.push('death_place');
+
+          const suggestions: Record<string, string> = {
+            birth_year: 'Add birth year from records',
+            birth_place: 'Research birth location',
+            death_year: 'Find death records',
+            death_place: 'Research death location',
+            parents: 'Research and add parents',
+          };
+
+          return {
+            person: row,
+            missing_fields: missingFields,
+            suggestion: suggestions[row.primary_missing] || 'Complete profile',
+          };
+        },
+      );
+    },
+
     researchQueue: async (
       _: unknown,
       { first = 50, after }: { first?: number; after?: string },

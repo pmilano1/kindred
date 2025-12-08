@@ -423,6 +423,42 @@ export const GET_STATS = gql`
   }
 `;
 
+export const GET_DASHBOARD = gql`
+  ${PERSON_CARD_FIELDS}
+  query GetDashboard($activityLimit: Int, $incompleteLimit: Int, $recentLimit: Int) {
+    dashboardStats {
+      total_people
+      total_families
+      total_sources
+      total_media
+      earliest_birth
+      latest_birth
+      living_count
+      incomplete_count
+    }
+    recentActivity(limit: $activityLimit) {
+      id
+      action
+      details
+      user_name
+      user_email
+      created_at
+      person_id
+      person_name
+    }
+    incompleteProfiles(limit: $incompleteLimit) {
+      person {
+        ...PersonCardFields
+      }
+      missing_fields
+      suggestion
+    }
+    recentPeople(limit: $recentLimit) {
+      ...PersonCardFields
+    }
+  }
+`;
+
 export const GET_RECENT_PEOPLE = gql`
   ${PERSON_CARD_FIELDS}
   query GetRecentPeople($limit: Int) {

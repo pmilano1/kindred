@@ -4,13 +4,12 @@ import { useQuery } from '@apollo/client/react';
 import { UserPlus } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useSession } from 'next-auth/react';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import CreatePersonModal from '@/components/CreatePersonModal';
 import LoadingSpinner from '@/components/LoadingSpinner';
 import PersonCard from '@/components/PersonCard';
 import {
   Button,
-  Input,
   PageHeader,
   Select,
   SelectContent,
@@ -18,10 +17,24 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui';
-import { GET_PEOPLE_LIST } from '@/lib/graphql/queries';
+import { GET_PEOPLE } from '@/lib/graphql/queries';
 import type { Person } from '@/lib/types';
 
 const PAGE_SIZE = 50;
+
+interface PersonEdge {
+  node: Person;
+  cursor: string;
+}
+
+interface PersonConnection {
+  edges: PersonEdge[];
+  pageInfo: {
+    hasNextPage: boolean;
+    endCursor: string | null;
+    totalCount: number;
+  };
+}
 
 export default function PeoplePage() {
   const { data: session } = useSession();
@@ -29,67 +42,55 @@ export default function PeoplePage() {
   const canEdit =
     session?.user?.role === 'admin' || session?.user?.role === 'editor';
 
-  const { data, loading } = useQuery<{ peopleList: Person[] }>(
-    GET_PEOPLE_LIST,
-    {
-      variables: { limit: 10000 },
-    },
-  );
-
-  const people = useMemo(() => data?.peopleList || [], [data?.peopleList]);
-  const [search, setSearch] = useState('');
   const [filter, setFilter] = useState<'all' | 'living' | 'male' | 'female'>(
     'all',
   );
-  const [displayCount, setDisplayCount] = useState(PAGE_SIZE);
   const [showCreateModal, setShowCreateModal] = useState(false);
 
-  // Reset display count when filters change - valid synchronization pattern
-  useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    setDisplayCount(PAGE_SIZE);
-  }, []);
-
-  const filteredPeople = useMemo(() => {
-    let result = people;
-
-    if (search) {
-      const q = search.toLowerCase();
-      result = result.filter(
-        (p: Person) =>
-          p.name_full.toLowerCase().includes(q) ||
-          p.birth_place?.toLowerCase().includes(q) ||
-          p.death_place?.toLowerCase().includes(q),
-      );
-    }
-
-    if (filter === 'living') result = result.filter((p: Person) => p.living);
-    else if (filter === 'male')
-      result = result.filter((p: Person) => p.sex === 'M');
-    else if (filter === 'female')
-      result = result.filter((p: Person) => p.sex === 'F');
-
-    return result;
-  }, [search, filter, people]);
-
-  const displayedPeople = useMemo(
-    () => filteredPeople.slice(0, displayCount),
-    [filteredPeople, displayCount],
+  const { data, loading, fetchMore } = useQuery<{ people: PersonConnection }>(
+    GET_PEOPLE,
+    { variables: { first: PAGE_SIZE } },
   );
 
-  const hasMore = displayCount < filteredPeople.length;
+  const people = useMemo(
+    () => data?.people.edges.map((e) => e.node) || [],
+    [data],
+  );
+
+  const totalCount = data?.people.pageInfo.totalCount ?? 0;
+  const hasNextPage = data?.people.pageInfo.hasNextPage ?? false;
+  const endCursor = data?.people.pageInfo.endCursor;
+
+  // Apply client-side filter for sex/living
+  const filteredPeople = useMemo(() => {
+    let result = people;
+    if (filter === 'living') result = result.filter((p) => p.living);
+    else if (filter === 'male') result = result.filter((p) => p.sex === 'M');
+    else if (filter === 'female') result = result.filter((p) => p.sex === 'F');
+    return result;
+  }, [filter, people]);
 
   const loadMore = useCallback(() => {
-    setDisplayCount((prev) =>
-      Math.min(prev + PAGE_SIZE, filteredPeople.length),
-    );
-  }, [filteredPeople.length]);
+    if (!hasNextPage || !endCursor) return;
+    fetchMore({
+      variables: { first: PAGE_SIZE, after: endCursor },
+      updateQuery: (prev, { fetchMoreResult }) => {
+        if (!fetchMoreResult) return prev;
+        return {
+          people: {
+            ...fetchMoreResult.people,
+            edges: [...prev.people.edges, ...fetchMoreResult.people.edges],
+          },
+        };
+      },
+    });
+  }, [hasNextPage, endCursor, fetchMore]);
 
   return (
     <>
       <PageHeader
         title="People"
-        subtitle={`${people.length} individuals in the database`}
+        subtitle={`${totalCount} individuals in the database`}
         icon="Users"
         actions={
           canEdit && (
@@ -103,19 +104,12 @@ export default function PeoplePage() {
         }
       />
       <div className="content-wrapper">
-        <div className="flex flex-col md:flex-row gap-4 mb-6">
-          <Input
-            type="text"
-            placeholder="Search by name or place..."
-            className="flex-1"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-          />
+        <div className="flex justify-end mb-6">
           <Select
             value={filter}
             onValueChange={(value) => setFilter(value as typeof filter)}
           >
-            <SelectTrigger className="w-full md:w-48">
+            <SelectTrigger className="w-48">
               <SelectValue placeholder="Filter" />
             </SelectTrigger>
             <SelectContent>
@@ -134,19 +128,19 @@ export default function PeoplePage() {
         ) : (
           <>
             <p className="text-sm text-gray-500 mb-4">
-              Showing {displayedPeople.length} of {filteredPeople.length} people
-              {filteredPeople.length !== people.length &&
-                ` (filtered from ${people.length})`}
+              Showing {filteredPeople.length} of {people.length} loaded
+              {filter !== 'all' && ` (filtered)`}
+              {hasNextPage && ` • ${totalCount} total`}
             </p>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {displayedPeople.map((person) => (
+              {filteredPeople.map((person) => (
                 <PersonCard key={person.id} person={person} showDetails />
               ))}
             </div>
-            {hasMore && (
+            {hasNextPage && (
               <div className="text-center mt-8">
                 <Button onClick={loadMore} size="lg">
-                  Load More ({filteredPeople.length - displayCount} remaining)
+                  Load More
                 </Button>
               </div>
             )}
@@ -154,7 +148,6 @@ export default function PeoplePage() {
         )}
       </div>
 
-      {/* Create Person Modal */}
       <CreatePersonModal
         isOpen={showCreateModal}
         onClose={() => setShowCreateModal(false)}

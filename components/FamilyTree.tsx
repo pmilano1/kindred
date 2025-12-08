@@ -2,7 +2,8 @@
 
 import { gql } from '@apollo/client/core';
 import { useMutation, useQuery } from '@apollo/client/react';
-import * as d3 from 'd3';
+import { select } from 'd3-selection';
+import { zoom, zoomIdentity } from 'd3-zoom';
 import { ChevronDown, ChevronRight, Crown } from 'lucide-react';
 import Image from 'next/image';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -393,7 +394,7 @@ export default function FamilyTree({
   // Draw pedigree chart
   useEffect(() => {
     if (!data || !svgRef.current || !rootPersonId) return;
-    const svg = d3.select(svgRef.current);
+    const svg = select(svgRef.current);
     svg.selectAll('*').remove();
 
     if (!showAncestors) {
@@ -516,11 +517,10 @@ export default function FamilyTree({
 
       // Setup zoom
       const { width, height } = dimensions;
-      const zoom = d3
-        .zoom<SVGSVGElement, unknown>()
+      const zoomBehavior = zoom<SVGSVGElement, unknown>()
         .scaleExtent([0.2, 2])
         .on('zoom', (event) => g.attr('transform', event.transform));
-      svg.call(zoom);
+      svg.call(zoomBehavior);
 
       const g = svg.append('g');
 
@@ -960,7 +960,10 @@ export default function FamilyTree({
       );
       const tx = (width - bounds.width * scale) / 2 - bounds.x * scale;
       const ty = 20;
-      svg.call(zoom.transform, d3.zoomIdentity.translate(tx, ty).scale(scale));
+      svg.call(
+        zoomBehavior.transform,
+        zoomIdentity.translate(tx, ty).scale(scale),
+      );
 
       return;
     }
@@ -1690,11 +1693,10 @@ export default function FamilyTree({
     }
 
     // Zoom/pan
-    const zoom = d3
-      .zoom<SVGSVGElement, unknown>()
+    const zoomBehavior2 = zoom<SVGSVGElement, unknown>()
       .scaleExtent([0.3, 3])
       .on('zoom', (e) => g.attr('transform', e.transform));
-    svg.call(zoom);
+    svg.call(zoomBehavior2);
 
     // Fit to view
     const bounds = g.node()?.getBBox();
@@ -1707,7 +1709,10 @@ export default function FamilyTree({
       );
       const tx = (width - bounds.width * scale) / 2 - bounds.x * scale;
       const ty = (height - bounds.height * scale) / 2 - bounds.y * scale;
-      svg.call(zoom.transform, d3.zoomIdentity.translate(tx, ty).scale(scale));
+      svg.call(
+        zoomBehavior2.transform,
+        zoomIdentity.translate(tx, ty).scale(scale),
+      );
     }
   }, [
     data,

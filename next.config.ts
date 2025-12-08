@@ -16,6 +16,10 @@ const nextConfig: NextConfig = {
       },
     ],
   },
+  experimental: {
+    // Tree-shake large libraries for smaller bundles
+    optimizePackageImports: ['lucide-react', 'd3'],
+  },
 };
 
 export default nextConfig;

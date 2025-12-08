@@ -2,7 +2,7 @@
  * Settings Module Tests
  * Tests caching behavior and default values
  */
-import { beforeEach, describe, expect, it, Mock, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 // Create mock function before vi.mock
 const mockQuery = vi.fn();

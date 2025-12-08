@@ -350,7 +350,9 @@ export default function ResearchPanel({
               min="0"
               max="10"
               value={priority}
-              onChange={(e) => handlePriorityChange(parseInt(e.target.value))}
+              onChange={(e) =>
+                handlePriorityChange(parseInt(e.target.value, 10))
+              }
               className="flex-1"
             />
             <span className="text-sm font-bold w-6">{priority}</span>

@@ -1,4 +1,4 @@
-import crypto from 'crypto';
+import crypto from 'node:crypto';
 import type { AppUser, Invitation } from './auth-types';
 import { pool } from './pool';
 

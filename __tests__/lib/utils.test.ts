@@ -37,7 +37,7 @@ describe('Utility Functions', () => {
     const maxNameLen = 18;
     const truncateName = (name: string): string => {
       if (name.length <= maxNameLen) return name;
-      return name.substring(0, maxNameLen - 1) + '…';
+      return `${name.substring(0, maxNameLen - 1)}…`;
     };
 
     it('does not truncate short names', () => {

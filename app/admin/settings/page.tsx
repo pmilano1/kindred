@@ -171,13 +171,13 @@ export default function SettingsPage() {
       );
       setMessage({
         type: 'success',
-        text: 'Migration completed: ' + data.runMigrations.results.join(', '),
+        text: `Migration completed: ${data.runMigrations.results.join(', ')}`,
       });
       loadSettings();
     } catch (err) {
       setMessage({
         type: 'error',
-        text: 'Migration failed: ' + (err as Error).message,
+        text: `Migration failed: ${(err as Error).message}`,
       });
     } finally {
       setMigrating(false);
@@ -223,7 +223,7 @@ export default function SettingsPage() {
       console.error('Failed to export GEDCOM:', err);
       setMessage({
         type: 'error',
-        text: 'Failed to export GEDCOM: ' + (err as Error).message,
+        text: `Failed to export GEDCOM: ${(err as Error).message}`,
       });
     } finally {
       setExporting(false);
@@ -272,7 +272,7 @@ export default function SettingsPage() {
       console.error('Failed to import GEDCOM:', err);
       setMessage({
         type: 'error',
-        text: 'Failed to import GEDCOM: ' + (err as Error).message,
+        text: `Failed to import GEDCOM: ${(err as Error).message}`,
       });
     } finally {
       setImporting(false);

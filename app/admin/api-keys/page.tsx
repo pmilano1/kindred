@@ -94,7 +94,7 @@ export default function ApiKeysPage() {
 
   const maskKey = (key: string) => {
     if (key.length <= 8) return '••••••••';
-    return key.slice(0, 4) + '••••••••••••••••••••••••' + key.slice(-4);
+    return `${key.slice(0, 4)}••••••••••••••••••••••••${key.slice(-4)}`;
   };
 
   // Show loading while session or data is loading

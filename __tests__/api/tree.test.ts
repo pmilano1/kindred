@@ -72,7 +72,7 @@ describe('Tree data structure', () => {
     const longName = 'Count Philippe de Kersaint-Gilly';
     const displayName =
       longName.length > maxNameLen
-        ? longName.substring(0, maxNameLen - 2) + '…'
+        ? `${longName.substring(0, maxNameLen - 2)}…`
         : longName;
 
     // substring(0, 16) = "Count Philippe d" + "…" = 17 chars

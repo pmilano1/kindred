@@ -48,7 +48,7 @@ export default function PeoplePage() {
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setDisplayCount(PAGE_SIZE);
-  }, [search, filter]);
+  }, []);
 
   const filteredPeople = useMemo(() => {
     let result = people;

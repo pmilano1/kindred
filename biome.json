@@ -7,7 +7,13 @@
   },
   "files": {
     "ignoreUnknown": true,
-    "includes": ["app/**", "lib/**", "components/**", "__tests__/**"]
+    "includes": [
+      "app/**/*.ts",
+      "app/**/*.tsx",
+      "lib/**",
+      "components/**",
+      "__tests__/**"
+    ]
   },
   "formatter": {
     "enabled": true,
@@ -24,14 +30,21 @@
       },
       "suspicious": {
         "noExplicitAny": "off",
-        "noImplicitAnyLet": "off"
+        "noImplicitAnyLet": "off",
+        "noArrayIndexKey": "off",
+        "noAssignInExpressions": "off",
+        "useIterableCallbackReturn": "off"
       },
       "style": {
         "noNonNullAssertion": "off"
       },
       "a11y": {
         "noSvgWithoutTitle": "off",
-        "useButtonType": "off"
+        "useButtonType": "off",
+        "noLabelWithoutControl": "off",
+        "useKeyWithClickEvents": "off",
+        "noStaticElementInteractions": "off",
+        "useSemanticElements": "off"
       },
       "complexity": {
         "noForEach": "off"

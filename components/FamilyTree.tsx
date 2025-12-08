@@ -688,7 +688,7 @@ export default function FamilyTree({
           const maxNameLen = 18;
           const displayName =
             fullName.length > maxNameLen
-              ? fullName.substring(0, maxNameLen - 2) + '…'
+              ? `${fullName.substring(0, maxNameLen - 2)}…`
               : fullName;
           const nameText = tileG
             .append('text')
@@ -808,7 +808,7 @@ export default function FamilyTree({
           const maxLen = 18;
           const displayName =
             fullName.length > maxLen
-              ? fullName.substring(0, maxLen - 2) + '…'
+              ? `${fullName.substring(0, maxLen - 2)}…`
               : fullName;
           const nameText = tileG
             .append('text')
@@ -819,7 +819,7 @@ export default function FamilyTree({
             .attr('font-size', '11px')
             .attr('font-weight', '600')
             .text(displayName);
-          nameText.append('title').text(fullName + ' (click to navigate)');
+          nameText.append('title').text(`${fullName} (click to navigate)`);
 
           const years = `${person.birth_year || '?'} – ${person.death_year || '?'}`;
           tileG
@@ -910,7 +910,7 @@ export default function FamilyTree({
           const maxLen = 18;
           const displayName =
             fullName.length > maxLen
-              ? fullName.substring(0, maxLen - 2) + '…'
+              ? `${fullName.substring(0, maxLen - 2)}…`
               : fullName;
           const nameText = tileG
             .append('text')
@@ -1337,7 +1337,7 @@ export default function FamilyTree({
       const maxNameLen = 18;
       const displayName =
         person.name.length > maxNameLen
-          ? person.name.substring(0, maxNameLen - 2) + '…'
+          ? `${person.name.substring(0, maxNameLen - 2)}…`
           : person.name;
       const nameText = nodeG
         .append('text')
@@ -1413,7 +1413,7 @@ export default function FamilyTree({
       const maxLen = 18;
       const spouseDisplayName =
         rootSpouse.name.length > maxLen
-          ? rootSpouse.name.substring(0, maxLen - 2) + '…'
+          ? `${rootSpouse.name.substring(0, maxLen - 2)}…`
           : rootSpouse.name;
       const spouseNameText = spouseG
         .append('text')
@@ -1524,7 +1524,7 @@ export default function FamilyTree({
         const maxLen = 18;
         const displayName =
           fullName.length > maxLen
-            ? fullName.substring(0, maxLen - 2) + '…'
+            ? `${fullName.substring(0, maxLen - 2)}…`
             : fullName;
         const nameText = sibG
           .append('text')
@@ -1653,7 +1653,7 @@ export default function FamilyTree({
         const maxLen = 18;
         const displayName =
           fullName.length > maxLen
-            ? fullName.substring(0, maxLen - 2) + '…'
+            ? `${fullName.substring(0, maxLen - 2)}…`
             : fullName;
         const nameText = tileG
           .append('text')
@@ -1664,7 +1664,7 @@ export default function FamilyTree({
           .attr('font-size', '11px')
           .attr('font-weight', '600')
           .text(displayName);
-        nameText.append('title').text(fullName + ' (click to navigate)');
+        nameText.append('title').text(`${fullName} (click to navigate)`);
 
         const years = child.living
           ? `${child.birth_year || '?'} – Living`
@@ -1715,7 +1715,6 @@ export default function FamilyTree({
     showAncestors,
     dimensions,
     buildPedigree,
-    buildDescendantChain,
     buildDescendantTree,
     onPersonClick,
     onTileClick,
@@ -1856,7 +1855,7 @@ export default function FamilyTree({
                 max="10"
                 value={priorityPopup.priority}
                 onChange={(e) => {
-                  const newPriority = parseInt(e.target.value);
+                  const newPriority = parseInt(e.target.value, 10);
                   setPriorityPopup({ ...priorityPopup, priority: newPriority });
                 }}
                 onMouseUp={() =>

@@ -20,7 +20,7 @@ function getPool(): Pool {
       console.log('[DB] Connecting to', host);
       _pool = new Pool({
         host,
-        port: parseInt(process.env.DB_PORT || '5432'),
+        port: parseInt(process.env.DB_PORT || '5432', 10),
         database: process.env.DB_NAME || 'genealogy',
         user: process.env.DB_USER || 'genealogy',
         password: process.env.DB_PASSWORD || 'GenTree2024!',

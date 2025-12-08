@@ -58,13 +58,13 @@ export async function getSettings(): Promise<SiteSettings> {
       require_login: dbSettings.require_login !== 'false',
       show_living_details: dbSettings.show_living_details === 'true',
       living_cutoff_years:
-        parseInt(dbSettings.living_cutoff_years) ||
+        parseInt(dbSettings.living_cutoff_years, 10) ||
         DEFAULT_SETTINGS.living_cutoff_years,
       date_format:
         (dbSettings.date_format as SiteSettings['date_format']) ||
         DEFAULT_SETTINGS.date_format,
       default_tree_generations:
-        parseInt(dbSettings.default_tree_generations) ||
+        parseInt(dbSettings.default_tree_generations, 10) ||
         DEFAULT_SETTINGS.default_tree_generations,
       show_coats_of_arms: dbSettings.show_coats_of_arms !== 'false',
       admin_email: dbSettings.admin_email || null,
@@ -112,7 +112,6 @@ export function formatDate(
       return `${day}/${month}/${year}`;
     case 'ISO':
       return `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
-    case 'MDY':
     default:
       return `${month}/${day}/${year}`;
   }

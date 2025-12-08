@@ -86,7 +86,7 @@ export default function FamilyEditor({
     const input: Record<string, unknown> = {
       marriage_date: formData.marriage_date || null,
       marriage_year: formData.marriage_year
-        ? parseInt(formData.marriage_year)
+        ? parseInt(formData.marriage_year, 10)
         : null,
       marriage_place: formData.marriage_place || null,
     };
@@ -115,7 +115,7 @@ export default function FamilyEditor({
         input: {
           marriage_date: formData.marriage_date || null,
           marriage_year: formData.marriage_year
-            ? parseInt(formData.marriage_year)
+            ? parseInt(formData.marriage_year, 10)
             : null,
           marriage_place: formData.marriage_place || null,
         },

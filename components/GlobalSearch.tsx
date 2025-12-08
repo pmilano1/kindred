@@ -183,60 +183,57 @@ export default function GlobalSearch() {
             </>
           )}
           {/* Search results */}
-          {showResults && (
-            <>
-              {loading ? (
-                <div className="p-4 text-center text-[var(--muted-foreground)] text-sm">
-                  Searching...
-                </div>
-              ) : results.length > 0 ? (
-                <>
-                  {results.map((person, index) => (
-                    <button
-                      key={person.id}
-                      onClick={() => {
-                        addSearch(query);
-                        handleSelect(person.id);
-                      }}
-                      className={`w-full px-4 py-3 text-left border-b border-[var(--border)] last:border-b-0 transition-colors ${
-                        selectedIndex === index
-                          ? 'bg-[var(--accent)]'
-                          : 'hover:bg-[var(--accent)]'
-                      }`}
-                    >
-                      <div className="font-medium">{person.name_full}</div>
-                      <div className="text-xs text-[var(--muted-foreground)]">
-                        {person.birth_year && `b. ${person.birth_year}`}
-                        {person.birth_year && person.death_year && ' – '}
-                        {person.death_year && `d. ${person.death_year}`}
-                        {person.birth_place && ` • ${person.birth_place}`}
-                      </div>
-                    </button>
-                  ))}
-                  {data?.search?.totalCount && data.search.totalCount > 8 && (
-                    <button
-                      onClick={() => {
-                        addSearch(query);
-                        router.push(`/search?q=${encodeURIComponent(query)}`);
-                        setIsFocused(false);
-                      }}
-                      className={`w-full px-4 py-2 text-center text-sm text-blue-600 dark:text-blue-400 ${
-                        selectedIndex === results.length
-                          ? 'bg-[var(--accent)]'
-                          : 'hover:bg-[var(--accent)]'
-                      }`}
-                    >
-                      View all {data.search.totalCount} results →
-                    </button>
-                  )}
-                </>
-              ) : (
-                <div className="p-4 text-center text-[var(--muted-foreground)] text-sm">
-                  No results found
-                </div>
-              )}
-            </>
-          )}
+          {showResults &&
+            (loading ? (
+              <div className="p-4 text-center text-[var(--muted-foreground)] text-sm">
+                Searching...
+              </div>
+            ) : results.length > 0 ? (
+              <>
+                {results.map((person, index) => (
+                  <button
+                    key={person.id}
+                    onClick={() => {
+                      addSearch(query);
+                      handleSelect(person.id);
+                    }}
+                    className={`w-full px-4 py-3 text-left border-b border-[var(--border)] last:border-b-0 transition-colors ${
+                      selectedIndex === index
+                        ? 'bg-[var(--accent)]'
+                        : 'hover:bg-[var(--accent)]'
+                    }`}
+                  >
+                    <div className="font-medium">{person.name_full}</div>
+                    <div className="text-xs text-[var(--muted-foreground)]">
+                      {person.birth_year && `b. ${person.birth_year}`}
+                      {person.birth_year && person.death_year && ' – '}
+                      {person.death_year && `d. ${person.death_year}`}
+                      {person.birth_place && ` • ${person.birth_place}`}
+                    </div>
+                  </button>
+                ))}
+                {data?.search?.totalCount && data.search.totalCount > 8 && (
+                  <button
+                    onClick={() => {
+                      addSearch(query);
+                      router.push(`/search?q=${encodeURIComponent(query)}`);
+                      setIsFocused(false);
+                    }}
+                    className={`w-full px-4 py-2 text-center text-sm text-blue-600 dark:text-blue-400 ${
+                      selectedIndex === results.length
+                        ? 'bg-[var(--accent)]'
+                        : 'hover:bg-[var(--accent)]'
+                    }`}
+                  >
+                    View all {data.search.totalCount} results →
+                  </button>
+                )}
+              </>
+            ) : (
+              <div className="p-4 text-center text-[var(--muted-foreground)] text-sm">
+                No results found
+              </div>
+            ))}
         </div>
       )}
     </div>

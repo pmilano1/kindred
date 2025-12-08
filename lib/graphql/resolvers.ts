@@ -1,4 +1,4 @@
-import crypto from 'crypto';
+import crypto from 'node:crypto';
 import { sendInviteEmail, verifyEmailForSandbox } from '../email';
 import {
   type GedcomFamily,
@@ -140,7 +140,7 @@ export const resolvers = {
 
       // Get total count
       const countResult = await pool.query('SELECT COUNT(*) FROM people');
-      const totalCount = parseInt(countResult.rows[0].count);
+      const totalCount = parseInt(countResult.rows[0].count, 10);
 
       // Build query with cursor
       let query = `SELECT *, COALESCE(notes, description) as description FROM people`;
@@ -575,9 +575,9 @@ export const resolvers = {
         ORDER BY count DESC
       `);
       return {
-        total_sent: parseInt(totals.rows[0].total_sent) || 0,
-        successful: parseInt(totals.rows[0].successful) || 0,
-        failed: parseInt(totals.rows[0].failed) || 0,
+        total_sent: parseInt(totals.rows[0].total_sent, 10) || 0,
+        successful: parseInt(totals.rows[0].successful, 10) || 0,
+        failed: parseInt(totals.rows[0].failed, 10) || 0,
         by_type: byType.rows,
       };
     },
@@ -1282,7 +1282,7 @@ export const resolvers = {
     generateApiKey: async (_: unknown, __: unknown, context: Context) => {
       const user = requireAuth(context);
       // Generate a secure random API key (64 hex characters)
-      const crypto = await import('crypto');
+      const crypto = await import('node:crypto');
       const apiKey = crypto.randomBytes(32).toString('hex');
 
       await pool.query('UPDATE users SET api_key = $1 WHERE id = $2', [
@@ -1365,7 +1365,7 @@ export const resolvers = {
     ) => {
       requireAuth(context, 'admin');
       const bcrypt = await import('bcryptjs');
-      const crypto = await import('crypto');
+      const crypto = await import('node:crypto');
 
       // Check if user already exists
       const existingUser = await pool.query(
@@ -1414,7 +1414,7 @@ export const resolvers = {
       context: Context,
     ) => {
       requireAuth(context, 'admin');
-      const crypto = await import('crypto');
+      const crypto = await import('node:crypto');
 
       // Validate role (service accounts cannot be admin)
       if (!['editor', 'viewer'].includes(role)) {
@@ -1477,7 +1477,7 @@ export const resolvers = {
       }: { token: string; password: string; name?: string },
     ) => {
       const bcrypt = await import('bcryptjs');
-      const crypto = await import('crypto');
+      const crypto = await import('node:crypto');
 
       // Find valid invitation
       const invResult = await pool.query(
@@ -1528,7 +1528,7 @@ export const resolvers = {
     },
 
     requestPasswordReset: async (_: unknown, { email }: { email: string }) => {
-      const crypto = await import('crypto');
+      const crypto = await import('node:crypto');
 
       // Find user with local auth
       const userResult = await pool.query(

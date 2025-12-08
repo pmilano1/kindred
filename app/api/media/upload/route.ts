@@ -1,7 +1,7 @@
-import crypto from 'crypto';
-import { mkdir, writeFile } from 'fs/promises';
+import crypto from 'node:crypto';
+import { mkdir, writeFile } from 'node:fs/promises';
+import { join } from 'node:path';
 import { type NextRequest, NextResponse } from 'next/server';
-import { join } from 'path';
 import { auth } from '@/lib/auth';
 
 // Configure max file size (10MB)

@@ -71,7 +71,7 @@ export default function MediaGallery({
       onMediaChange?.();
     } catch (error) {
       console.error('Upload error:', error);
-      alert('Failed to upload file: ' + (error as Error).message);
+      alert(`Failed to upload file: ${(error as Error).message}`);
     } finally {
       setUploading(false);
       if (fileInputRef.current) fileInputRef.current.value = '';

@@ -151,7 +151,7 @@ export default function ResearchQueueClient() {
                             onChange={(e) =>
                               handlePriorityChange(
                                 person.id,
-                                parseInt(e.target.value),
+                                parseInt(e.target.value, 10),
                               )
                             }
                             className="w-24 h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-blue-600"

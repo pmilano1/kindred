@@ -51,7 +51,7 @@ function escapeGedcom(text: string | null | undefined): string {
 function formatGedcomDate(dateStr: string | null): string {
   if (!dateStr) return '';
   const date = new Date(dateStr);
-  if (isNaN(date.getTime())) return escapeGedcom(dateStr);
+  if (Number.isNaN(date.getTime())) return escapeGedcom(dateStr);
   const months = [
     'JAN',
     'FEB',

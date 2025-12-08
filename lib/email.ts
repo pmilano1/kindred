@@ -1,12 +1,146 @@
 import { SESClient, SendEmailCommand, VerifyEmailIdentityCommand, GetIdentityVerificationAttributesCommand } from '@aws-sdk/client-ses';
+import nodemailer from 'nodemailer';
+import type { Transporter } from 'nodemailer';
 import { pool } from './pool';
-
-const ses = new SESClient({ region: process.env.AWS_REGION || 'us-east-1' });
 
 // Configurable app name and URLs - set via environment variables
 const APP_NAME = process.env.APP_NAME || 'Kindred';
 const APP_URL = process.env.NEXTAUTH_URL || 'http://localhost:3000';
 const EMAIL_FROM = process.env.EMAIL_FROM || `${APP_NAME} <noreply@example.com>`;
+
+// Email transport configuration
+type EmailTransportType = 'ses' | 'smtp' | 'none';
+
+interface EmailConfig {
+  type: EmailTransportType;
+  configured: boolean;
+  details?: string;
+}
+
+/**
+ * Determine which email transport is configured
+ * Priority: AWS SES > SMTP > None
+ */
+export function getEmailConfig(): EmailConfig {
+  // Check for AWS SES configuration
+  if (process.env.EMAIL_FROM && process.env.EMAIL_FROM !== `${APP_NAME} <noreply@example.com>`) {
+    // If EMAIL_FROM is set to a real value, assume SES is intended
+    // SES will use AWS credentials from environment or IAM role
+    return {
+      type: 'ses',
+      configured: true,
+      details: `AWS SES (from: ${process.env.EMAIL_FROM})`
+    };
+  }
+
+  // Check for SMTP configuration
+  if (process.env.SMTP_HOST) {
+    const smtpConfigured = !!(process.env.SMTP_HOST && process.env.SMTP_PORT);
+    return {
+      type: 'smtp',
+      configured: smtpConfigured,
+      details: smtpConfigured
+        ? `SMTP (${process.env.SMTP_HOST}:${process.env.SMTP_PORT})`
+        : 'SMTP host configured but missing port'
+    };
+  }
+
+  return {
+    type: 'none',
+    configured: false,
+    details: 'No email transport configured. Set EMAIL_FROM for AWS SES or SMTP_HOST for SMTP.'
+  };
+}
+
+/**
+ * Check if email is properly configured
+ */
+export function isEmailConfigured(): boolean {
+  return getEmailConfig().configured;
+}
+
+// Initialize SES client (lazy, only if needed)
+let sesClient: SESClient | null = null;
+function getSESClient(): SESClient {
+  if (!sesClient) {
+    sesClient = new SESClient({ region: process.env.AWS_REGION || 'us-east-1' });
+  }
+  return sesClient;
+}
+
+// Initialize SMTP transporter (lazy, only if needed)
+let smtpTransporter: Transporter | null = null;
+function getSMTPTransporter(): Transporter {
+  if (!smtpTransporter) {
+    smtpTransporter = nodemailer.createTransport({
+      host: process.env.SMTP_HOST,
+      port: parseInt(process.env.SMTP_PORT || '587', 10),
+      secure: process.env.SMTP_SECURE === 'true',
+      auth: process.env.SMTP_USER ? {
+        user: process.env.SMTP_USER,
+        pass: process.env.SMTP_PASSWORD || '',
+      } : undefined,
+    });
+  }
+  return smtpTransporter;
+}
+
+interface EmailMessage {
+  to: string;
+  subject: string;
+  html: string;
+  text: string;
+  replyTo?: string;
+}
+
+/**
+ * Send an email using the configured transport (SES or SMTP)
+ */
+async function sendEmail(message: EmailMessage): Promise<boolean> {
+  const config = getEmailConfig();
+
+  if (!config.configured) {
+    console.error('[Email] No email transport configured');
+    return false;
+  }
+
+  try {
+    if (config.type === 'ses') {
+      const ses = getSESClient();
+      await ses.send(new SendEmailCommand({
+        Source: EMAIL_FROM,
+        ReplyToAddresses: message.replyTo ? [message.replyTo] : undefined,
+        Destination: { ToAddresses: [message.to] },
+        Message: {
+          Subject: { Data: message.subject },
+          Body: {
+            Html: { Data: message.html },
+            Text: { Data: message.text }
+          }
+        }
+      }));
+      console.log(`[Email] Sent via SES to ${message.to}`);
+      return true;
+    } else if (config.type === 'smtp') {
+      const transporter = getSMTPTransporter();
+      await transporter.sendMail({
+        from: EMAIL_FROM,
+        to: message.to,
+        replyTo: message.replyTo,
+        subject: message.subject,
+        html: message.html,
+        text: message.text,
+      });
+      console.log(`[Email] Sent via SMTP to ${message.to}`);
+      return true;
+    }
+  } catch (error) {
+    console.error(`[Email] Failed to send via ${config.type}:`, error);
+    throw error;
+  }
+
+  return false;
+}
 
 // Email types for logging
 export type EmailType = 'invite' | 'welcome' | 'password_reset' | 'verification' | 'notification';
@@ -35,9 +169,17 @@ async function logEmail(
 /**
  * Verify an email address in SES (for sandbox mode).
  * This sends a verification email to the recipient.
+ * Only works when using SES transport.
  */
 export async function verifyEmailForSandbox(email: string): Promise<boolean> {
+  const config = getEmailConfig();
+  if (config.type !== 'ses') {
+    console.log(`[Email] Skipping SES verification - using ${config.type} transport`);
+    return true; // No verification needed for SMTP
+  }
+
   try {
+    const ses = getSESClient();
     // Check if already verified
     const checkResponse = await ses.send(new GetIdentityVerificationAttributesCommand({
       Identities: [email]
@@ -121,19 +263,13 @@ ${inviterName}
 `;
 
   try {
-    await ses.send(new SendEmailCommand({
-      Source: EMAIL_FROM,
-      ReplyToAddresses: [inviterEmail],
-      Destination: { ToAddresses: [to] },
-      Message: {
-        Subject: { Data: subject },
-        Body: {
-          Html: { Data: htmlBody },
-          Text: { Data: textBody }
-        }
-      }
-    }));
-    console.log(`[Email] Invite sent to ${to} from ${inviterEmail}`);
+    await sendEmail({
+      to,
+      subject,
+      html: htmlBody,
+      text: textBody,
+      replyTo: inviterEmail,
+    });
     await logEmail('invite', to, subject, true);
     return true;
   } catch (error) {
@@ -213,18 +349,12 @@ If you have any questions, please reach out to the site administrator.
 `;
 
   try {
-    await ses.send(new SendEmailCommand({
-      Source: EMAIL_FROM,
-      Destination: { ToAddresses: [to] },
-      Message: {
-        Subject: { Data: subject },
-        Body: {
-          Html: { Data: htmlBody },
-          Text: { Data: textBody }
-        }
-      }
-    }));
-    console.log(`[Email] Welcome email sent to ${to}`);
+    await sendEmail({
+      to,
+      subject,
+      html: htmlBody,
+      text: textBody,
+    });
     await logEmail('welcome', to, subject, true);
     return true;
   } catch (error) {
@@ -292,18 +422,12 @@ If you didn't request this reset, please ignore this email.
 `;
 
   try {
-    await ses.send(new SendEmailCommand({
-      Source: EMAIL_FROM,
-      Destination: { ToAddresses: [to] },
-      Message: {
-        Subject: { Data: subject },
-        Body: {
-          Html: { Data: htmlBody },
-          Text: { Data: textBody }
-        }
-      }
-    }));
-    console.log(`[Email] Password reset email sent to ${to}`);
+    await sendEmail({
+      to,
+      subject,
+      html: htmlBody,
+      text: textBody,
+    });
     return true;
   } catch (error) {
     console.error('[Email] Failed to send password reset:', error);

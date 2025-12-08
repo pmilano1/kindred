@@ -79,10 +79,14 @@ async function bootstrapAdminUser(
 
     // Create admin user
     const bcrypt = await import('bcryptjs');
-    const crypto = await import('node:crypto');
 
     const passwordHash = await bcrypt.hash(initialPassword, 12);
-    const userId = crypto.randomBytes(8).toString('hex');
+    // Use Web Crypto API instead of node:crypto for Edge Runtime compatibility
+    const bytes = new Uint8Array(8);
+    crypto.getRandomValues(bytes);
+    const userId = Array.from(bytes)
+      .map((b) => b.toString(16).padStart(2, '0'))
+      .join('');
 
     await pool.query(
       `INSERT INTO users (id, email, name, role, password_hash, auth_provider, require_password_change, created_at)

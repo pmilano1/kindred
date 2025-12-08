@@ -1,15 +1,24 @@
 'use client';
 
 import { signIn } from 'next-auth/react';
-import { useSearchParams } from 'next/navigation';
-import { Suspense, useState } from 'react';
+import { useSearchParams, useRouter } from 'next/navigation';
+import { Suspense, useState, useEffect } from 'react';
 import LoadingSpinner from '@/components/LoadingSpinner';
 import { Button, Input, Label } from '@/components/ui';
 import { Mail, ArrowLeft } from 'lucide-react';
 
 function LoginContent() {
   const searchParams = useSearchParams();
+  const router = useRouter();
   const error = searchParams.get('error');
+  const inviteToken = searchParams.get('invite');
+
+  // Redirect to accept-invite if invite token is present
+  useEffect(() => {
+    if (inviteToken) {
+      router.replace(`/accept-invite?token=${inviteToken}`);
+    }
+  }, [inviteToken, router]);
   const [showEmailLogin, setShowEmailLogin] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -34,6 +43,15 @@ function LoginContent() {
       window.location.href = '/';
     }
   };
+
+  // Show loading while redirecting to accept-invite
+  if (inviteToken) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">
+        <LoadingSpinner size="lg" className="text-white" message="Preparing invitation..." />
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">

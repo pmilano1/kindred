@@ -327,7 +327,12 @@ export const resolvers = {
       return rows[0];
     },
 
-    researchQueue: async (_: unknown, { limit = 50 }: { limit?: number }) => {
+    researchQueue: async (
+      _: unknown,
+      { first = 50, after }: { first?: number; after?: string },
+    ) => {
+      const limit = Math.min(first, 100);
+
       // Get configurable weights from settings
       const settings = await getSettings();
       const wMissingDates = settings.research_weight_missing_core_dates;
@@ -337,10 +342,51 @@ export const resolvers = {
       const wLowSources = settings.research_weight_low_sources;
       const wManualPriority = settings.research_weight_manual_priority;
 
+      // Decode cursor: format is "score:id" where score is the auto_score
+      let afterScore: number | null = null;
+      let afterId: string | null = null;
+      if (after) {
+        try {
+          const decoded = Buffer.from(after, 'base64').toString('utf8');
+          const [scoreStr, id] = decoded.split(':');
+          afterScore = parseFloat(scoreStr);
+          afterId = id;
+        } catch {
+          // Invalid cursor, ignore
+        }
+      }
+
+      // Get total count of research queue items
+      const countResult = await pool.query(
+        `SELECT COUNT(*) FROM people
+         WHERE (research_status != 'verified' OR research_status IS NULL)
+           AND (is_placeholder = false OR is_placeholder IS NULL)`,
+      );
+      const totalCount = parseInt(countResult.rows[0].count, 10);
+
+      // Build cursor condition
+      const cursorCondition =
+        afterScore !== null && afterId
+          ? `AND (auto_score < $8 OR (auto_score = $8 AND p.id > $9))`
+          : '';
+
+      const params: (number | string)[] = [
+        limit + 1, // Fetch one extra to check if there's more
+        wMissingDates,
+        wMissingPlaces,
+        wEstimatedDates,
+        wPlaceholderParent,
+        wLowSources,
+        wManualPriority,
+      ];
+
+      if (afterScore !== null && afterId) {
+        params.push(afterScore, afterId);
+      }
+
       const { rows } = await pool.query(
         `
         WITH placeholder_parents AS (
-          -- Find people who have at least one placeholder parent
           SELECT DISTINCT c.person_id
           FROM children c
           JOIN families f ON c.family_id = f.id
@@ -349,49 +395,46 @@ export const resolvers = {
         ),
         scored_people AS (
           SELECT p.*,
-            -- Compute automatic score based on gaps
             (
-              -- Missing core dates (birth/death year)
               CASE WHEN p.birth_year IS NULL THEN $2 ELSE 0 END +
               CASE WHEN NOT p.living AND p.death_year IS NULL THEN $2 ELSE 0 END +
-              -- Missing places
               CASE WHEN p.birth_place IS NULL OR p.birth_place = '' THEN $3 ELSE 0 END +
               CASE WHEN NOT p.living AND (p.death_place IS NULL OR p.death_place = '') THEN $3 ELSE 0 END +
-              -- Estimated/ranged dates (not exact)
               CASE WHEN p.birth_date_accuracy IN ('ESTIMATED', 'RANGE') THEN $4 ELSE 0 END +
               CASE WHEN p.death_date_accuracy IN ('ESTIMATED', 'RANGE') THEN $4 ELSE 0 END +
-              -- Placeholder parents
               CASE WHEN pp.person_id IS NOT NULL THEN $5 ELSE 0 END +
-              -- Low/no sources
               CASE WHEN COALESCE(p.source_count, 0) = 0 THEN $6 ELSE 0 END +
-              -- Manual priority boost
               COALESCE(p.research_priority, 0) * $7
             ) AS auto_score
           FROM people p
           LEFT JOIN placeholder_parents pp ON pp.person_id = p.id
           WHERE (p.research_status != 'verified' OR p.research_status IS NULL)
-            AND p.is_placeholder = false
+            AND (p.is_placeholder = false OR p.is_placeholder IS NULL)
         )
         SELECT * FROM scored_people
+        WHERE 1=1 ${cursorCondition}
         ORDER BY
           auto_score DESC,
-          (research_status = 'brick_wall') DESC,
-          (research_status = 'in_progress') DESC,
-          last_researched NULLS FIRST
+          id ASC
         LIMIT $1
       `,
-        [
-          Math.min(limit, 100),
-          wMissingDates,
-          wMissingPlaces,
-          wEstimatedDates,
-          wPlaceholderParent,
-          wLowSources,
-          wManualPriority,
-        ],
+        params,
       );
+
+      const hasMore = rows.length > limit;
+      const people = hasMore ? rows.slice(0, limit) : rows;
+
+      type ScoredPerson = Record<string, unknown> & {
+        auto_score: number;
+        id: string;
+      };
+
+      // Create cursor encoding score and id
+      const makeCursor = (row: ScoredPerson) =>
+        Buffer.from(`${row.auto_score}:${row.id}`).toString('base64');
+
       // Convert Date objects to ISO strings for serialization
-      return rows.map((row: Record<string, unknown>) => ({
+      const nodes: ScoredPerson[] = people.map((row: ScoredPerson) => ({
         ...row,
         last_researched:
           row.last_researched instanceof Date
@@ -406,6 +449,20 @@ export const resolvers = {
             ? row.updated_at.toISOString()
             : row.updated_at,
       }));
+
+      return {
+        edges: nodes.map((node) => ({
+          node,
+          cursor: makeCursor(node),
+        })),
+        pageInfo: {
+          hasNextPage: hasMore,
+          hasPreviousPage: !!after,
+          startCursor: nodes.length ? makeCursor(nodes[0]) : null,
+          endCursor: nodes.length ? makeCursor(nodes[nodes.length - 1]) : null,
+          totalCount,
+        },
+      };
     },
 
     // Optimized ancestry traversal (single recursive CTE)

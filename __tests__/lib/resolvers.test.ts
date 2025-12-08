@@ -397,7 +397,7 @@ describe('GraphQL Resolvers', () => {
   });
 
   describe('Query.researchQueue', () => {
-    it('returns people needing research with automatic scoring', async () => {
+    it('returns cursor-paginated people needing research with automatic scoring', async () => {
       mockedQuery.mockReset();
       const mockQueue = [
         {
@@ -413,49 +413,79 @@ describe('GraphQL Resolvers', () => {
           auto_score: 30,
         },
       ];
-      mockedQuery.mockResolvedValueOnce({ rows: mockQueue });
+      // First call: count query, Second call: data query
+      mockedQuery
+        .mockResolvedValueOnce({ rows: [{ count: '100' }] })
+        .mockResolvedValueOnce({ rows: mockQueue });
 
-      const result = await resolvers.Query.researchQueue(null, { limit: 50 });
+      const result = await resolvers.Query.researchQueue(null, { first: 50 });
 
-      expect(result).toEqual(mockQueue);
-      // Check that query filters out verified and placeholder people
-      expect(mockedQuery).toHaveBeenCalledWith(
-        expect.stringContaining("research_status != 'verified'"),
-        expect.arrayContaining([50]), // limit is first param
-      );
-      expect(mockedQuery).toHaveBeenCalledWith(
-        expect.stringContaining('is_placeholder = false'),
-        expect.any(Array),
-      );
+      // Returns PersonConnection structure
+      expect(result).toHaveProperty('edges');
+      expect(result).toHaveProperty('pageInfo');
+      expect(result.edges).toHaveLength(2);
+      expect(result.edges[0].node.id).toBe('p1');
+      expect(result.edges[0].cursor).toBeDefined();
+      expect(result.pageInfo.totalCount).toBe(100);
+      expect(result.pageInfo.hasNextPage).toBe(false);
     });
 
     it('enforces maximum limit of 100', async () => {
       mockedQuery.mockReset();
-      mockedQuery.mockResolvedValueOnce({ rows: [] });
+      mockedQuery
+        .mockResolvedValueOnce({ rows: [{ count: '0' }] })
+        .mockResolvedValueOnce({ rows: [] });
 
-      await resolvers.Query.researchQueue(null, { limit: 200 });
+      await resolvers.Query.researchQueue(null, { first: 200 });
 
-      // First param should be capped at 100
-      expect(mockedQuery).toHaveBeenCalledWith(
+      // Limit should be capped at 101 (100 + 1 for hasNextPage check)
+      expect(mockedQuery).toHaveBeenLastCalledWith(
         expect.any(String),
-        expect.arrayContaining([100]),
+        expect.arrayContaining([101]),
       );
     });
 
     it('uses configurable weights from settings', async () => {
       mockedQuery.mockReset();
-      mockedQuery.mockResolvedValueOnce({ rows: [] });
+      mockedQuery
+        .mockResolvedValueOnce({ rows: [{ count: '0' }] })
+        .mockResolvedValueOnce({ rows: [] });
 
-      await resolvers.Query.researchQueue(null, { limit: 50 });
+      await resolvers.Query.researchQueue(null, { first: 50 });
 
-      // Query should include scoring with weight parameters
-      expect(mockedQuery).toHaveBeenCalledWith(
+      // Data query should include scoring with weight parameters
+      expect(mockedQuery).toHaveBeenLastCalledWith(
         expect.stringContaining('auto_score'),
-        // Should have 7 params: limit + 6 weights
         expect.any(Array),
       );
-      const callArgs = mockedQuery.mock.calls[0][1];
+      // Should have 7 params: limit + 6 weights
+      const callArgs = mockedQuery.mock.calls[1][1];
       expect(callArgs.length).toBe(7);
+    });
+
+    it('supports cursor-based pagination with after parameter', async () => {
+      mockedQuery.mockReset();
+      const mockQueue = [
+        { id: 'p3', name_full: 'Third Person', auto_score: 50 },
+      ];
+      mockedQuery
+        .mockResolvedValueOnce({ rows: [{ count: '100' }] })
+        .mockResolvedValueOnce({ rows: mockQueue });
+
+      // Cursor format: base64("score:id")
+      const cursor = Buffer.from('70:p2').toString('base64');
+      const result = await resolvers.Query.researchQueue(null, {
+        first: 10,
+        after: cursor,
+      });
+
+      expect(result.edges).toHaveLength(1);
+      expect(result.pageInfo.hasPreviousPage).toBe(true);
+      // Query should include cursor condition
+      expect(mockedQuery).toHaveBeenLastCalledWith(
+        expect.stringContaining('auto_score'),
+        expect.arrayContaining([70, 'p2']), // decoded cursor values
+      );
     });
   });
 

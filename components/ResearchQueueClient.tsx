@@ -1,7 +1,9 @@
 'use client';
 
 import { useMutation, useQuery } from '@apollo/client/react';
+import { Loader2 } from 'lucide-react';
 import Link from 'next/link';
+import { useCallback } from 'react';
 import {
   Select,
   SelectContent,
@@ -14,6 +16,7 @@ import {
   UPDATE_RESEARCH_PRIORITY,
   UPDATE_RESEARCH_STATUS,
 } from '@/lib/graphql/queries';
+import { useInfiniteScroll } from '@/lib/hooks';
 
 const STATUS_LABELS: Record<string, { label: string; color: string }> = {
   not_started: { label: 'Not Started', color: 'bg-gray-200 text-gray-700' },
@@ -40,16 +43,55 @@ interface ResearchPerson {
   source_count?: number | null;
 }
 
+interface ResearchQueueConnection {
+  edges: Array<{ node: ResearchPerson; cursor: string }>;
+  pageInfo: {
+    hasNextPage: boolean;
+    endCursor: string | null;
+    totalCount: number;
+  };
+}
+
+const PAGE_SIZE = 50;
+
 export default function ResearchQueueClient() {
-  const { data, loading, error } = useQuery<{
-    researchQueue: ResearchPerson[];
+  const { data, loading, error, fetchMore } = useQuery<{
+    researchQueue: ResearchQueueConnection;
   }>(GET_RESEARCH_QUEUE, {
-    variables: { limit: 100 },
+    variables: { first: PAGE_SIZE },
   });
   const [updatePriority] = useMutation(UPDATE_RESEARCH_PRIORITY);
   const [updateStatus] = useMutation(UPDATE_RESEARCH_STATUS);
 
-  const queue = data?.researchQueue || [];
+  const queue = data?.researchQueue.edges.map((e) => e.node) || [];
+  const hasNextPage = data?.researchQueue.pageInfo.hasNextPage ?? false;
+  const endCursor = data?.researchQueue.pageInfo.endCursor;
+  const totalCount = data?.researchQueue.pageInfo.totalCount ?? 0;
+
+  const loadMore = useCallback(() => {
+    if (!hasNextPage || !endCursor || loading) return;
+    fetchMore({
+      variables: { first: PAGE_SIZE, after: endCursor },
+      updateQuery: (prev, { fetchMoreResult }) => {
+        if (!fetchMoreResult) return prev;
+        return {
+          researchQueue: {
+            ...fetchMoreResult.researchQueue,
+            edges: [
+              ...prev.researchQueue.edges,
+              ...fetchMoreResult.researchQueue.edges,
+            ],
+          },
+        };
+      },
+    });
+  }, [hasNextPage, endCursor, loading, fetchMore]);
+
+  const { sentinelRef, isLoading: isLoadingMore } = useInfiniteScroll({
+    hasNextPage,
+    loading,
+    onLoadMore: loadMore,
+  });
 
   if (loading) {
     return (
@@ -75,7 +117,7 @@ export default function ResearchQueueClient() {
     await updatePriority({
       variables: { personId, priority },
       refetchQueries: [
-        { query: GET_RESEARCH_QUEUE, variables: { limit: 100 } },
+        { query: GET_RESEARCH_QUEUE, variables: { first: PAGE_SIZE } },
       ],
     });
   };
@@ -84,7 +126,7 @@ export default function ResearchQueueClient() {
     await updateStatus({
       variables: { personId, status },
       refetchQueries: [
-        { query: GET_RESEARCH_QUEUE, variables: { limit: 100 } },
+        { query: GET_RESEARCH_QUEUE, variables: { first: PAGE_SIZE } },
       ],
     });
   };
@@ -95,7 +137,8 @@ export default function ResearchQueueClient() {
         <div className="flex justify-between items-center mb-4">
           <h2 className="text-xl font-semibold">📋 Research Priority List</h2>
           <p className="text-sm text-gray-500">
-            {queue.length} people in queue
+            {queue.length} of {totalCount} people loaded
+            {hasNextPage && ' • scroll for more'}
           </p>
         </div>
 
@@ -219,6 +262,14 @@ export default function ResearchQueueClient() {
                 })}
               </tbody>
             </table>
+            {/* Infinite scroll sentinel */}
+            <div ref={sentinelRef} className="h-4" aria-hidden="true" />
+            {isLoadingMore && (
+              <div className="flex justify-center py-4">
+                <Loader2 className="w-5 h-5 animate-spin text-green-600" />
+                <span className="ml-2 text-gray-600">Loading more...</span>
+              </div>
+            )}
           </div>
         )}
       </div>

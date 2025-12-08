@@ -351,7 +351,7 @@ export const typeDefs = `#graphql
 
     # Stats & Research
     stats: Stats!
-    researchQueue(limit: Int): [Person!]!
+    researchQueue(first: Int, after: String): PersonConnection!
 
     # Ancestry traversal (optimized single query)
     ancestors(personId: ID!, generations: Int): [Person!]!

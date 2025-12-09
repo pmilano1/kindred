@@ -5,6 +5,19 @@ import { useLazyQuery, useQuery } from '@apollo/client/react';
 import { useCallback, useMemo, useState } from 'react';
 import type { PedigreeNode } from './tree-types';
 
+// Optimized person fields - only what's needed for tree rendering
+const PERSON_FIELDS = `
+  id
+  name_full
+  sex
+  birth_year
+  death_year
+  living
+  is_notable
+  research_status
+  research_priority
+`;
+
 // Initial query - fetches 3 generations by default
 const ANCESTORS_QUERY = gql`
   query Ancestors($personId: ID!, $generations: Int) {
@@ -12,282 +25,49 @@ const ANCESTORS_QUERY = gql`
       id
       generation
       hasMoreAncestors
-      person {
-        id
-        name_full
-        sex
-        birth_year
-        death_year
-        birth_place
-        death_place
-        living
-        familysearch_id
-        is_notable
-        research_status
-        research_priority
-        last_researched
-        coatOfArms
-      }
+      person { ${PERSON_FIELDS} }
       father {
         id
         generation
         hasMoreAncestors
-        person {
-          id
-          name_full
-          sex
-          birth_year
-          death_year
-          birth_place
-          death_place
-          living
-          familysearch_id
-          is_notable
-          research_status
-          research_priority
-          last_researched
-          coatOfArms
-        }
+        person { ${PERSON_FIELDS} }
         father {
           id
           generation
           hasMoreAncestors
-          person {
-            id
-            name_full
-            sex
-            birth_year
-            death_year
-            birth_place
-            death_place
-            living
-            familysearch_id
-            is_notable
-            research_status
-            research_priority
-            last_researched
-            coatOfArms
-          }
-          father {
-            id
-            generation
-            hasMoreAncestors
-            person {
-              id
-              name_full
-              sex
-              birth_year
-              death_year
-              birth_place
-              death_place
-              living
-              familysearch_id
-              is_notable
-              research_status
-              research_priority
-              last_researched
-              coatOfArms
-            }
-          }
-          mother {
-            id
-            generation
-            hasMoreAncestors
-            person {
-              id
-              name_full
-              sex
-              birth_year
-              death_year
-              birth_place
-              death_place
-              living
-              familysearch_id
-              is_notable
-              research_status
-              research_priority
-              last_researched
-              coatOfArms
-            }
-          }
+          person { ${PERSON_FIELDS} }
+          father { id generation hasMoreAncestors person { ${PERSON_FIELDS} } }
+          mother { id generation hasMoreAncestors person { ${PERSON_FIELDS} } }
         }
         mother {
           id
           generation
           hasMoreAncestors
-          person {
-            id
-            name_full
-            sex
-            birth_year
-            death_year
-            birth_place
-            death_place
-            living
-            familysearch_id
-            is_notable
-            research_status
-            research_priority
-            last_researched
-            coatOfArms
-          }
-          father {
-            id
-            generation
-            hasMoreAncestors
-          }
-          mother {
-            id
-            generation
-            hasMoreAncestors
-          }
+          person { ${PERSON_FIELDS} }
+          father { id generation hasMoreAncestors person { ${PERSON_FIELDS} } }
+          mother { id generation hasMoreAncestors person { ${PERSON_FIELDS} } }
         }
       }
       mother {
         id
         generation
         hasMoreAncestors
-        person {
-          id
-          name_full
-          sex
-          birth_year
-          death_year
-          birth_place
-          death_place
-          living
-          familysearch_id
-          is_notable
-          research_status
-          research_priority
-          last_researched
-          coatOfArms
-        }
+        person { ${PERSON_FIELDS} }
         father {
           id
           generation
           hasMoreAncestors
-          person {
-            id
-            name_full
-            sex
-            birth_year
-            death_year
-            birth_place
-            death_place
-            living
-            familysearch_id
-            is_notable
-            research_status
-            research_priority
-            last_researched
-            coatOfArms
-          }
-          father {
-            id
-            generation
-            hasMoreAncestors
-            person {
-              id
-              name_full
-              sex
-              birth_year
-              death_year
-              birth_place
-              death_place
-              living
-              familysearch_id
-              is_notable
-              research_status
-              research_priority
-              last_researched
-              coatOfArms
-            }
-          }
-          mother {
-            id
-            generation
-            hasMoreAncestors
-            person {
-              id
-              name_full
-              sex
-              birth_year
-              death_year
-              birth_place
-              death_place
-              living
-              familysearch_id
-              is_notable
-              research_status
-              research_priority
-              last_researched
-              coatOfArms
-            }
-          }
+          person { ${PERSON_FIELDS} }
+          father { id generation hasMoreAncestors person { ${PERSON_FIELDS} } }
+          mother { id generation hasMoreAncestors person { ${PERSON_FIELDS} } }
         }
         mother {
           id
           generation
           hasMoreAncestors
-          person {
-            id
-            name_full
-            sex
-            birth_year
-            death_year
-            birth_place
-            death_place
-            living
-            familysearch_id
-            is_notable
-            research_status
-            research_priority
-            last_researched
-            coatOfArms
-          }
-          father {
-            id
-            generation
-            hasMoreAncestors
-            person {
-              id
-              name_full
-              sex
-              birth_year
-              death_year
-              birth_place
-              death_place
-              living
-              familysearch_id
-              is_notable
-              research_status
-              research_priority
-              last_researched
-              coatOfArms
-            }
-          }
-          mother {
-            id
-            generation
-            hasMoreAncestors
-            person {
-              id
-              name_full
-              sex
-              birth_year
-              death_year
-              birth_place
-              death_place
-              living
-              familysearch_id
-              is_notable
-              research_status
-              research_priority
-              last_researched
-              coatOfArms
-            }
-          }
+          person { ${PERSON_FIELDS} }
+          father { id generation hasMoreAncestors person { ${PERSON_FIELDS} } }
+          mother { id generation hasMoreAncestors person { ${PERSON_FIELDS} } }
         }
       }
     }
@@ -301,57 +81,22 @@ const EXPAND_BRANCH_QUERY = gql`
       id
       generation
       hasMoreAncestors
-      person {
-        id
-        name_full
-        sex
-        birth_year
-        death_year
-        birth_place
-        death_place
-        living
-        familysearch_id
-        is_notable
-        research_status
-        research_priority
-        last_researched
-        coatOfArms
-      }
+      person { ${PERSON_FIELDS} }
       father {
         id
         generation
         hasMoreAncestors
-        person { id name_full sex birth_year death_year birth_place death_place living familysearch_id is_notable research_status research_priority last_researched coatOfArms }
-        father {
-          id
-          generation
-          hasMoreAncestors
-          person { id name_full sex birth_year death_year birth_place death_place living familysearch_id is_notable research_status research_priority last_researched coatOfArms }
-        }
-        mother {
-          id
-          generation
-          hasMoreAncestors
-          person { id name_full sex birth_year death_year birth_place death_place living familysearch_id is_notable research_status research_priority last_researched coatOfArms }
-        }
+        person { ${PERSON_FIELDS} }
+        father { id generation hasMoreAncestors person { ${PERSON_FIELDS} } }
+        mother { id generation hasMoreAncestors person { ${PERSON_FIELDS} } }
       }
       mother {
         id
         generation
         hasMoreAncestors
-        person { id name_full sex birth_year death_year birth_place death_place living familysearch_id is_notable research_status research_priority last_researched coatOfArms }
-        father {
-          id
-          generation
-          hasMoreAncestors
-          person { id name_full sex birth_year death_year birth_place death_place living familysearch_id is_notable research_status research_priority last_researched coatOfArms }
-        }
-        mother {
-          id
-          generation
-          hasMoreAncestors
-          person { id name_full sex birth_year death_year birth_place death_place living familysearch_id is_notable research_status research_priority last_researched coatOfArms }
-        }
+        person { ${PERSON_FIELDS} }
+        father { id generation hasMoreAncestors person { ${PERSON_FIELDS} } }
+        mother { id generation hasMoreAncestors person { ${PERSON_FIELDS} } }
       }
     }
   }

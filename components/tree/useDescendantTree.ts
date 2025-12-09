@@ -5,22 +5,17 @@ import { useLazyQuery, useQuery } from '@apollo/client/react';
 import { useCallback, useMemo, useState } from 'react';
 import type { DescendantNode } from './tree-types';
 
-// Fragment for person fields to reduce duplication
+// Optimized person fields - only what's needed for tree rendering
 const PERSON_FIELDS = `
   id
   name_full
   sex
   birth_year
   death_year
-  birth_place
-  death_place
   living
-  familysearch_id
   is_notable
   research_status
   research_priority
-  last_researched
-  coatOfArms
 `;
 
 // Initial query - fetches 3 generations by default

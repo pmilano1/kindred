@@ -83,6 +83,19 @@ export function FamilyTreeUnified({
     [updateStatus],
   );
 
+  // Toggle sibling visibility for a specific person
+  const toggleSiblings = useCallback((personId: string) => {
+    setVisibleSiblings((prev) => {
+      const next = new Set(prev);
+      if (next.has(personId)) {
+        next.delete(personId);
+      } else {
+        next.add(personId);
+      }
+      return next;
+    });
+  }, []);
+
   // Resize observer
   useEffect(() => {
     const container = containerRef.current;
@@ -564,81 +577,292 @@ export function FamilyTreeUnified({
           .attr('stroke-width', 1);
       }
 
-      // Expand ancestors button (bottom of tile)
-      if (node.hasMoreAncestors) {
-        const isExpanded = expandedAncestors.has(node.id);
-        const buttonG = nodeG
+      // Sibling expand button (left edge)
+      const hasSiblings =
+        node.person.siblings && node.person.siblings.length > 0;
+      if (hasSiblings) {
+        const siblingsVisible = _visibleSiblings.has(person.id);
+        const siblingButtonG = nodeG
           .append('g')
-          .attr('transform', `translate(${nodeWidth / 2}, ${nodeHeight + 8})`)
+          .attr('transform', `translate(-8, ${nodeHeight / 2})`)
           .style('cursor', 'pointer')
           .on('click', (e: MouseEvent) => {
             e.stopPropagation();
-            expandAncestors(node.id);
+            toggleSiblings(person.id);
           });
 
-        buttonG
+        siblingButtonG
           .append('circle')
-          .attr('r', 8)
-          .attr('fill', isExpanded ? '#3b82f6' : '#fff')
+          .attr('r', 6)
+          .attr('fill', siblingsVisible ? '#2563eb' : '#fff')
           .attr('stroke', '#3b82f6')
           .attr('stroke-width', 1.5);
 
-        buttonG
+        siblingButtonG
           .append('text')
+          .attr('x', 0)
+          .attr('y', 1)
           .attr('text-anchor', 'middle')
-          .attr('dominant-baseline', 'central')
-          .attr('font-size', '12px')
+          .attr('font-size', '8px')
           .attr('font-weight', 'bold')
-          .attr('fill', isExpanded ? '#fff' : '#3b82f6')
-          .text(isExpanded ? '−' : '+');
-
-        if (isExpandingAncestors) {
-          buttonG
-            .append('circle')
-            .attr('r', 10)
-            .attr('fill', 'none')
-            .attr('stroke', '#3b82f6')
-            .attr('stroke-width', 2)
-            .attr('opacity', 0.5);
-        }
+          .attr('fill', siblingsVisible ? '#fff' : '#3b82f6')
+          .text(siblingsVisible ? '−' : '+');
       }
 
-      // Expand descendants button (top of tile)
-      if (node.hasMoreDescendants) {
-        const isExpanded = expandedDescendants.has(node.id);
-        const buttonG = nodeG
+      // Expand ancestors bar (bottom of tile)
+      const buttonHeight = 20;
+      const buttonY = nodeHeight + 4;
+      const isExpanded = expandedAncestors.has(node.id);
+      const hasParentsRendered = node.father || node.mother;
+      const shouldShowButton =
+        isExpanded ||
+        (node.hasMoreAncestors && !hasParentsRendered) ||
+        (!node.hasMoreAncestors && !hasParentsRendered);
+
+      if (shouldShowButton) {
+        const isEndOfTree =
+          !node.hasMoreAncestors && !isExpanded && !hasParentsRendered;
+        const expandG = nodeG
           .append('g')
-          .attr('transform', `translate(${nodeWidth / 2}, ${-8})`)
-          .style('cursor', 'pointer')
+          .attr('transform', `translate(0, ${buttonY})`)
+          .style(
+            'cursor',
+            isExpandingAncestors || isEndOfTree ? 'default' : 'pointer',
+          )
           .on('click', (e: MouseEvent) => {
             e.stopPropagation();
-            expandDescendants(node.id);
+            if (!isExpandingAncestors && !isEndOfTree) {
+              expandAncestors(node.id);
+            }
           });
 
-        buttonG
-          .append('circle')
-          .attr('r', 8)
-          .attr('fill', isExpanded ? '#3b82f6' : '#fff')
-          .attr('stroke', '#3b82f6')
-          .attr('stroke-width', 1.5);
+        // Button background - FULL WIDTH RECTANGLE
+        expandG
+          .append('rect')
+          .attr('width', nodeWidth)
+          .attr('height', buttonHeight)
+          .attr('rx', 4)
+          .attr(
+            'fill',
+            isExpandingAncestors
+              ? '#94a3b8'
+              : isEndOfTree
+                ? '#e5e7eb'
+                : isExpanded
+                  ? '#2563eb'
+                  : '#3b82f6',
+          )
+          .attr(
+            'stroke',
+            isExpandingAncestors
+              ? '#64748b'
+              : isEndOfTree
+                ? '#d1d5db'
+                : '#1e40af',
+          )
+          .attr('stroke-width', 1)
+          .style('filter', 'drop-shadow(0 1px 2px rgba(0,0,0,0.1))');
 
-        buttonG
+        // Button text
+        const buttonText = isExpandingAncestors
+          ? 'Loading...'
+          : isEndOfTree
+            ? 'End of tree'
+            : isExpanded
+              ? '▲ Collapse'
+              : '▼ Load More';
+
+        expandG
           .append('text')
+          .attr('x', nodeWidth / 2)
+          .attr('y', buttonHeight / 2 + 4)
           .attr('text-anchor', 'middle')
-          .attr('dominant-baseline', 'central')
-          .attr('font-size', '12px')
-          .attr('font-weight', 'bold')
-          .attr('fill', isExpanded ? '#fff' : '#3b82f6')
-          .text(isExpanded ? '−' : '+');
+          .attr('font-size', '11px')
+          .attr('font-weight', '600')
+          .attr('fill', isEndOfTree ? '#9ca3af' : '#fff')
+          .text(buttonText);
+      }
 
-        if (isExpandingDescendants) {
-          buttonG
-            .append('circle')
-            .attr('r', 10)
-            .attr('fill', 'none')
-            .attr('stroke', '#3b82f6')
+      // Expand descendants bar (top of tile)
+      const isDescExpanded = expandedDescendants.has(node.id);
+      const hasChildrenRendered = node.children && node.children.length > 0;
+      const shouldShowDescButton =
+        isDescExpanded ||
+        (node.hasMoreDescendants && !hasChildrenRendered) ||
+        (!node.hasMoreDescendants && !hasChildrenRendered);
+
+      if (shouldShowDescButton) {
+        const isEndOfDescTree =
+          !node.hasMoreDescendants && !isDescExpanded && !hasChildrenRendered;
+        const descButtonY = -(buttonHeight + 4);
+        const descExpandG = nodeG
+          .append('g')
+          .attr('transform', `translate(0, ${descButtonY})`)
+          .style(
+            'cursor',
+            isExpandingDescendants || isEndOfDescTree ? 'default' : 'pointer',
+          )
+          .on('click', (e: MouseEvent) => {
+            e.stopPropagation();
+            if (!isExpandingDescendants && !isEndOfDescTree) {
+              expandDescendants(node.id);
+            }
+          });
+
+        // Button background - FULL WIDTH RECTANGLE
+        descExpandG
+          .append('rect')
+          .attr('width', nodeWidth)
+          .attr('height', buttonHeight)
+          .attr('rx', 4)
+          .attr(
+            'fill',
+            isExpandingDescendants
+              ? '#94a3b8'
+              : isEndOfDescTree
+                ? '#e5e7eb'
+                : isDescExpanded
+                  ? '#2563eb'
+                  : '#3b82f6',
+          )
+          .attr(
+            'stroke',
+            isExpandingDescendants
+              ? '#64748b'
+              : isEndOfDescTree
+                ? '#d1d5db'
+                : '#1e40af',
+          )
+          .attr('stroke-width', 1)
+          .style('filter', 'drop-shadow(0 1px 2px rgba(0,0,0,0.1))');
+
+        // Button text
+        const descButtonText = isExpandingDescendants
+          ? 'Loading...'
+          : isEndOfDescTree
+            ? 'End of tree'
+            : isDescExpanded
+              ? '▼ Collapse'
+              : '▲ Load More';
+
+        descExpandG
+          .append('text')
+          .attr('x', nodeWidth / 2)
+          .attr('y', buttonHeight / 2 + 4)
+          .attr('text-anchor', 'middle')
+          .attr('font-size', '11px')
+          .attr('font-weight', '600')
+          .attr('fill', isEndOfDescTree ? '#9ca3af' : '#fff')
+          .text(descButtonText);
+      }
+
+      // Draw spouse next to person
+      if (node.spouse) {
+        const spouse = toTreePerson(node.spouse);
+        const spouseX = node.x + nodeWidth / 2 + spouseGap;
+
+        const spouseG = g
+          .append('g')
+          .attr(
+            'transform',
+            `translate(${spouseX},${node.y - nodeHeight / 2})`,
+          );
+
+        spouseG
+          .append('rect')
+          .attr('width', nodeWidth)
+          .attr('height', nodeHeight)
+          .attr('rx', 6)
+          .attr('fill', spouse.sex === 'F' ? '#fce7f3' : '#dbeafe')
+          .attr('stroke', spouse.sex === 'F' ? '#ec4899' : '#3b82f6')
+          .attr('stroke-width', 2)
+          .style('cursor', 'pointer')
+          .on('click', () => onTileClick(spouse.id));
+
+        const maxNameLen = 18;
+        const spouseDisplayName =
+          spouse.name.length > maxNameLen
+            ? `${spouse.name.substring(0, maxNameLen - 2)}…`
+            : spouse.name;
+        spouseG
+          .append('text')
+          .attr('x', nodeWidth / 2)
+          .attr('y', 20)
+          .attr('text-anchor', 'middle')
+          .attr('font-size', '11px')
+          .attr('font-weight', '600')
+          .attr('fill', '#1f2937')
+          .text(spouseDisplayName);
+
+        const spouseYears = spouse.living
+          ? `${spouse.birth_year || '?'} – Living`
+          : `${spouse.birth_year || '?'} – ${spouse.death_year || '?'}`;
+        spouseG
+          .append('text')
+          .attr('x', nodeWidth / 2)
+          .attr('y', 36)
+          .attr('text-anchor', 'middle')
+          .attr('font-size', '10px')
+          .attr('fill', '#6b7280')
+          .text(spouseYears);
+      }
+
+      // Render siblings if visible
+      if (
+        _visibleSiblings.has(person.id) &&
+        node.person.siblings &&
+        node.person.siblings.length > 0
+      ) {
+        const siblings = node.person.siblings;
+        const maxNameLen = 18;
+        for (let idx = 0; idx < siblings.length; idx++) {
+          const sibling = toTreePerson(siblings[idx]);
+          const siblingX =
+            node.x - nodeWidth / 2 - (idx + 1) * (nodeWidth + nodeGap);
+          const siblingG = g
+            .append('g')
+            .attr(
+              'transform',
+              `translate(${siblingX},${node.y - nodeHeight / 2})`,
+            );
+
+          siblingG
+            .append('rect')
+            .attr('width', nodeWidth)
+            .attr('height', nodeHeight)
+            .attr('rx', 6)
+            .attr('fill', sibling.sex === 'F' ? '#fce7f3' : '#dbeafe')
+            .attr('stroke', sibling.sex === 'F' ? '#ec4899' : '#3b82f6')
             .attr('stroke-width', 2)
-            .attr('opacity', 0.5);
+            .attr('opacity', 0.7)
+            .style('cursor', 'pointer')
+            .on('click', () => onTileClick(sibling.id));
+
+          const siblingDisplayName =
+            sibling.name.length > maxNameLen
+              ? `${sibling.name.substring(0, maxNameLen - 2)}…`
+              : sibling.name;
+          siblingG
+            .append('text')
+            .attr('x', nodeWidth / 2)
+            .attr('y', 20)
+            .attr('text-anchor', 'middle')
+            .attr('font-size', '11px')
+            .attr('font-weight', '600')
+            .attr('fill', '#1f2937')
+            .text(siblingDisplayName);
+
+          const siblingYears = sibling.living
+            ? `${sibling.birth_year || '?'} – Living`
+            : `${sibling.birth_year || '?'} – ${sibling.death_year || '?'}`;
+          siblingG
+            .append('text')
+            .attr('x', nodeWidth / 2)
+            .attr('y', 36)
+            .attr('text-anchor', 'middle')
+            .attr('font-size', '10px')
+            .attr('fill', '#6b7280')
+            .text(siblingYears);
         }
       }
     }
@@ -652,6 +876,8 @@ export function FamilyTreeUnified({
     expandingNode,
     onPersonClick,
     onTileClick,
+    _visibleSiblings,
+    toggleSiblings,
   ]);
 
   if (error) {

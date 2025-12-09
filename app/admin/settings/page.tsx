@@ -375,6 +375,43 @@ export default function SettingsPage() {
                         <p className="text-sm text-gray-500">
                           {row.description}
                         </p>
+                        {/* Show preview for branding fields */}
+                        {category === 'branding' && row.key === 'site_name' && (
+                          <div className="mt-2 p-2 bg-blue-50 border border-blue-200 rounded text-xs">
+                            <p className="font-medium text-blue-900 mb-1">
+                              Used in:
+                            </p>
+                            <ul className="text-blue-700 space-y-0.5">
+                              <li>• Browser tab title</li>
+                              <li>• Footer copyright</li>
+                            </ul>
+                          </div>
+                        )}
+                        {category === 'branding' &&
+                          row.key === 'family_name' && (
+                            <div className="mt-2 p-2 bg-blue-50 border border-blue-200 rounded text-xs">
+                              <p className="font-medium text-blue-900 mb-1">
+                                Used in:
+                              </p>
+                              <ul className="text-blue-700 space-y-0.5">
+                                <li>• Sidebar header</li>
+                                <li>• Browser tab title</li>
+                                <li>• Footer copyright</li>
+                              </ul>
+                            </div>
+                          )}
+                        {category === 'branding' &&
+                          row.key === 'site_tagline' && (
+                            <div className="mt-2 p-2 bg-blue-50 border border-blue-200 rounded text-xs">
+                              <p className="font-medium text-blue-900 mb-1">
+                                Used in:
+                              </p>
+                              <ul className="text-blue-700 space-y-0.5">
+                                <li>• Sidebar header (below family name)</li>
+                                <li>• Browser meta description</li>
+                              </ul>
+                            </div>
+                          )}
                       </div>
                       <div className="col-span-2">
                         {row.key === 'theme_color' ? (

@@ -45,7 +45,7 @@ export function FamilyTreeUnified({
     null,
   );
   const [isFullscreen, setIsFullscreen] = useState(false);
-  const [_visibleSiblings, setVisibleSiblings] = useState<Set<string>>(
+  const [visibleSiblings, setVisibleSiblings] = useState<Set<string>>(
     new Set(),
   );
 
@@ -118,19 +118,6 @@ export function FamilyTreeUnified({
   // Reset transform when root person changes
   useEffect(() => {
     currentTransformRef.current = null;
-  }, []);
-
-  // Toggle sibling visibility
-  const _toggleSiblings = useCallback((personId: string) => {
-    setVisibleSiblings((prev) => {
-      const next = new Set(prev);
-      if (next.has(personId)) {
-        next.delete(personId);
-      } else {
-        next.add(personId);
-      }
-      return next;
-    });
   }, []);
 
   // Zoom controls
@@ -299,7 +286,7 @@ export function FamilyTreeUnified({
       if (node.spouse) {
         // Person tile is on left, spouse on right
         // Center the pair over children
-        const pairWidth = nodeWidth * 2 + spouseGap;
+        const _pairWidth = nodeWidth * 2 + spouseGap;
         node.x = childrenCenter - spouseGap / 2 - nodeWidth / 2;
       } else {
         node.x = childrenCenter;
@@ -324,13 +311,22 @@ export function FamilyTreeUnified({
       }
     }
 
-    // Collect all nodes
+    // Collect all nodes and build spatial index for collision detection
     const allNodes: FamilyTreeNode[] = [];
     const seenIds = new Set<string>();
+    const occupiedPositions = new Map<string, FamilyTreeNode>(); // "x,y" -> node
+
     const collectNodes = (node: FamilyTreeNode) => {
       if (seenIds.has(node.id)) return;
       seenIds.add(node.id);
       allNodes.push(node);
+
+      // Record occupied position (only if x and y are defined)
+      if (node.x !== undefined && node.y !== undefined) {
+        const posKey = `${Math.round(node.x)},${Math.round(node.y)}`;
+        occupiedPositions.set(posKey, node);
+      }
+
       if (node.father) collectNodes(node.father);
       if (node.mother) collectNodes(node.mother);
       for (const child of node.children) {
@@ -592,7 +588,7 @@ export function FamilyTreeUnified({
       const hasSiblings =
         node.person.siblings && node.person.siblings.length > 0;
       if (hasSiblings) {
-        const siblingsVisible = _visibleSiblings.has(person.id);
+        const siblingsVisible = visibleSiblings.has(person.id);
         const siblingButtonG = nodeG
           .append('g')
           .attr('transform', `translate(-8, ${nodeHeight / 2})`)
@@ -700,7 +696,8 @@ export function FamilyTreeUnified({
 
       // Only show "End of tree" if we've never expanded AND there's nothing to load
       // Don't show it if children are already rendered
-      const canLoadMoreDescendants = node.hasMoreDescendants && !hasChildrenRendered;
+      const canLoadMoreDescendants =
+        node.hasMoreDescendants && !hasChildrenRendered;
       const shouldShowDescButton = isDescExpanded || canLoadMoreDescendants;
 
       if (shouldShowDescButton) {
@@ -818,23 +815,36 @@ export function FamilyTreeUnified({
           .text(spouseYears);
       }
 
-      // Render siblings if visible
+      // Render siblings if visible (with collision detection)
       if (
-        _visibleSiblings.has(person.id) &&
+        visibleSiblings.has(person.id) &&
         node.person.siblings &&
         node.person.siblings.length > 0
       ) {
         const siblings = node.person.siblings;
         const maxNameLen = 18;
+
         for (let idx = 0; idx < siblings.length; idx++) {
           const sibling = toTreePerson(siblings[idx]);
-          const siblingX =
-            node.x - nodeWidth / 2 - (idx + 1) * (nodeWidth + nodeGap);
+
+          // Calculate sibling position (to the left)
+          const siblingX = node.x - (idx + 1) * (nodeWidth + nodeGap);
+          const siblingY = node.y;
+
+          // Check for collision with existing nodes
+          const posKey = `${Math.round(siblingX)},${Math.round(siblingY)}`;
+          const hasCollision = occupiedPositions.has(posKey);
+
+          // Skip rendering if there's a collision
+          if (hasCollision) {
+            continue;
+          }
+
           const siblingG = g
             .append('g')
             .attr(
               'transform',
-              `translate(${siblingX},${node.y - nodeHeight / 2})`,
+              `translate(${siblingX - nodeWidth / 2},${siblingY - nodeHeight / 2})`,
             );
 
           siblingG
@@ -845,7 +855,8 @@ export function FamilyTreeUnified({
             .attr('fill', sibling.sex === 'F' ? '#fce7f3' : '#dbeafe')
             .attr('stroke', sibling.sex === 'F' ? '#ec4899' : '#3b82f6')
             .attr('stroke-width', 2)
-            .attr('opacity', 0.7)
+            .attr('stroke-dasharray', '4,4')
+            .attr('opacity', 0.8)
             .style('cursor', 'pointer')
             .on('click', () => onTileClick(sibling.id));
 
@@ -874,6 +885,15 @@ export function FamilyTreeUnified({
             .attr('font-size', '10px')
             .attr('fill', '#6b7280')
             .text(siblingYears);
+
+          // Sibling indicator icon
+          siblingG
+            .append('text')
+            .attr('x', nodeWidth - 12)
+            .attr('y', 14)
+            .attr('font-size', '10px')
+            .attr('fill', '#9ca3af')
+            .text('↔');
         }
       }
     }
@@ -887,7 +907,7 @@ export function FamilyTreeUnified({
     expandingNode,
     onPersonClick,
     onTileClick,
-    _visibleSiblings,
+    visibleSiblings,
     toggleSiblings,
   ]);
 

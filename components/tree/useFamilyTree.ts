@@ -328,18 +328,27 @@ export function useFamilyTree({
     // Apply expanded ancestor branches
     const mergeAncestorBranch = (node: FamilyTreeNode): FamilyTreeNode => {
       const expandedData = mergedAncestorBranches.get(node.id);
-      if (expandedData && node.hasMoreAncestors) {
-        return {
+
+      // If this node has been expanded, merge the new data
+      if (expandedData) {
+        const merged = {
           ...node,
           father: expandedData.father
-            ? convertPedigreeToFamily(expandedData.father)
-            : node.father,
+            ? mergeAncestorBranch(convertPedigreeToFamily(expandedData.father))
+            : node.father
+              ? mergeAncestorBranch(node.father)
+              : undefined,
           mother: expandedData.mother
-            ? convertPedigreeToFamily(expandedData.mother)
-            : node.mother,
+            ? mergeAncestorBranch(convertPedigreeToFamily(expandedData.mother))
+            : node.mother
+              ? mergeAncestorBranch(node.mother)
+              : undefined,
           hasMoreAncestors: expandedData.hasMoreAncestors,
         };
+        return merged;
       }
+
+      // Otherwise, recursively merge children
       return {
         ...node,
         father: node.father ? mergeAncestorBranch(node.father) : undefined,
@@ -350,13 +359,19 @@ export function useFamilyTree({
     // Apply expanded descendant branches
     const mergeDescendantBranch = (node: FamilyTreeNode): FamilyTreeNode => {
       const expandedData = mergedDescendantBranches.get(node.id);
-      if (expandedData && node.hasMoreDescendants) {
+
+      // If this node has been expanded, merge the new data
+      if (expandedData) {
         return {
           ...node,
-          children: expandedData.children.map(convertDescendantToFamily),
+          children: expandedData.children.map((child) =>
+            mergeDescendantBranch(convertDescendantToFamily(child)),
+          ),
           hasMoreDescendants: expandedData.hasMoreDescendants,
         };
       }
+
+      // Otherwise, recursively merge children
       return {
         ...node,
         children: node.children.map(mergeDescendantBranch),

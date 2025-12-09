@@ -463,11 +463,11 @@ export function FamilyTreeLazy({
         .attr('fill', '#6b7280')
         .text(years);
 
-      // Expand button [+] for nodes with more ancestors
+      // Expand bar for nodes with more ancestors
       if (node.hasMoreAncestors) {
         const expandG = nodeG
           .append('g')
-          .attr('transform', `translate(${nodeWidth / 2 - 10}, ${nodeHeight})`)
+          .attr('transform', `translate(0, ${nodeHeight + 2})`)
           .style('cursor', isExpanding ? 'wait' : 'pointer')
           .on('click', (e: MouseEvent) => {
             e.stopPropagation();
@@ -476,24 +476,25 @@ export function FamilyTreeLazy({
             }
           });
 
+        // Full-width bar underneath tile
         expandG
           .append('rect')
-          .attr('width', 20)
-          .attr('height', 16)
+          .attr('width', nodeWidth)
+          .attr('height', 6)
           .attr('rx', 3)
           .attr('fill', isExpanding ? '#94a3b8' : '#3b82f6')
-          .attr('stroke', '#fff')
-          .attr('stroke-width', 1);
+          .attr('opacity', 0.8);
 
+        // Expand icon in center of bar
         expandG
           .append('text')
-          .attr('x', 10)
-          .attr('y', 12)
+          .attr('x', nodeWidth / 2)
+          .attr('y', 5)
           .attr('text-anchor', 'middle')
-          .attr('font-size', '12px')
+          .attr('font-size', '10px')
           .attr('font-weight', 'bold')
           .attr('fill', '#fff')
-          .text(isExpanding ? '…' : '+');
+          .text(isExpanding ? '…' : '▼');
       }
     }
   }, [
@@ -717,11 +718,11 @@ export function FamilyTreeLazy({
         .attr('stroke', '#fff')
         .attr('stroke-width', 1);
 
-      // Expand button for nodes with more descendants
+      // Expand bar for nodes with more descendants
       if (node.hasMoreDescendants) {
         const expandG = nodeG
           .append('g')
-          .attr('transform', `translate(${nodeWidth / 2 - 10}, ${nodeHeight})`)
+          .attr('transform', `translate(0, ${nodeHeight + 2})`)
           .style('cursor', isExpanding ? 'wait' : 'pointer')
           .on('click', (e: MouseEvent) => {
             e.stopPropagation();
@@ -730,24 +731,25 @@ export function FamilyTreeLazy({
             }
           });
 
+        // Full-width bar underneath tile
         expandG
           .append('rect')
-          .attr('width', 20)
-          .attr('height', 16)
+          .attr('width', nodeWidth)
+          .attr('height', 6)
           .attr('rx', 3)
           .attr('fill', isExpanding ? '#94a3b8' : '#22c55e')
-          .attr('stroke', '#fff')
-          .attr('stroke-width', 1);
+          .attr('opacity', 0.8);
 
+        // Expand icon in center of bar
         expandG
           .append('text')
-          .attr('x', 10)
-          .attr('y', 12)
+          .attr('x', nodeWidth / 2)
+          .attr('y', 5)
           .attr('text-anchor', 'middle')
-          .attr('font-size', '12px')
+          .attr('font-size', '10px')
           .attr('font-weight', 'bold')
           .attr('fill', '#fff')
-          .text(isExpanding ? '…' : '+');
+          .text(isExpanding ? '…' : '▼');
       }
 
       // Draw spouse next to person

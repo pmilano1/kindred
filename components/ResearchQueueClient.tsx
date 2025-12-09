@@ -2,7 +2,7 @@
 
 import { NetworkStatus } from '@apollo/client';
 import { useMutation, useQuery } from '@apollo/client/react';
-import { Loader2 } from 'lucide-react';
+import { Loader2, TreeDeciduous, Users } from 'lucide-react';
 import Link from 'next/link';
 import { useCallback } from 'react';
 import {
@@ -170,6 +170,7 @@ export default function ResearchQueueClient() {
                   <th className="py-2 px-3 text-sm font-semibold">
                     Last Researched
                   </th>
+                  <th className="py-2 px-3 text-sm font-semibold w-20">Tree</th>
                 </tr>
               </thead>
               <tbody>
@@ -262,6 +263,24 @@ export default function ResearchQueueClient() {
                               person.last_researched,
                             ).toLocaleDateString()
                           : 'Never'}
+                      </td>
+                      <td className="py-3 px-3">
+                        <div className="flex gap-1">
+                          <Link
+                            href={`/tree?person=${person.id}&view=ancestors`}
+                            className="p-1 rounded hover:bg-blue-100 text-blue-600 transition-colors"
+                            title="View ancestor tree"
+                          >
+                            <TreeDeciduous className="w-4 h-4" />
+                          </Link>
+                          <Link
+                            href={`/tree?person=${person.id}&view=descendants`}
+                            className="p-1 rounded hover:bg-green-100 text-green-600 transition-colors"
+                            title="View descendant tree"
+                          >
+                            <Users className="w-4 h-4" />
+                          </Link>
+                        </div>
                       </td>
                     </tr>
                   );

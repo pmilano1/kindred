@@ -1,3 +1,4 @@
+import { TreeDeciduous, Users } from 'lucide-react';
 import Link from 'next/link';
 import type { Person } from '@/lib/types';
 
@@ -85,6 +86,23 @@ export default function PersonCard({
               <CompletenessIndicator score={person.completeness_score} />
             )}
           </div>
+        </div>
+        {/* Tree navigation icons */}
+        <div className="flex gap-1 ml-2">
+          <Link
+            href={`/tree?person=${person.id}&view=ancestors`}
+            className="p-1.5 rounded hover:bg-blue-100 text-blue-600 transition-colors"
+            title="View ancestor tree"
+          >
+            <TreeDeciduous className="w-4 h-4" />
+          </Link>
+          <Link
+            href={`/tree?person=${person.id}&view=descendants`}
+            className="p-1.5 rounded hover:bg-green-100 text-green-600 transition-colors"
+            title="View descendant tree"
+          >
+            <Users className="w-4 h-4" />
+          </Link>
         </div>
       </div>
 

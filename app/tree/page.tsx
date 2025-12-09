@@ -13,7 +13,10 @@ import { GET_PERSON } from '@/lib/graphql/queries';
 import type { Person } from '@/lib/types';
 
 const FamilyTreeLazy = dynamic(
-  () => import('@/components/tree/FamilyTreeLazy').then((mod) => ({ default: mod.FamilyTreeLazy })),
+  () =>
+    import('@/components/tree/FamilyTreeLazy').then((mod) => ({
+      default: mod.FamilyTreeLazy,
+    })),
   {
     ssr: false,
   },

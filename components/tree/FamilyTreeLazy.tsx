@@ -610,7 +610,11 @@ export function FamilyTreeLazy({
       node: DescendantNode,
       gen: number,
     ): { minX: number; maxX: number } => {
-      node.y = gen * (nodeHeight + levelGap);
+      // Add extra space at top for generation -1 (parents)
+      const topPadding = rootContext?.person?.parents?.length
+        ? nodeHeight + levelGap
+        : 0;
+      node.y = topPadding + gen * (nodeHeight + levelGap);
 
       if (node.children.length === 0) {
         const totalWidth = node.spouse ? nodeWidth * 2 + spouseGap : nodeWidth;

@@ -68,6 +68,16 @@ const ANCESTORS_QUERY = gql`
             last_researched
             coatOfArms
           }
+          father {
+            id
+            generation
+            hasMoreAncestors
+          }
+          mother {
+            id
+            generation
+            hasMoreAncestors
+          }
         }
         mother {
           id
@@ -88,6 +98,16 @@ const ANCESTORS_QUERY = gql`
             research_priority
             last_researched
             coatOfArms
+          }
+          father {
+            id
+            generation
+            hasMoreAncestors
+          }
+          mother {
+            id
+            generation
+            hasMoreAncestors
           }
         }
       }
@@ -131,6 +151,16 @@ const ANCESTORS_QUERY = gql`
             last_researched
             coatOfArms
           }
+          father {
+            id
+            generation
+            hasMoreAncestors
+          }
+          mother {
+            id
+            generation
+            hasMoreAncestors
+          }
         }
         mother {
           id
@@ -151,6 +181,16 @@ const ANCESTORS_QUERY = gql`
             research_priority
             last_researched
             coatOfArms
+          }
+          father {
+            id
+            generation
+            hasMoreAncestors
+          }
+          mother {
+            id
+            generation
+            hasMoreAncestors
           }
         }
       }
@@ -186,12 +226,36 @@ const EXPAND_BRANCH_QUERY = gql`
         generation
         hasMoreAncestors
         person { id name_full sex birth_year death_year birth_place death_place living familysearch_id is_notable research_status research_priority last_researched coatOfArms }
+        father {
+          id
+          generation
+          hasMoreAncestors
+          person { id name_full sex birth_year death_year birth_place death_place living familysearch_id is_notable research_status research_priority last_researched coatOfArms }
+        }
+        mother {
+          id
+          generation
+          hasMoreAncestors
+          person { id name_full sex birth_year death_year birth_place death_place living familysearch_id is_notable research_status research_priority last_researched coatOfArms }
+        }
       }
       mother {
         id
         generation
         hasMoreAncestors
         person { id name_full sex birth_year death_year birth_place death_place living familysearch_id is_notable research_status research_priority last_researched coatOfArms }
+        father {
+          id
+          generation
+          hasMoreAncestors
+          person { id name_full sex birth_year death_year birth_place death_place living familysearch_id is_notable research_status research_priority last_researched coatOfArms }
+        }
+        mother {
+          id
+          generation
+          hasMoreAncestors
+          person { id name_full sex birth_year death_year birth_place death_place living familysearch_id is_notable research_status research_priority last_researched coatOfArms }
+        }
       }
     }
   }

@@ -54,6 +54,11 @@ const DESCENDANTS_QUERY = gql`
             marriageYear
             person { ${PERSON_FIELDS} }
             spouse { ${PERSON_FIELDS} }
+            children {
+              id
+              generation
+              hasMoreDescendants
+            }
           }
         }
       }
@@ -85,6 +90,11 @@ const EXPAND_DESCENDANTS_QUERY = gql`
           marriageYear
           person { ${PERSON_FIELDS} }
           spouse { ${PERSON_FIELDS} }
+          children {
+            id
+            generation
+            hasMoreDescendants
+          }
         }
       }
     }

@@ -1252,10 +1252,18 @@ export const resolvers = {
     ) => {
       requireAuth(context, 'editor');
 
+      // Generate a nanoid-style ID (12 chars alphanumeric)
+      const id = crypto
+        .randomBytes(9)
+        .toString('base64')
+        .replace(/[+/=]/g, '')
+        .substring(0, 12);
+
       const { rows } = await pool.query(
-        `INSERT INTO sources (person_id, source_type, source_name, source_url, action, content, confidence)
-         VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *`,
+        `INSERT INTO sources (id, person_id, source_type, source_name, source_url, action, content, confidence)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING *`,
         [
+          id,
           personId,
           input.source_type,
           input.source_name,

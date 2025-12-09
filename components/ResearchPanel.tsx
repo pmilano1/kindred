@@ -406,7 +406,6 @@ export default function ResearchPanel({
                   <SelectValue placeholder="-- Select --" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">-- Select --</SelectItem>
                   {SOURCES.map((s) => (
                     <SelectItem key={s.value} value={s.value}>
                       {s.label}
@@ -440,7 +439,6 @@ export default function ResearchPanel({
                   <SelectValue placeholder="-- Select --" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">-- Select --</SelectItem>
                   {CONFIDENCE.map((c) => (
                     <SelectItem key={c.value} value={c.value}>
                       {c.label}

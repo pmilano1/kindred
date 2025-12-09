@@ -321,9 +321,11 @@ export function FamilyTreeUnified({
       seenIds.add(node.id);
       allNodes.push(node);
 
-      // Record occupied position
-      const posKey = `${Math.round(node.x)},${Math.round(node.y)}`;
-      occupiedPositions.set(posKey, node);
+      // Record occupied position (only if x and y are defined)
+      if (node.x !== undefined && node.y !== undefined) {
+        const posKey = `${Math.round(node.x)},${Math.round(node.y)}`;
+        occupiedPositions.set(posKey, node);
+      }
 
       if (node.father) collectNodes(node.father);
       if (node.mother) collectNodes(node.mother);

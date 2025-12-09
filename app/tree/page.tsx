@@ -12,9 +12,12 @@ import { Button, PageHeader } from '@/components/ui';
 import { GET_PERSON } from '@/lib/graphql/queries';
 import type { Person } from '@/lib/types';
 
-const FamilyTree = dynamic(() => import('@/components/FamilyTree'), {
-  ssr: false,
-});
+const FamilyTreeLazy = dynamic(
+  () => import('@/components/tree/FamilyTreeLazy').then((mod) => ({ default: mod.FamilyTreeLazy })),
+  {
+    ssr: false,
+  },
+);
 
 function TreePageContent() {
   const router = useRouter();
@@ -138,7 +141,7 @@ function TreePageContent() {
               </p>
             </div>
             <div style={{ height: '500px' }}>
-              <FamilyTree
+              <FamilyTreeLazy
                 rootPersonId={selectedPerson}
                 showAncestors={showAncestors}
                 onPersonClick={(id) => router.push(`/person/${id}`)}

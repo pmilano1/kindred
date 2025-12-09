@@ -293,11 +293,22 @@ export function FamilyTreeUnified({
         maxX = Math.max(maxX, bounds.maxX);
       }
 
-      node.x = (minX + maxX) / 2;
+      // Center the person tile over children
+      // If there's a spouse, the person tile is on the left, so offset accordingly
+      const childrenCenter = (minX + maxX) / 2;
+      if (node.spouse) {
+        // Person tile is on left, spouse on right
+        // Center the pair over children
+        const pairWidth = nodeWidth * 2 + spouseGap;
+        node.x = childrenCenter - spouseGap / 2 - nodeWidth / 2;
+      } else {
+        node.x = childrenCenter;
+      }
 
+      const totalWidth = node.spouse ? nodeWidth * 2 + spouseGap : nodeWidth;
       return {
         minX: Math.min(minX, node.x - nodeWidth / 2),
-        maxX: Math.max(maxX, node.x + nodeWidth / 2),
+        maxX: Math.max(maxX, node.x + totalWidth - nodeWidth / 2),
       };
     };
 
@@ -614,14 +625,14 @@ export function FamilyTreeUnified({
       const buttonY = nodeHeight + 4;
       const isExpanded = expandedAncestors.has(node.id);
       const hasParentsRendered = node.father || node.mother;
-      const shouldShowButton =
-        isExpanded ||
-        (node.hasMoreAncestors && !hasParentsRendered) ||
-        (!node.hasMoreAncestors && !hasParentsRendered);
+
+      // Only show "End of tree" if we've never expanded AND there's nothing to load
+      // Don't show it if parents are already rendered
+      const canLoadMoreAncestors = node.hasMoreAncestors && !hasParentsRendered;
+      const shouldShowButton = isExpanded || canLoadMoreAncestors;
 
       if (shouldShowButton) {
-        const isEndOfTree =
-          !node.hasMoreAncestors && !isExpanded && !hasParentsRendered;
+        const isEndOfTree = false; // Never show "End of tree" for ancestors
         const expandG = nodeG
           .append('g')
           .attr('transform', `translate(0, ${buttonY})`)
@@ -686,14 +697,14 @@ export function FamilyTreeUnified({
       // Expand descendants bar (top of tile)
       const isDescExpanded = expandedDescendants.has(node.id);
       const hasChildrenRendered = node.children && node.children.length > 0;
-      const shouldShowDescButton =
-        isDescExpanded ||
-        (node.hasMoreDescendants && !hasChildrenRendered) ||
-        (!node.hasMoreDescendants && !hasChildrenRendered);
+
+      // Only show "End of tree" if we've never expanded AND there's nothing to load
+      // Don't show it if children are already rendered
+      const canLoadMoreDescendants = node.hasMoreDescendants && !hasChildrenRendered;
+      const shouldShowDescButton = isDescExpanded || canLoadMoreDescendants;
 
       if (shouldShowDescButton) {
-        const isEndOfDescTree =
-          !node.hasMoreDescendants && !isDescExpanded && !hasChildrenRendered;
+        const isEndOfDescTree = false; // Never show "End of tree" for descendants
         const descButtonY = -(buttonHeight + 4);
         const descExpandG = nodeG
           .append('g')

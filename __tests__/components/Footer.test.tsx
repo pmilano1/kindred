@@ -31,9 +31,7 @@ describe('Footer', () => {
     render(<Footer />);
 
     const currentYear = new Date().getFullYear();
-    expect(
-      screen.getByText(`© ${currentYear} Milanese`),
-    ).toBeInTheDocument();
+    expect(screen.getByText(`© ${currentYear} Milanese`)).toBeInTheDocument();
   });
 
   it('renders footer text when provided', () => {
@@ -104,9 +102,7 @@ describe('Footer', () => {
     render(<Footer />);
 
     const currentYear = new Date().getFullYear();
-    expect(
-      screen.getByText(`© ${currentYear} Milanese`),
-    ).toBeInTheDocument();
+    expect(screen.getByText(`© ${currentYear} Milanese`)).toBeInTheDocument();
     expect(screen.getByText('Generations of stories')).toBeInTheDocument();
     expect(
       screen.getByRole('link', { name: 'contact@milanese.life' }),
@@ -123,8 +119,13 @@ describe('Footer', () => {
 
     render(<Footer />);
 
-    const kindredLink = screen.getByRole('link', { name: /Powered by.*Kindred/i });
-    expect(kindredLink).toHaveAttribute('href', 'https://github.com/pmilano1/kindred');
+    const kindredLink = screen.getByRole('link', {
+      name: /Powered by.*Kindred/i,
+    });
+    expect(kindredLink).toHaveAttribute(
+      'href',
+      'https://github.com/pmilano1/kindred',
+    );
     expect(kindredLink).toHaveAttribute('target', '_blank');
     expect(kindredLink).toHaveAttribute('rel', 'noopener noreferrer');
   });

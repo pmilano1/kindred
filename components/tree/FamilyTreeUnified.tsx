@@ -302,7 +302,7 @@ export function FamilyTreeUnified({
     // Position ancestors first
     leafX = 0;
     assignAncestorPositions(tree, 0);
-    const originalRootX = tree.x;
+    const originalRootX = tree.x ?? 0;
 
     // Position descendants
     leafX = 0;
@@ -636,7 +636,7 @@ export function FamilyTreeUnified({
       const renderedNodeIds = new Set(allNodes.map((n) => n.id));
       const hasUnrenderedSiblings =
         hasSiblings &&
-        node.person.siblings.some((sib) => !renderedNodeIds.has(sib.id));
+        node.person.siblings?.some((sib) => !renderedNodeIds.has(sib.id));
 
       if (hasUnrenderedSiblings) {
         const siblingsVisible = visibleSiblings.has(person.id);
@@ -885,7 +885,7 @@ export function FamilyTreeUnified({
         // Check if any spouse siblings are already rendered in the tree
         const spouseHasUnrenderedSiblings =
           spouseHasSiblings &&
-          node.spouse.siblings.some((sib) => !renderedNodeIds.has(sib.id));
+          node.spouse.siblings?.some((sib) => !renderedNodeIds.has(sib.id));
 
         if (spouseHasUnrenderedSiblings) {
           const spouseSiblingsVisible = visibleSiblings.has(spouse.id);

@@ -401,9 +401,10 @@ export function useFamilyTree({
           variables: { personId, generations: expansionGenerations },
         });
 
-        if (result.data?.ancestors) {
+        const ancestors = result.data?.ancestors;
+        if (ancestors) {
           setMergedAncestorBranches((prev) =>
-            new Map(prev).set(personId, result.data?.ancestors),
+            new Map(prev).set(personId, ancestors),
           );
           setExpandedAncestors((prev) => new Set([...prev, personId]));
         }
@@ -439,9 +440,10 @@ export function useFamilyTree({
           variables: { personId, generations: expansionGenerations },
         });
 
-        if (result.data?.descendants) {
+        const descendants = result.data?.descendants;
+        if (descendants) {
           setMergedDescendantBranches((prev) =>
-            new Map(prev).set(personId, result.data?.descendants),
+            new Map(prev).set(personId, descendants),
           );
           setExpandedDescendants((prev) => new Set([...prev, personId]));
         }

@@ -325,6 +325,13 @@ export function FamilyTreeUnified({
       if (node.x !== undefined && node.y !== undefined) {
         const posKey = `${Math.round(node.x)},${Math.round(node.y)}`;
         occupiedPositions.set(posKey, node);
+
+        // Also record spouse position if spouse exists
+        if (node.spouse) {
+          const spouseX = node.x + nodeWidth / 2 + spouseGap;
+          const spousePosKey = `${Math.round(spouseX)},${Math.round(node.y)}`;
+          occupiedPositions.set(spousePosKey, node); // Use node as placeholder
+        }
       }
 
       if (node.father) collectNodes(node.father);
@@ -336,7 +343,8 @@ export function FamilyTreeUnified({
     collectNodes(tree);
 
     // Calculate bounds and center
-    const padding = 50;
+    // Extra padding to account for sibling buttons (16px + 4px offset) and sibling popups (50px offset + nodeWidth)
+    const padding = 200; // Increased from 50 to prevent sibling buttons/popups from overlapping
     const minX = Math.min(...allNodes.map((n) => (n.x ?? 0) - nodeWidth / 2));
     const maxX = Math.max(...allNodes.map((n) => (n.x ?? 0) + nodeWidth / 2));
     const minY = Math.min(...allNodes.map((n) => (n.y ?? 0) - nodeHeight / 2));
@@ -346,10 +354,12 @@ export function FamilyTreeUnified({
 
     // Setup zoom
     const g = svg.append('g');
+    const siblingsG = svg.append('g'); // Separate group for siblings (renders on top)
     const zoomBehavior = zoom<SVGSVGElement, unknown>()
       .scaleExtent([0.1, 3])
       .on('zoom', (event) => {
         g.attr('transform', event.transform);
+        siblingsG.attr('transform', event.transform); // Apply same transform to siblings
         currentTransformRef.current = {
           k: event.transform.k,
           x: event.transform.x,

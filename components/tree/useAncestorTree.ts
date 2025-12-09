@@ -72,11 +72,43 @@ const ANCESTORS_QUERY = gql`
             id
             generation
             hasMoreAncestors
+            person {
+              id
+              name_full
+              sex
+              birth_year
+              death_year
+              birth_place
+              death_place
+              living
+              familysearch_id
+              is_notable
+              research_status
+              research_priority
+              last_researched
+              coatOfArms
+            }
           }
           mother {
             id
             generation
             hasMoreAncestors
+            person {
+              id
+              name_full
+              sex
+              birth_year
+              death_year
+              birth_place
+              death_place
+              living
+              familysearch_id
+              is_notable
+              research_status
+              research_priority
+              last_researched
+              coatOfArms
+            }
           }
         }
         mother {
@@ -155,11 +187,43 @@ const ANCESTORS_QUERY = gql`
             id
             generation
             hasMoreAncestors
+            person {
+              id
+              name_full
+              sex
+              birth_year
+              death_year
+              birth_place
+              death_place
+              living
+              familysearch_id
+              is_notable
+              research_status
+              research_priority
+              last_researched
+              coatOfArms
+            }
           }
           mother {
             id
             generation
             hasMoreAncestors
+            person {
+              id
+              name_full
+              sex
+              birth_year
+              death_year
+              birth_place
+              death_place
+              living
+              familysearch_id
+              is_notable
+              research_status
+              research_priority
+              last_researched
+              coatOfArms
+            }
           }
         }
         mother {
@@ -186,11 +250,43 @@ const ANCESTORS_QUERY = gql`
             id
             generation
             hasMoreAncestors
+            person {
+              id
+              name_full
+              sex
+              birth_year
+              death_year
+              birth_place
+              death_place
+              living
+              familysearch_id
+              is_notable
+              research_status
+              research_priority
+              last_researched
+              coatOfArms
+            }
           }
           mother {
             id
             generation
             hasMoreAncestors
+            person {
+              id
+              name_full
+              sex
+              birth_year
+              death_year
+              birth_place
+              death_place
+              living
+              familysearch_id
+              is_notable
+              research_status
+              research_priority
+              last_researched
+              coatOfArms
+            }
           }
         }
       }

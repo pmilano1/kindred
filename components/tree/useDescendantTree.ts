@@ -58,6 +58,9 @@ const DESCENDANTS_QUERY = gql`
               id
               generation
               hasMoreDescendants
+              marriageYear
+              person { ${PERSON_FIELDS} }
+              spouse { ${PERSON_FIELDS} }
             }
           }
         }

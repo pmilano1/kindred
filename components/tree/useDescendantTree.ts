@@ -160,8 +160,22 @@ export function useDescendantTree({
 
   const expandBranch = useCallback(
     async (personId: string) => {
-      if (expandedNodes.has(personId)) return;
+      // If already expanded, collapse it
+      if (expandedNodes.has(personId)) {
+        setExpandedNodes((prev) => {
+          const next = new Set(prev);
+          next.delete(personId);
+          return next;
+        });
+        setMergedBranches((prev) => {
+          const next = new Map(prev);
+          next.delete(personId);
+          return next;
+        });
+        return;
+      }
 
+      // Otherwise, expand it
       setExpandingNode(personId);
       try {
         const result = await fetchBranch({

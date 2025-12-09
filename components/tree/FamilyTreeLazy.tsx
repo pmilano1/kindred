@@ -115,6 +115,7 @@ export function FamilyTreeLazy({
     error: ancestorError,
     expandBranch: expandAncestorBranch,
     expandingNode: expandingAncestor,
+    expandedNodes: expandedAncestors,
   } = useAncestorTree({
     rootPersonId,
     initialGenerations: 3,
@@ -127,6 +128,7 @@ export function FamilyTreeLazy({
     error: descendantError,
     expandBranch: expandDescendantBranch,
     expandingNode: expandingDescendant,
+    expandedNodes: expandedDescendants,
   } = useDescendantTree({
     rootPersonId,
     initialGenerations: 3,
@@ -440,6 +442,10 @@ export function FamilyTreeLazy({
     // Draw nodes
     for (const node of allNodes) {
       if (node.x === undefined || node.y === undefined) continue;
+      if (!node.person) {
+        console.error('Node missing person field:', node);
+        continue;
+      }
       const person = toTreePerson(node.person);
       const isExpanding = expandingAncestor === node.id;
       const status = person.research_status || 'not_started';
@@ -549,11 +555,15 @@ export function FamilyTreeLazy({
         .attr('fill', '#6b7280')
         .text(years);
 
-      // Expand bar for nodes with more ancestors
-      if (node.hasMoreAncestors) {
+      // Expand/collapse button for nodes with more ancestors
+      const isExpanded = expandedAncestors.has(node.id);
+      const buttonHeight = 20;
+      const buttonY = nodeHeight + 4;
+
+      if (node.hasMoreAncestors || isExpanded) {
         const expandG = nodeG
           .append('g')
-          .attr('transform', `translate(0, ${nodeHeight + 2})`)
+          .attr('transform', `translate(0, ${buttonY})`)
           .style('cursor', isExpanding ? 'wait' : 'pointer')
           .on('click', (e: MouseEvent) => {
             e.stopPropagation();
@@ -562,25 +572,36 @@ export function FamilyTreeLazy({
             }
           });
 
-        // Full-width bar underneath tile
+        // Button background
         expandG
           .append('rect')
           .attr('width', nodeWidth)
-          .attr('height', 6)
-          .attr('rx', 3)
-          .attr('fill', isExpanding ? '#94a3b8' : '#3b82f6')
-          .attr('opacity', 0.8);
+          .attr('height', buttonHeight)
+          .attr('rx', 4)
+          .attr(
+            'fill',
+            isExpanding ? '#94a3b8' : isExpanded ? '#2563eb' : '#3b82f6',
+          )
+          .attr('stroke', isExpanding ? '#64748b' : '#1e40af')
+          .attr('stroke-width', 1)
+          .style('filter', 'drop-shadow(0 1px 2px rgba(0,0,0,0.1))');
 
-        // Expand icon in center of bar
+        // Button text
+        const buttonText = isExpanding
+          ? 'Loading...'
+          : isExpanded
+            ? '▲ Collapse'
+            : '▼ Load More';
+
         expandG
           .append('text')
           .attr('x', nodeWidth / 2)
-          .attr('y', 5)
+          .attr('y', buttonHeight / 2 + 4)
           .attr('text-anchor', 'middle')
-          .attr('font-size', '10px')
-          .attr('font-weight', 'bold')
+          .attr('font-size', '11px')
+          .attr('font-weight', '600')
           .attr('fill', '#fff')
-          .text(isExpanding ? '…' : '▼');
+          .text(buttonText);
       }
     }
   }, [
@@ -589,6 +610,7 @@ export function FamilyTreeLazy({
     dimensions,
     expandAncestorBranch,
     expandingAncestor,
+    expandedAncestors,
     onPersonClick,
     onTileClick,
   ]);
@@ -726,6 +748,10 @@ export function FamilyTreeLazy({
     // Draw nodes
     for (const node of allNodes) {
       if (node.x === undefined || node.y === undefined) continue;
+      if (!node.person) {
+        console.error('Node missing person field:', node);
+        continue;
+      }
       const person = toTreePerson(node.person);
       const isExpanding = expandingDescendant === node.id;
       const status = person.research_status || 'not_started';
@@ -808,11 +834,15 @@ export function FamilyTreeLazy({
         .attr('stroke', '#fff')
         .attr('stroke-width', 1);
 
-      // Expand bar for nodes with more descendants
-      if (node.hasMoreDescendants) {
+      // Expand/collapse button for nodes with more descendants
+      const isExpanded = expandedDescendants.has(node.id);
+      const buttonHeight = 20;
+      const buttonY = nodeHeight + 4;
+
+      if (node.hasMoreDescendants || isExpanded) {
         const expandG = nodeG
           .append('g')
-          .attr('transform', `translate(0, ${nodeHeight + 2})`)
+          .attr('transform', `translate(0, ${buttonY})`)
           .style('cursor', isExpanding ? 'wait' : 'pointer')
           .on('click', (e: MouseEvent) => {
             e.stopPropagation();
@@ -821,25 +851,36 @@ export function FamilyTreeLazy({
             }
           });
 
-        // Full-width bar underneath tile
+        // Button background
         expandG
           .append('rect')
           .attr('width', nodeWidth)
-          .attr('height', 6)
-          .attr('rx', 3)
-          .attr('fill', isExpanding ? '#94a3b8' : '#22c55e')
-          .attr('opacity', 0.8);
+          .attr('height', buttonHeight)
+          .attr('rx', 4)
+          .attr(
+            'fill',
+            isExpanding ? '#94a3b8' : isExpanded ? '#16a34a' : '#22c55e',
+          )
+          .attr('stroke', isExpanding ? '#64748b' : '#15803d')
+          .attr('stroke-width', 1)
+          .style('filter', 'drop-shadow(0 1px 2px rgba(0,0,0,0.1))');
 
-        // Expand icon in center of bar
+        // Button text
+        const buttonText = isExpanding
+          ? 'Loading...'
+          : isExpanded
+            ? '▲ Collapse'
+            : '▼ Load More';
+
         expandG
           .append('text')
           .attr('x', nodeWidth / 2)
-          .attr('y', 5)
+          .attr('y', buttonHeight / 2 + 4)
           .attr('text-anchor', 'middle')
-          .attr('font-size', '10px')
-          .attr('font-weight', 'bold')
+          .attr('font-size', '11px')
+          .attr('font-weight', '600')
           .attr('fill', '#fff')
-          .text(isExpanding ? '…' : '▼');
+          .text(buttonText);
       }
 
       // Draw spouse next to person
@@ -1144,6 +1185,7 @@ export function FamilyTreeLazy({
     dimensions,
     expandDescendantBranch,
     expandingDescendant,
+    expandedDescendants,
     onPersonClick,
     onTileClick,
     rootContext,

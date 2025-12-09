@@ -19,23 +19,6 @@ A modern, self-hostable genealogy web application built with Next.js 15, featuri
 - 🐳 Docker-ready for self-hosting
 - 🔑 API key support for integrations
 
-## Screenshots
-
-### Family Tree Visualization
-Interactive bidirectional tree showing both ancestors and descendants with expand/collapse controls.
-
-![Family Tree](docs/assets/tree-view.png)
-
-### Person Profile
-Detailed person pages with life events, family relationships, research notes, and source citations.
-
-![Person Profile](docs/assets/person-profile.png)
-
-### Research Queue
-Prioritized research tracking with status indicators and smart research tips.
-
-![Research Queue](docs/assets/research-queue.png)
-
 ## Quick Start
 
 ### Prerequisites

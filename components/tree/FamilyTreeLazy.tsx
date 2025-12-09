@@ -112,6 +112,10 @@ export function FamilyTreeLazy({
   );
   const [crestPopup, _setCrestPopup] = useState<CrestPopup | null>(null);
   const [isFullscreen, setIsFullscreen] = useState(false);
+  // Track which people have their siblings visible (personId -> boolean)
+  const [visibleSiblings, setVisibleSiblings] = useState<Set<string>>(
+    new Set(),
+  );
 
   // Use lazy-loading hooks
   const {
@@ -216,6 +220,19 @@ export function FamilyTreeLazy({
   useEffect(() => {
     currentTransformRef.current = null;
   }, [rootPersonId, showAncestors]);
+
+  // Toggle sibling visibility for a specific person
+  const toggleSiblings = useCallback((personId: string) => {
+    setVisibleSiblings((prev) => {
+      const next = new Set(prev);
+      if (next.has(personId)) {
+        next.delete(personId);
+      } else {
+        next.add(personId);
+      }
+      return next;
+    });
+  }, []);
 
   // Zoom controls
   const handleZoomIn = useCallback(() => {
@@ -544,6 +561,38 @@ export function FamilyTreeLazy({
         .attr('stroke', '#fff')
         .attr('stroke-width', 1);
 
+      // Sibling expand button (left edge)
+      const hasSiblings =
+        node.person.siblings && node.person.siblings.length > 0;
+      if (hasSiblings) {
+        const siblingsVisible = visibleSiblings.has(person.id);
+        const siblingButtonG = nodeG
+          .append('g')
+          .attr('transform', `translate(-8, ${nodeHeight / 2})`)
+          .style('cursor', 'pointer')
+          .on('click', (e: MouseEvent) => {
+            e.stopPropagation();
+            toggleSiblings(person.id);
+          });
+
+        siblingButtonG
+          .append('circle')
+          .attr('r', 6)
+          .attr('fill', siblingsVisible ? '#2563eb' : '#fff')
+          .attr('stroke', '#3b82f6')
+          .attr('stroke-width', 1.5);
+
+        siblingButtonG
+          .append('text')
+          .attr('x', 0)
+          .attr('y', 1)
+          .attr('text-anchor', 'middle')
+          .attr('font-size', '8px')
+          .attr('font-weight', '700')
+          .attr('fill', siblingsVisible ? '#fff' : '#3b82f6')
+          .text(siblingsVisible ? '−' : '+');
+      }
+
       // Name
       const maxNameLen = 18;
       const displayName =
@@ -647,6 +696,80 @@ export function FamilyTreeLazy({
           .attr('fill', isEndOfTree ? '#9ca3af' : '#fff')
           .text(buttonText);
       }
+
+      // Render siblings if visible
+      if (
+        visibleSiblings.has(person.id) &&
+        node.person.siblings &&
+        node.person.siblings.length > 0
+      ) {
+        const siblings = node.person.siblings;
+        for (let idx = 0; idx < siblings.length; idx++) {
+          const sibling = siblings[idx];
+          const siblingPerson = toTreePerson(sibling);
+          // Position siblings to the left of the person
+          const sibX = (node.x || 0) - (idx + 1) * (nodeWidth + nodeGap);
+          const sibY = node.y || 0;
+
+          const siblingG = g
+            .append('g')
+            .attr(
+              'transform',
+              `translate(${sibX - nodeWidth / 2},${sibY - nodeHeight / 2})`,
+            );
+
+          // Sibling tile (dashed border to indicate sibling)
+          siblingG
+            .append('rect')
+            .attr('width', nodeWidth)
+            .attr('height', nodeHeight)
+            .attr('rx', 6)
+            .attr('fill', siblingPerson.sex === 'F' ? '#fce7f3' : '#dbeafe')
+            .attr('stroke', siblingPerson.sex === 'F' ? '#ec4899' : '#3b82f6')
+            .attr('stroke-width', 2)
+            .attr('stroke-dasharray', '4,4')
+            .style('cursor', 'pointer')
+            .style('opacity', 0.8)
+            .on('click', () => onTileClick(sibling.id));
+
+          // Sibling name
+          const siblingName =
+            siblingPerson.name.length > 18
+              ? `${siblingPerson.name.substring(0, 16)}…`
+              : siblingPerson.name;
+          siblingG
+            .append('text')
+            .attr('x', nodeWidth / 2)
+            .attr('y', 20)
+            .attr('text-anchor', 'middle')
+            .attr('font-size', '11px')
+            .attr('font-weight', '600')
+            .attr('fill', '#1f2937')
+            .text(siblingName);
+
+          // Sibling years
+          const siblingYears = siblingPerson.living
+            ? `${siblingPerson.birth_year || '?'} – Living`
+            : `${siblingPerson.birth_year || '?'} – ${siblingPerson.death_year || '?'}`;
+          siblingG
+            .append('text')
+            .attr('x', nodeWidth / 2)
+            .attr('y', 36)
+            .attr('text-anchor', 'middle')
+            .attr('font-size', '10px')
+            .attr('fill', '#6b7280')
+            .text(siblingYears);
+
+          // Sibling indicator icon
+          siblingG
+            .append('text')
+            .attr('x', nodeWidth - 12)
+            .attr('y', 14)
+            .attr('font-size', '10px')
+            .attr('fill', '#9ca3af')
+            .text('↔');
+        }
+      }
     }
   }, [
     pedigree,
@@ -657,6 +780,8 @@ export function FamilyTreeLazy({
     expandedAncestors,
     onPersonClick,
     onTileClick,
+    visibleSiblings,
+    toggleSiblings,
   ]);
 
   // D3 Rendering - Descendant Tree (similar logic)
@@ -890,6 +1015,38 @@ export function FamilyTreeLazy({
         .attr('stroke', '#fff')
         .attr('stroke-width', 1);
 
+      // Sibling expand button (left edge)
+      const hasSiblings =
+        node.person.siblings && node.person.siblings.length > 0;
+      if (hasSiblings) {
+        const siblingsVisible = visibleSiblings.has(person.id);
+        const siblingButtonG = nodeG
+          .append('g')
+          .attr('transform', `translate(-8, ${nodeHeight / 2})`)
+          .style('cursor', 'pointer')
+          .on('click', (e: MouseEvent) => {
+            e.stopPropagation();
+            toggleSiblings(person.id);
+          });
+
+        siblingButtonG
+          .append('circle')
+          .attr('r', 6)
+          .attr('fill', siblingsVisible ? '#2563eb' : '#fff')
+          .attr('stroke', '#3b82f6')
+          .attr('stroke-width', 1.5);
+
+        siblingButtonG
+          .append('text')
+          .attr('x', 0)
+          .attr('y', 1)
+          .attr('text-anchor', 'middle')
+          .attr('font-size', '8px')
+          .attr('font-weight', '700')
+          .attr('fill', siblingsVisible ? '#fff' : '#3b82f6')
+          .text(siblingsVisible ? '−' : '+');
+      }
+
       // Expand/collapse button for nodes with more descendants
       const isExpanded = expandedDescendants.has(node.id);
       const hasChildrenRendered = node.children && node.children.length > 0;
@@ -1008,6 +1165,80 @@ export function FamilyTreeLazy({
           .attr('fill', '#6b7280')
           .text(spouseYears);
       }
+
+      // Render siblings if visible
+      if (
+        visibleSiblings.has(person.id) &&
+        node.person.siblings &&
+        node.person.siblings.length > 0
+      ) {
+        const siblings = node.person.siblings;
+        for (let idx = 0; idx < siblings.length; idx++) {
+          const sibling = siblings[idx];
+          const siblingPerson = toTreePerson(sibling);
+          // Position siblings to the left of the person
+          const sibX = (node.x || 0) - (idx + 1) * (nodeWidth + nodeGap);
+          const sibY = node.y || 0;
+
+          const siblingG = g
+            .append('g')
+            .attr(
+              'transform',
+              `translate(${sibX - nodeWidth / 2},${sibY - nodeHeight / 2})`,
+            );
+
+          // Sibling tile (dashed border to indicate sibling)
+          siblingG
+            .append('rect')
+            .attr('width', nodeWidth)
+            .attr('height', nodeHeight)
+            .attr('rx', 6)
+            .attr('fill', siblingPerson.sex === 'F' ? '#fce7f3' : '#dbeafe')
+            .attr('stroke', siblingPerson.sex === 'F' ? '#ec4899' : '#3b82f6')
+            .attr('stroke-width', 2)
+            .attr('stroke-dasharray', '4,4')
+            .style('cursor', 'pointer')
+            .style('opacity', 0.8)
+            .on('click', () => onTileClick(sibling.id));
+
+          // Sibling name
+          const siblingName =
+            siblingPerson.name.length > 18
+              ? `${siblingPerson.name.substring(0, 16)}…`
+              : siblingPerson.name;
+          siblingG
+            .append('text')
+            .attr('x', nodeWidth / 2)
+            .attr('y', 20)
+            .attr('text-anchor', 'middle')
+            .attr('font-size', '11px')
+            .attr('font-weight', '600')
+            .attr('fill', '#1f2937')
+            .text(siblingName);
+
+          // Sibling years
+          const siblingYears = siblingPerson.living
+            ? `${siblingPerson.birth_year || '?'} – Living`
+            : `${siblingPerson.birth_year || '?'} – ${siblingPerson.death_year || '?'}`;
+          siblingG
+            .append('text')
+            .attr('x', nodeWidth / 2)
+            .attr('y', 36)
+            .attr('text-anchor', 'middle')
+            .attr('font-size', '10px')
+            .attr('fill', '#6b7280')
+            .text(siblingYears);
+
+          // Sibling indicator icon
+          siblingG
+            .append('text')
+            .attr('x', nodeWidth - 12)
+            .attr('y', 14)
+            .attr('font-size', '10px')
+            .attr('fill', '#9ca3af')
+            .text('↔');
+        }
+      }
     }
 
     // Draw generation -1 (parents) and siblings if available
@@ -1019,7 +1250,6 @@ export function FamilyTreeLazy({
       const rootX = descendantTree.x;
       const rootY = descendantTree.y;
       const parents = rootContext.person.parents || [];
-      const siblings = rootContext.person.siblings || [];
       const maxNameLen = 18;
 
       // Draw parents at generation -1 (above root)
@@ -1175,85 +1405,6 @@ export function FamilyTreeLazy({
             .text('⬆');
         }
       }
-
-      // Draw siblings at generation 0 (same level as root)
-      // Position siblings to the left of root (father's side)
-      if (siblings.length > 0) {
-        const midY =
-          parents.length > 0
-            ? (rootY - nodeHeight / 2 - (nodeHeight + levelGap) + nodeHeight) /
-              2
-            : rootY - 30;
-
-        for (let idx = 0; idx < siblings.length; idx++) {
-          const sibling = siblings[idx];
-          const siblingPerson = toTreePerson(sibling);
-          const sibX = rootX - (idx + 1) * (nodeWidth + nodeGap) - nodeWidth;
-
-          // Draw connecting line from sibling to parent junction
-          g.append('path')
-            .attr(
-              'd',
-              `M${sibX + nodeWidth / 2},${rootY} L${sibX + nodeWidth / 2},${midY} L${rootX},${midY}`,
-            )
-            .attr('fill', 'none')
-            .attr('stroke', '#9ca3af')
-            .attr('stroke-width', 1.5)
-            .attr('stroke-opacity', 0.5);
-
-          const tileG = g
-            .append('g')
-            .attr('transform', `translate(${sibX},${rootY - nodeHeight / 2})`)
-            .style('cursor', 'pointer')
-            .style('opacity', 0.7)
-            .on('click', () => onTileClick(sibling.id));
-
-          tileG
-            .append('rect')
-            .attr('width', nodeWidth)
-            .attr('height', nodeHeight)
-            .attr('rx', 6)
-            .attr('fill', siblingPerson.sex === 'F' ? '#fce7f3' : '#dbeafe')
-            .attr('stroke', siblingPerson.sex === 'F' ? '#ec4899' : '#3b82f6')
-            .attr('stroke-width', 2)
-            .attr('stroke-dasharray', '4,4');
-
-          const siblingName =
-            siblingPerson.name.length > maxNameLen
-              ? `${siblingPerson.name.substring(0, maxNameLen - 2)}…`
-              : siblingPerson.name;
-          tileG
-            .append('text')
-            .attr('x', nodeWidth / 2)
-            .attr('y', 20)
-            .attr('text-anchor', 'middle')
-            .attr('font-size', '11px')
-            .attr('font-weight', '600')
-            .attr('fill', '#1f2937')
-            .text(siblingName);
-
-          const siblingYears = siblingPerson.living
-            ? `${siblingPerson.birth_year || '?'} – Living`
-            : `${siblingPerson.birth_year || '?'} – ${siblingPerson.death_year || '?'}`;
-          tileG
-            .append('text')
-            .attr('x', nodeWidth / 2)
-            .attr('y', 36)
-            .attr('text-anchor', 'middle')
-            .attr('font-size', '10px')
-            .attr('fill', '#6b7280')
-            .text(siblingYears);
-
-          // Sibling indicator
-          tileG
-            .append('text')
-            .attr('x', nodeWidth - 12)
-            .attr('y', 14)
-            .attr('font-size', '10px')
-            .attr('fill', '#9ca3af')
-            .text('↔');
-        }
-      }
     }
   }, [
     descendantTree,
@@ -1265,6 +1416,8 @@ export function FamilyTreeLazy({
     onPersonClick,
     onTileClick,
     rootContext,
+    visibleSiblings,
+    toggleSiblings,
   ]);
 
   // Container classes for fullscreen mode

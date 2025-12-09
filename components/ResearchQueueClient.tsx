@@ -75,7 +75,7 @@ export default function ResearchQueueClient() {
   const totalCount = data?.researchQueue.pageInfo.totalCount ?? 0;
 
   const loadMore = useCallback(() => {
-    if (!hasNextPage || !endCursor || loading) return;
+    if (!hasNextPage || !endCursor || isFetchingMore) return;
     fetchMore({
       variables: { first: PAGE_SIZE, after: endCursor },
       updateQuery: (prev, { fetchMoreResult }) => {
@@ -91,7 +91,7 @@ export default function ResearchQueueClient() {
         };
       },
     });
-  }, [hasNextPage, endCursor, loading, fetchMore]);
+  }, [hasNextPage, endCursor, isFetchingMore, fetchMore]);
 
   const { sentinelRef } = useInfiniteScroll({
     hasNextPage,

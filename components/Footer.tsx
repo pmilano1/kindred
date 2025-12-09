@@ -11,8 +11,7 @@ export default function Footer() {
       <div className="flex flex-col sm:flex-row items-center justify-between gap-2">
         <div>
           <p>
-            © {new Date().getFullYear()} {settings.family_name}{' '}
-            {settings.site_name}
+            © {new Date().getFullYear()} {settings.family_name}
           </p>
           {settings.footer_text && (
             <p className="text-sm text-[var(--muted-foreground)] mt-1">
@@ -31,7 +30,12 @@ export default function Footer() {
             </p>
           )}
         </div>
-        <div className="flex items-center gap-1.5 text-xs text-[var(--muted-foreground)]">
+        <a
+          href="https://github.com/pmilano1/kindred"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="flex items-center gap-1.5 text-xs text-[var(--muted-foreground)] hover:text-[var(--primary-color)] transition-colors"
+        >
           <span>Powered by</span>
           <Image
             src="/kindred-logo.svg"
@@ -42,7 +46,7 @@ export default function Footer() {
             unoptimized
           />
           <span className="font-medium">Kindred</span>
-        </div>
+        </a>
       </div>
     </footer>
   );

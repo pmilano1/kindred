@@ -262,8 +262,9 @@ export function useFamilyTree({
   });
 
   // Lazy queries for expansion
-  const [fetchAncestorBranch] =
-    useLazyQuery<AncestorsQueryData>(EXPAND_ANCESTORS_QUERY);
+  const [fetchAncestorBranch] = useLazyQuery<AncestorsQueryData>(
+    EXPAND_ANCESTORS_QUERY,
+  );
   const [fetchDescendantBranch] = useLazyQuery<DescendantsQueryData>(
     EXPAND_DESCENDANTS_QUERY,
   );
@@ -402,7 +403,7 @@ export function useFamilyTree({
 
         if (result.data?.ancestors) {
           setMergedAncestorBranches((prev) =>
-            new Map(prev).set(personId, result.data!.ancestors),
+            new Map(prev).set(personId, result.data?.ancestors),
           );
           setExpandedAncestors((prev) => new Set([...prev, personId]));
         }
@@ -440,7 +441,7 @@ export function useFamilyTree({
 
         if (result.data?.descendants) {
           setMergedDescendantBranches((prev) =>
-            new Map(prev).set(personId, result.data!.descendants),
+            new Map(prev).set(personId, result.data?.descendants),
           );
           setExpandedDescendants((prev) => new Set([...prev, personId]));
         }

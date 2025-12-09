@@ -349,6 +349,13 @@ export const typeDefs = `#graphql
     show_coats_of_arms: String
     admin_email: String
     footer_text: String
+    # Research queue scoring weights (Issue #195)
+    research_weight_missing_core_dates: String
+    research_weight_missing_places: String
+    research_weight_estimated_dates: String
+    research_weight_placeholder_parent: String
+    research_weight_low_sources: String
+    research_weight_manual_priority: String
   }
 
   # ===========================================

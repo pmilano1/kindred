@@ -122,7 +122,7 @@ interface UseDescendantTreeResult {
 export function useDescendantTree({
   rootPersonId,
   initialGenerations = 3,
-  expansionGenerations = 2,
+  expansionGenerations = 1,
 }: UseDescendantTreeOptions): UseDescendantTreeResult {
   const [expandedNodes, setExpandedNodes] = useState<Set<string>>(new Set());
   const [expandingNode, setExpandingNode] = useState<string | null>(null);

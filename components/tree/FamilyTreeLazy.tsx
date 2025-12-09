@@ -119,7 +119,7 @@ export function FamilyTreeLazy({
   } = useAncestorTree({
     rootPersonId,
     initialGenerations: 3,
-    expansionGenerations: 2,
+    expansionGenerations: 1,
   });
 
   const {
@@ -132,7 +132,7 @@ export function FamilyTreeLazy({
   } = useDescendantTree({
     rootPersonId,
     initialGenerations: 3,
-    expansionGenerations: 2,
+    expansionGenerations: 1,
   });
 
   // Fetch root person context (siblings and parents) for descendant view
@@ -557,17 +557,26 @@ export function FamilyTreeLazy({
 
       // Expand/collapse button for nodes with more ancestors
       const isExpanded = expandedAncestors.has(node.id);
+      const hasParentsRendered = !!(node.father || node.mother);
       const buttonHeight = 20;
       const buttonY = nodeHeight + 4;
 
-      if (node.hasMoreAncestors || isExpanded) {
+      // Show button if: expanded (for collapse), or has more ancestors and no parents rendered yet, or end of tree
+      const shouldShowButton =
+        isExpanded ||
+        (node.hasMoreAncestors && !hasParentsRendered) ||
+        (!node.hasMoreAncestors && !hasParentsRendered);
+
+      if (shouldShowButton) {
+        const isEndOfTree =
+          !node.hasMoreAncestors && !isExpanded && !hasParentsRendered;
         const expandG = nodeG
           .append('g')
           .attr('transform', `translate(0, ${buttonY})`)
-          .style('cursor', isExpanding ? 'wait' : 'pointer')
+          .style('cursor', isExpanding || isEndOfTree ? 'default' : 'pointer')
           .on('click', (e: MouseEvent) => {
             e.stopPropagation();
-            if (!isExpanding) {
+            if (!isExpanding && !isEndOfTree) {
               expandAncestorBranch(node.id);
             }
           });
@@ -580,18 +589,29 @@ export function FamilyTreeLazy({
           .attr('rx', 4)
           .attr(
             'fill',
-            isExpanding ? '#94a3b8' : isExpanded ? '#2563eb' : '#3b82f6',
+            isExpanding
+              ? '#94a3b8'
+              : isEndOfTree
+                ? '#e5e7eb'
+                : isExpanded
+                  ? '#2563eb'
+                  : '#3b82f6',
           )
-          .attr('stroke', isExpanding ? '#64748b' : '#1e40af')
+          .attr(
+            'stroke',
+            isExpanding ? '#64748b' : isEndOfTree ? '#d1d5db' : '#1e40af',
+          )
           .attr('stroke-width', 1)
           .style('filter', 'drop-shadow(0 1px 2px rgba(0,0,0,0.1))');
 
         // Button text
         const buttonText = isExpanding
           ? 'Loading...'
-          : isExpanded
-            ? '▲ Collapse'
-            : '▼ Load More';
+          : isEndOfTree
+            ? 'End of tree'
+            : isExpanded
+              ? '▲ Collapse'
+              : '▼ Load More';
 
         expandG
           .append('text')
@@ -600,7 +620,7 @@ export function FamilyTreeLazy({
           .attr('text-anchor', 'middle')
           .attr('font-size', '11px')
           .attr('font-weight', '600')
-          .attr('fill', '#fff')
+          .attr('fill', isEndOfTree ? '#9ca3af' : '#fff')
           .text(buttonText);
       }
     }
@@ -836,17 +856,26 @@ export function FamilyTreeLazy({
 
       // Expand/collapse button for nodes with more descendants
       const isExpanded = expandedDescendants.has(node.id);
+      const hasChildrenRendered = node.children && node.children.length > 0;
       const buttonHeight = 20;
       const buttonY = nodeHeight + 4;
 
-      if (node.hasMoreDescendants || isExpanded) {
+      // Show button if: expanded (for collapse), or has more descendants and no children rendered yet, or end of tree
+      const shouldShowButton =
+        isExpanded ||
+        (node.hasMoreDescendants && !hasChildrenRendered) ||
+        (!node.hasMoreDescendants && !hasChildrenRendered);
+
+      if (shouldShowButton) {
+        const isEndOfTree =
+          !node.hasMoreDescendants && !isExpanded && !hasChildrenRendered;
         const expandG = nodeG
           .append('g')
           .attr('transform', `translate(0, ${buttonY})`)
-          .style('cursor', isExpanding ? 'wait' : 'pointer')
+          .style('cursor', isExpanding || isEndOfTree ? 'default' : 'pointer')
           .on('click', (e: MouseEvent) => {
             e.stopPropagation();
-            if (!isExpanding) {
+            if (!isExpanding && !isEndOfTree) {
               expandDescendantBranch(node.id);
             }
           });
@@ -859,18 +888,29 @@ export function FamilyTreeLazy({
           .attr('rx', 4)
           .attr(
             'fill',
-            isExpanding ? '#94a3b8' : isExpanded ? '#16a34a' : '#22c55e',
+            isExpanding
+              ? '#94a3b8'
+              : isEndOfTree
+                ? '#e5e7eb'
+                : isExpanded
+                  ? '#16a34a'
+                  : '#22c55e',
           )
-          .attr('stroke', isExpanding ? '#64748b' : '#15803d')
+          .attr(
+            'stroke',
+            isExpanding ? '#64748b' : isEndOfTree ? '#d1d5db' : '#15803d',
+          )
           .attr('stroke-width', 1)
           .style('filter', 'drop-shadow(0 1px 2px rgba(0,0,0,0.1))');
 
         // Button text
         const buttonText = isExpanding
           ? 'Loading...'
-          : isExpanded
-            ? '▲ Collapse'
-            : '▼ Load More';
+          : isEndOfTree
+            ? 'End of tree'
+            : isExpanded
+              ? '▲ Collapse'
+              : '▼ Load More';
 
         expandG
           .append('text')
@@ -879,7 +919,7 @@ export function FamilyTreeLazy({
           .attr('text-anchor', 'middle')
           .attr('font-size', '11px')
           .attr('font-weight', '600')
-          .attr('fill', '#fff')
+          .attr('fill', isEndOfTree ? '#9ca3af' : '#fff')
           .text(buttonText);
       }
 

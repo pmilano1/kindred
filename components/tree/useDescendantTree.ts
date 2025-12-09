@@ -16,6 +16,14 @@ const PERSON_FIELDS = `
   is_notable
   research_status
   research_priority
+  siblings {
+    id
+    name_full
+    sex
+    birth_year
+    death_year
+    living
+  }
 `;
 
 // Initial query - fetches 3 generations by default

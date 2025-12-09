@@ -24,6 +24,7 @@ export interface GraphQLPerson {
   is_notable?: boolean;
   research_status?: string;
   research_priority?: number;
+  siblings?: GraphQLPerson[];
 }
 
 // Pedigree node for ancestor view (from GraphQL)

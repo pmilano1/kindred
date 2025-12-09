@@ -1,6 +1,7 @@
 'use client';
 
-import { useMutation } from '@apollo/client/react';
+import { gql } from '@apollo/client/core';
+import { useMutation, useQuery } from '@apollo/client/react';
 import { select } from 'd3-selection';
 import 'd3-transition';
 import type { ZoomBehavior } from 'd3-zoom';
@@ -17,10 +18,65 @@ import {
   DEFAULT_LAYOUT_CONFIG,
   type DescendantNode,
   type PedigreeNode,
+  type TreePerson,
   toTreePerson,
 } from './tree-types';
 import { useAncestorTree } from './useAncestorTree';
 import { useDescendantTree } from './useDescendantTree';
+
+// Query to fetch root person with siblings and parents for generation -1
+const ROOT_PERSON_CONTEXT = gql`
+  query RootPersonContext($id: ID!) {
+    person(id: $id) {
+      id
+      name_full
+      sex
+      birth_year
+      death_year
+      birth_place
+      death_place
+      living
+      familysearch_id
+      is_notable
+      research_status
+      research_priority
+      last_researched
+      coatOfArms
+      siblings {
+        id
+        name_full
+        sex
+        birth_year
+        death_year
+        birth_place
+        death_place
+        living
+        familysearch_id
+        is_notable
+        research_status
+        research_priority
+        last_researched
+        coatOfArms
+      }
+      parents {
+        id
+        name_full
+        sex
+        birth_year
+        death_year
+        birth_place
+        death_place
+        living
+        familysearch_id
+        is_notable
+        research_status
+        research_priority
+        last_researched
+        coatOfArms
+      }
+    }
+  }
+`;
 
 interface FamilyTreeLazyProps {
   rootPersonId: string;
@@ -76,6 +132,12 @@ export function FamilyTreeLazy({
     rootPersonId,
     initialGenerations: 3,
     expansionGenerations: 2,
+  });
+
+  // Fetch root person context (siblings and parents) for descendant view
+  const { data: rootContext } = useQuery(ROOT_PERSON_CONTEXT, {
+    variables: { id: rootPersonId },
+    skip: showAncestors, // Only needed for descendant view
   });
 
   const loading = showAncestors ? ancestorLoading : descendantLoading;
@@ -802,6 +864,251 @@ export function FamilyTreeLazy({
           .text(spouseYears);
       }
     }
+
+    // Draw generation -1 (parents) and siblings if available
+    if (
+      rootContext?.person &&
+      descendantTree.x !== undefined &&
+      descendantTree.y !== undefined
+    ) {
+      const rootX = descendantTree.x;
+      const rootY = descendantTree.y;
+      const parents = rootContext.person.parents || [];
+      const siblings = rootContext.person.siblings || [];
+
+      // Draw parents at generation -1 (above root)
+      if (parents.length > 0) {
+        const parentY = rootY - (nodeHeight + levelGap);
+        const father = parents.find((p: TreePerson) => p.sex === 'M');
+        const mother = parents.find((p: TreePerson) => p.sex === 'F');
+
+        // Position parents side by side
+        const fatherX = father ? rootX - nodeWidth / 2 - spouseGap / 2 : rootX;
+        const motherX = mother ? rootX + nodeWidth / 2 + spouseGap / 2 : rootX;
+
+        // Draw connecting line from root to parents
+        if (father && mother) {
+          const midY = (parentY + nodeHeight / 2 + rootY - nodeHeight / 2) / 2;
+          g.append('path')
+            .attr(
+              'd',
+              `M${rootX},${rootY - nodeHeight / 2} L${rootX},${midY} L${fatherX + nodeWidth / 2},${midY} L${fatherX + nodeWidth / 2},${parentY + nodeHeight}`,
+            )
+            .attr('fill', 'none')
+            .attr('stroke', '#9ca3af')
+            .attr('stroke-width', 1.5);
+          g.append('path')
+            .attr(
+              'd',
+              `M${motherX - nodeWidth / 2},${midY} L${motherX - nodeWidth / 2},${parentY + nodeHeight}`,
+            )
+            .attr('fill', 'none')
+            .attr('stroke', '#9ca3af')
+            .attr('stroke-width', 1.5);
+        } else if (father || mother) {
+          const parentX = father ? fatherX : motherX;
+          g.append('path')
+            .attr(
+              'd',
+              `M${rootX},${rootY - nodeHeight / 2} L${parentX + nodeWidth / 2},${parentY + nodeHeight}`,
+            )
+            .attr('fill', 'none')
+            .attr('stroke', '#9ca3af')
+            .attr('stroke-width', 1.5);
+        }
+
+        // Draw father tile
+        if (father) {
+          const fatherPerson = toTreePerson(father);
+          const tileG = g
+            .append('g')
+            .attr('transform', `translate(${fatherX},${parentY})`)
+            .style('cursor', 'pointer')
+            .style('opacity', 0.7)
+            .on('click', () => onTileClick(father.id));
+
+          tileG
+            .append('rect')
+            .attr('width', nodeWidth)
+            .attr('height', nodeHeight)
+            .attr('rx', 6)
+            .attr('fill', '#dbeafe')
+            .attr('stroke', '#3b82f6')
+            .attr('stroke-width', 2)
+            .attr('stroke-dasharray', '4,4');
+
+          const fatherName =
+            fatherPerson.name.length > maxNameLen
+              ? `${fatherPerson.name.substring(0, maxNameLen - 2)}…`
+              : fatherPerson.name;
+          tileG
+            .append('text')
+            .attr('x', nodeWidth / 2)
+            .attr('y', 20)
+            .attr('text-anchor', 'middle')
+            .attr('font-size', '11px')
+            .attr('font-weight', '600')
+            .attr('fill', '#1f2937')
+            .text(fatherName);
+
+          const fatherYears = fatherPerson.living
+            ? `${fatherPerson.birth_year || '?'} – Living`
+            : `${fatherPerson.birth_year || '?'} – ${fatherPerson.death_year || '?'}`;
+          tileG
+            .append('text')
+            .attr('x', nodeWidth / 2)
+            .attr('y', 36)
+            .attr('text-anchor', 'middle')
+            .attr('font-size', '10px')
+            .attr('fill', '#6b7280')
+            .text(fatherYears);
+
+          // Up arrow indicator
+          tileG
+            .append('text')
+            .attr('x', nodeWidth - 12)
+            .attr('y', 14)
+            .attr('font-size', '10px')
+            .attr('fill', '#9ca3af')
+            .text('⬆');
+        }
+
+        // Draw mother tile
+        if (mother) {
+          const motherPerson = toTreePerson(mother);
+          const tileG = g
+            .append('g')
+            .attr('transform', `translate(${motherX},${parentY})`)
+            .style('cursor', 'pointer')
+            .style('opacity', 0.7)
+            .on('click', () => onTileClick(mother.id));
+
+          tileG
+            .append('rect')
+            .attr('width', nodeWidth)
+            .attr('height', nodeHeight)
+            .attr('rx', 6)
+            .attr('fill', '#fce7f3')
+            .attr('stroke', '#ec4899')
+            .attr('stroke-width', 2)
+            .attr('stroke-dasharray', '4,4');
+
+          const motherName =
+            motherPerson.name.length > maxNameLen
+              ? `${motherPerson.name.substring(0, maxNameLen - 2)}…`
+              : motherPerson.name;
+          tileG
+            .append('text')
+            .attr('x', nodeWidth / 2)
+            .attr('y', 20)
+            .attr('text-anchor', 'middle')
+            .attr('font-size', '11px')
+            .attr('font-weight', '600')
+            .attr('fill', '#1f2937')
+            .text(motherName);
+
+          const motherYears = motherPerson.living
+            ? `${motherPerson.birth_year || '?'} – Living`
+            : `${motherPerson.birth_year || '?'} – ${motherPerson.death_year || '?'}`;
+          tileG
+            .append('text')
+            .attr('x', nodeWidth / 2)
+            .attr('y', 36)
+            .attr('text-anchor', 'middle')
+            .attr('font-size', '10px')
+            .attr('fill', '#6b7280')
+            .text(motherYears);
+
+          // Up arrow indicator
+          tileG
+            .append('text')
+            .attr('x', nodeWidth - 12)
+            .attr('y', 14)
+            .attr('font-size', '10px')
+            .attr('fill', '#9ca3af')
+            .text('⬆');
+        }
+      }
+
+      // Draw siblings at generation 0 (same level as root)
+      // Position siblings to the left of root (father's side)
+      if (siblings.length > 0) {
+        const midY =
+          parents.length > 0
+            ? (rootY - nodeHeight / 2 - (nodeHeight + levelGap) + nodeHeight) /
+              2
+            : rootY - 30;
+
+        for (let idx = 0; idx < siblings.length; idx++) {
+          const sibling = siblings[idx];
+          const siblingPerson = toTreePerson(sibling);
+          const sibX = rootX - (idx + 1) * (nodeWidth + nodeGap) - nodeWidth;
+
+          // Draw connecting line from sibling to parent junction
+          g.append('path')
+            .attr(
+              'd',
+              `M${sibX + nodeWidth / 2},${rootY} L${sibX + nodeWidth / 2},${midY} L${rootX},${midY}`,
+            )
+            .attr('fill', 'none')
+            .attr('stroke', '#9ca3af')
+            .attr('stroke-width', 1.5)
+            .attr('stroke-opacity', 0.5);
+
+          const tileG = g
+            .append('g')
+            .attr('transform', `translate(${sibX},${rootY - nodeHeight / 2})`)
+            .style('cursor', 'pointer')
+            .style('opacity', 0.7)
+            .on('click', () => onTileClick(sibling.id));
+
+          tileG
+            .append('rect')
+            .attr('width', nodeWidth)
+            .attr('height', nodeHeight)
+            .attr('rx', 6)
+            .attr('fill', siblingPerson.sex === 'F' ? '#fce7f3' : '#dbeafe')
+            .attr('stroke', siblingPerson.sex === 'F' ? '#ec4899' : '#3b82f6')
+            .attr('stroke-width', 2)
+            .attr('stroke-dasharray', '4,4');
+
+          const siblingName =
+            siblingPerson.name.length > maxNameLen
+              ? `${siblingPerson.name.substring(0, maxNameLen - 2)}…`
+              : siblingPerson.name;
+          tileG
+            .append('text')
+            .attr('x', nodeWidth / 2)
+            .attr('y', 20)
+            .attr('text-anchor', 'middle')
+            .attr('font-size', '11px')
+            .attr('font-weight', '600')
+            .attr('fill', '#1f2937')
+            .text(siblingName);
+
+          const siblingYears = siblingPerson.living
+            ? `${siblingPerson.birth_year || '?'} – Living`
+            : `${siblingPerson.birth_year || '?'} – ${siblingPerson.death_year || '?'}`;
+          tileG
+            .append('text')
+            .attr('x', nodeWidth / 2)
+            .attr('y', 36)
+            .attr('text-anchor', 'middle')
+            .attr('font-size', '10px')
+            .attr('fill', '#6b7280')
+            .text(siblingYears);
+
+          // Sibling indicator
+          tileG
+            .append('text')
+            .attr('x', nodeWidth - 12)
+            .attr('y', 14)
+            .attr('font-size', '10px')
+            .attr('fill', '#9ca3af')
+            .text('↔');
+        }
+      }
+    }
   }, [
     descendantTree,
     showAncestors,
@@ -810,6 +1117,7 @@ export function FamilyTreeLazy({
     expandingDescendant,
     onPersonClick,
     onTileClick,
+    rootContext,
   ]);
 
   // Container classes for fullscreen mode

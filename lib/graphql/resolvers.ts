@@ -677,6 +677,10 @@ export const resolvers = {
             if (wife_id) {
               mother = await buildPedigreeNode(wife_id, currentGen + 1, maxGen);
             }
+            // Check if either parent has more ancestors
+            hasMoreAncestors = !!(
+              father?.hasMoreAncestors || mother?.hasMoreAncestors
+            );
           } else {
             // At max generation - check if there are more ancestors
             hasMoreAncestors = !!(husband_id || wife_id);
@@ -784,6 +788,10 @@ export const resolvers = {
               );
               if (childNode) children.push(childNode);
             }
+            // Check if any child has more descendants
+            hasMoreDescendants = children.some(
+              (child) => child.hasMoreDescendants,
+            );
           } else {
             // At max generation - check if there are more descendants
             hasMoreDescendants = childrenResult.rows.length > 0;

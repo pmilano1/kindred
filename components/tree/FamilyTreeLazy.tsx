@@ -101,6 +101,11 @@ export function FamilyTreeLazy({
   const zoomBehaviorRef = useRef<ZoomBehavior<SVGSVGElement, unknown> | null>(
     null,
   );
+  const currentTransformRef = useRef<{
+    k: number;
+    x: number;
+    y: number;
+  } | null>(null);
   const [dimensions, setDimensions] = useState({ width: 800, height: 600 });
   const [priorityPopup, setPriorityPopup] = useState<PriorityPopupState | null>(
     null,
@@ -206,6 +211,12 @@ export function FamilyTreeLazy({
     return () => resizeObserver.disconnect();
   }, []);
 
+  // Reset transform when root person or view mode changes
+  // biome-ignore lint/correctness/useExhaustiveDependencies: We want to reset on rootPersonId/showAncestors change
+  useEffect(() => {
+    currentTransformRef.current = null;
+  }, [rootPersonId, showAncestors]);
+
   // Zoom controls
   const handleZoomIn = useCallback(() => {
     const svg = svgRef.current;
@@ -230,6 +241,8 @@ export function FamilyTreeLazy({
   const handleResetZoom = useCallback(() => {
     const svg = svgRef.current;
     if (svg && zoomBehaviorRef.current) {
+      // Clear saved transform so tree re-centers on next render
+      currentTransformRef.current = null;
       select(svg)
         .transition()
         .duration(300)
@@ -365,18 +378,29 @@ export function FamilyTreeLazy({
       .scaleExtent([0.1, 3])
       .on('zoom', (event) => {
         g.attr('transform', event.transform);
+        // Save current transform for next render
+        currentTransformRef.current = {
+          k: event.transform.k,
+          x: event.transform.x,
+          y: event.transform.y,
+        };
       });
 
     svg.call(zoomBehavior);
     zoomBehaviorRef.current = zoomBehavior;
 
-    // Initial transform to center tree
-    const initialX = dimensions.width / 2 - (minX + treeWidth / 2 - padding);
-    const initialY = padding;
-    svg.call(
-      zoomBehavior.transform,
-      zoomIdentity.translate(initialX, initialY),
-    );
+    // Use saved transform if available, otherwise center tree
+    if (currentTransformRef.current) {
+      const { k, x, y } = currentTransformRef.current;
+      svg.call(zoomBehavior.transform, zoomIdentity.translate(x, y).scale(k));
+    } else {
+      const initialX = dimensions.width / 2 - (minX + treeWidth / 2 - padding);
+      const initialY = padding;
+      svg.call(
+        zoomBehavior.transform,
+        zoomIdentity.translate(initialX, initialY),
+      );
+    }
 
     // Draw connecting lines
     const drawnLineKeys = new Set<string>();
@@ -706,17 +730,29 @@ export function FamilyTreeLazy({
       .scaleExtent([0.1, 3])
       .on('zoom', (event) => {
         g.attr('transform', event.transform);
+        // Save current transform for next render
+        currentTransformRef.current = {
+          k: event.transform.k,
+          x: event.transform.x,
+          y: event.transform.y,
+        };
       });
 
     svg.call(zoomBehavior);
     zoomBehaviorRef.current = zoomBehavior;
 
-    const initialX = dimensions.width / 2 - (minX + (maxX - minX) / 2);
-    const initialY = padding;
-    svg.call(
-      zoomBehavior.transform,
-      zoomIdentity.translate(initialX, initialY),
-    );
+    // Use saved transform if available, otherwise center tree
+    if (currentTransformRef.current) {
+      const { k, x, y } = currentTransformRef.current;
+      svg.call(zoomBehavior.transform, zoomIdentity.translate(x, y).scale(k));
+    } else {
+      const initialX = dimensions.width / 2 - (minX + (maxX - minX) / 2);
+      const initialY = padding;
+      svg.call(
+        zoomBehavior.transform,
+        zoomIdentity.translate(initialX, initialY),
+      );
+    }
 
     // Draw connecting lines
     const drawLinks = (node: DescendantNode) => {

@@ -613,7 +613,7 @@ export function FamilyTreeUnified({
       const buttonHeight = 20;
       const buttonY = nodeHeight + 4;
       const isExpanded = expandedAncestors.has(node.id);
-      const hasParentsRendered = node.parents && node.parents.length > 0;
+      const hasParentsRendered = node.father || node.mother;
       const shouldShowButton =
         isExpanded ||
         (node.hasMoreAncestors && !hasParentsRendered) ||

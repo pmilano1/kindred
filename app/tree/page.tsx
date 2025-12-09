@@ -99,11 +99,16 @@ function TreePageContent() {
     updateUrl(personId, showAncestors);
   };
 
+  // Build subtitle with person info
+  const subtitle = selected
+    ? `${selected.name_full}${selected.birth_year ? ` (${selected.birth_year}` : ''}${selected.death_year ? `–${selected.death_year})` : selected.birth_year ? ')' : ''}${selected.birth_place ? ` • ${selected.birth_place}` : ''}`
+    : 'Interactive visualization of family connections';
+
   return (
     <>
       <PageHeader
         title="Family Tree"
-        subtitle="Interactive visualization of family connections"
+        subtitle={subtitle}
         icon="TreeDeciduous"
       />
       <div className="content-wrapper">
@@ -134,23 +139,13 @@ function TreePageContent() {
             <LoadingSpinner size="lg" message="Loading..." />
           </div>
         ) : selected ? (
-          <div className="card">
-            <div className="text-center p-4 border-b">
-              <h2 className="text-xl font-bold">{selected.name_full}</h2>
-              <p className="text-gray-500 text-sm">
-                {selected.birth_year && `${selected.birth_year}`}
-                {selected.death_year && ` – ${selected.death_year}`}
-                {selected.birth_place && ` • ${selected.birth_place}`}
-              </p>
-            </div>
-            <div style={{ height: '500px' }}>
-              <FamilyTreeLazy
-                rootPersonId={selectedPerson}
-                showAncestors={showAncestors}
-                onPersonClick={(id) => router.push(`/person/${id}`)}
-                onTileClick={handleTileClick}
-              />
-            </div>
+          <div className="card" style={{ height: '600px' }}>
+            <FamilyTreeLazy
+              rootPersonId={selectedPerson}
+              showAncestors={showAncestors}
+              onPersonClick={(id) => router.push(`/person/${id}`)}
+              onTileClick={handleTileClick}
+            />
           </div>
         ) : (
           <div className="tree-container flex items-center justify-center">

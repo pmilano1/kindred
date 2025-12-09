@@ -302,13 +302,42 @@ export function FamilyTreeUnified({
     // Position ancestors first
     leafX = 0;
     assignAncestorPositions(tree, 0);
+    const originalRootX = tree.x ?? 0;
 
     // Position descendants
     leafX = 0;
     if (tree.children.length > 0) {
+      let minChildX = Infinity;
+      let maxChildX = -Infinity;
+
       for (const child of tree.children) {
-        assignDescendantPositions(child, -1);
+        const bounds = assignDescendantPositions(child, -1);
+        minChildX = Math.min(minChildX, bounds.minX);
+        maxChildX = Math.max(maxChildX, bounds.maxX);
       }
+
+      // Center root person over children
+      const childrenCenter = (minChildX + maxChildX) / 2;
+      const newRootX = tree.spouse
+        ? childrenCenter - spouseGap / 2 - nodeWidth / 2
+        : childrenCenter;
+
+      // Calculate shift amount
+      const shiftX = newRootX - originalRootX;
+
+      // Shift root person
+      tree.x = newRootX;
+
+      // Shift all ancestors by the same amount
+      const shiftAncestors = (node: FamilyTreeNode) => {
+        if (node.x !== undefined) {
+          node.x += shiftX;
+        }
+        if (node.father) shiftAncestors(node.father);
+        if (node.mother) shiftAncestors(node.mother);
+      };
+      if (tree.father) shiftAncestors(tree.father);
+      if (tree.mother) shiftAncestors(tree.mother);
     }
 
     // Collect all nodes and build spatial index for collision detection
@@ -325,6 +354,13 @@ export function FamilyTreeUnified({
       if (node.x !== undefined && node.y !== undefined) {
         const posKey = `${Math.round(node.x)},${Math.round(node.y)}`;
         occupiedPositions.set(posKey, node);
+
+        // Also record spouse position if spouse exists
+        if (node.spouse) {
+          const spouseX = node.x + nodeWidth / 2 + spouseGap;
+          const spousePosKey = `${Math.round(spouseX)},${Math.round(node.y)}`;
+          occupiedPositions.set(spousePosKey, node); // Use node as placeholder
+        }
       }
 
       if (node.father) collectNodes(node.father);
@@ -336,7 +372,8 @@ export function FamilyTreeUnified({
     collectNodes(tree);
 
     // Calculate bounds and center
-    const padding = 50;
+    // Extra padding to account for sibling buttons (16px + 4px offset) and sibling popups (50px offset + nodeWidth)
+    const padding = 200; // Increased from 50 to prevent sibling buttons/popups from overlapping
     const minX = Math.min(...allNodes.map((n) => (n.x ?? 0) - nodeWidth / 2));
     const maxX = Math.max(...allNodes.map((n) => (n.x ?? 0) + nodeWidth / 2));
     const minY = Math.min(...allNodes.map((n) => (n.y ?? 0) - nodeHeight / 2));
@@ -346,10 +383,12 @@ export function FamilyTreeUnified({
 
     // Setup zoom
     const g = svg.append('g');
+    const siblingsG = svg.append('g'); // Separate group for siblings (renders on top)
     const zoomBehavior = zoom<SVGSVGElement, unknown>()
       .scaleExtent([0.1, 3])
       .on('zoom', (event) => {
         g.attr('transform', event.transform);
+        siblingsG.attr('transform', event.transform); // Apply same transform to siblings
         currentTransformRef.current = {
           k: event.transform.k,
           x: event.transform.x,
@@ -438,11 +477,16 @@ export function FamilyTreeUnified({
       const childBottom = childrenY + nodeHeight / 2;
       const midY = nodeTop - (nodeTop - childBottom) / 2;
 
-      // Vertical line up from parent
+      // Calculate center X position (center of person+spouse pair if spouse exists)
+      const centerX = node.spouse
+        ? node.x + nodeWidth / 2 + spouseGap / 2
+        : node.x;
+
+      // Vertical line up from parent (centered between person and spouse if spouse exists)
       g.append('line')
-        .attr('x1', node.x)
+        .attr('x1', centerX)
         .attr('y1', nodeTop)
-        .attr('x2', node.x)
+        .attr('x2', centerX)
         .attr('y2', midY)
         .attr('stroke', '#94a3b8')
         .attr('stroke-width', 1.5);
@@ -584,35 +628,55 @@ export function FamilyTreeUnified({
           .attr('stroke-width', 1);
       }
 
-      // Sibling expand button (left edge)
+      // Sibling expand button (on the edge where siblings will expand)
       const hasSiblings =
         node.person.siblings && node.person.siblings.length > 0;
-      if (hasSiblings) {
+
+      // Check if any siblings are already rendered in the tree
+      const renderedNodeIds = new Set(allNodes.map((n) => n.id));
+      const hasUnrenderedSiblings =
+        hasSiblings &&
+        node.person.siblings?.some((sib) => !renderedNodeIds.has(sib.id));
+
+      if (hasUnrenderedSiblings) {
         const siblingsVisible = visibleSiblings.has(person.id);
+
+        // If person has spouse, put button on LEFT (so it doesn't overlap with spouse)
+        // Otherwise, put button on RIGHT
+        const buttonWidth = 16;
+        const buttonX = node.spouse ? -buttonWidth - 4 : nodeWidth + 4;
+        const buttonY = 0; // Start at top of node
+
         const siblingButtonG = nodeG
           .append('g')
-          .attr('transform', `translate(-8, ${nodeHeight / 2})`)
+          .attr('transform', `translate(${buttonX}, ${buttonY})`)
           .style('cursor', 'pointer')
           .on('click', (e: MouseEvent) => {
             e.stopPropagation();
             toggleSiblings(person.id);
           });
 
+        // Button background - vertical bar matching node height
         siblingButtonG
-          .append('circle')
-          .attr('r', 6)
-          .attr('fill', siblingsVisible ? '#2563eb' : '#fff')
-          .attr('stroke', '#3b82f6')
-          .attr('stroke-width', 1.5);
+          .append('rect')
+          .attr('width', buttonWidth)
+          .attr('height', nodeHeight)
+          .attr('rx', 4)
+          .attr('fill', siblingsVisible ? '#2563eb' : '#3b82f6')
+          .attr('stroke', '#1e40af')
+          .attr('stroke-width', 1);
 
+        // Button text (centered vertically) - arrow points in expansion direction
+        // If expanding right, show ▶; if expanding left, show ◀
         siblingButtonG
           .append('text')
-          .attr('x', 0)
-          .attr('y', 1)
+          .attr('x', buttonWidth / 2)
+          .attr('y', nodeHeight / 2)
           .attr('text-anchor', 'middle')
-          .attr('font-size', '8px')
+          .attr('dominant-baseline', 'middle')
+          .attr('font-size', '10px')
           .attr('font-weight', 'bold')
-          .attr('fill', siblingsVisible ? '#fff' : '#3b82f6')
+          .attr('fill', '#fff')
           .text(siblingsVisible ? '−' : '+');
       }
 
@@ -676,8 +740,8 @@ export function FamilyTreeUnified({
           : isEndOfTree
             ? 'End of tree'
             : isExpanded
-              ? '▲ Collapse'
-              : '▼ Load More';
+              ? '▲'
+              : '▼';
 
         expandG
           .append('text')
@@ -750,8 +814,8 @@ export function FamilyTreeUnified({
           : isEndOfDescTree
             ? 'End of tree'
             : isDescExpanded
-              ? '▼ Collapse'
-              : '▲ Load More';
+              ? '▼'
+              : '▲';
 
         descExpandG
           .append('text')
@@ -813,6 +877,55 @@ export function FamilyTreeUnified({
           .attr('font-size', '10px')
           .attr('fill', '#6b7280')
           .text(spouseYears);
+
+        // Sibling button for spouse
+        const spouseHasSiblings =
+          node.spouse.siblings && node.spouse.siblings.length > 0;
+
+        // Check if any spouse siblings are already rendered in the tree
+        const spouseHasUnrenderedSiblings =
+          spouseHasSiblings &&
+          node.spouse.siblings?.some((sib) => !renderedNodeIds.has(sib.id));
+
+        if (spouseHasUnrenderedSiblings) {
+          const spouseSiblingsVisible = visibleSiblings.has(spouse.id);
+
+          // Always put sibling button on the right side
+          const spouseButtonWidth = 16;
+          const spouseButtonX = nodeWidth + 4;
+          const spouseButtonY = 0;
+
+          const spouseSiblingButtonG = spouseG
+            .append('g')
+            .attr('transform', `translate(${spouseButtonX}, ${spouseButtonY})`)
+            .style('cursor', 'pointer')
+            .on('click', (e: MouseEvent) => {
+              e.stopPropagation();
+              toggleSiblings(spouse.id);
+            });
+
+          // Button background
+          spouseSiblingButtonG
+            .append('rect')
+            .attr('width', spouseButtonWidth)
+            .attr('height', nodeHeight)
+            .attr('rx', 4)
+            .attr('fill', spouseSiblingsVisible ? '#2563eb' : '#3b82f6')
+            .attr('stroke', '#1e40af')
+            .attr('stroke-width', 1);
+
+          // Button text
+          spouseSiblingButtonG
+            .append('text')
+            .attr('x', spouseButtonWidth / 2)
+            .attr('y', nodeHeight / 2)
+            .attr('text-anchor', 'middle')
+            .attr('dominant-baseline', 'middle')
+            .attr('font-size', '10px')
+            .attr('font-weight', 'bold')
+            .attr('fill', '#fff')
+            .text(spouseSiblingsVisible ? '−' : '+');
+        }
       }
 
       // Render siblings if visible (with collision detection)
@@ -824,29 +937,52 @@ export function FamilyTreeUnified({
         const siblings = node.person.siblings;
         const maxNameLen = 18;
 
+        // Stack siblings vertically as an overlay
+        // If person has spouse, stack on LEFT; otherwise stack on RIGHT
+        const siblingOffsetX = node.spouse ? -(nodeWidth + 50) : nodeWidth + 50;
+        const siblingGap = 8; // Small gap between stacked siblings
+
+        // Create container group for all siblings with border (in siblingsG to render on top)
+        const siblingContainerG = siblingsG.append('g');
+
+        // Background border for the sibling group
+        const containerPadding = 8;
+        const containerWidth = nodeWidth + containerPadding * 2;
+        const containerHeight =
+          siblings.length * (nodeHeight + siblingGap) -
+          siblingGap +
+          containerPadding * 2;
+        const containerX =
+          node.x + siblingOffsetX - nodeWidth / 2 - containerPadding;
+        const containerY = node.y - nodeHeight / 2 - containerPadding;
+
+        siblingContainerG
+          .append('rect')
+          .attr('x', containerX)
+          .attr('y', containerY)
+          .attr('width', containerWidth)
+          .attr('height', containerHeight)
+          .attr('rx', 8)
+          .attr('fill', '#f8fafc')
+          .attr('stroke', '#64748b')
+          .attr('stroke-width', 2);
+
         for (let idx = 0; idx < siblings.length; idx++) {
           const sibling = toTreePerson(siblings[idx]);
 
-          // Calculate sibling position (to the left)
-          const siblingX = node.x - (idx + 1) * (nodeWidth + nodeGap);
-          const siblingY = node.y;
+          // Stack vertically, starting from the top of the parent node
+          const siblingX = node.x + siblingOffsetX;
+          const siblingY =
+            node.y - nodeHeight / 2 + idx * (nodeHeight + siblingGap);
 
-          // Check for collision with existing nodes
-          const posKey = `${Math.round(siblingX)},${Math.round(siblingY)}`;
-          const hasCollision = occupiedPositions.has(posKey);
-
-          // Skip rendering if there's a collision
-          if (hasCollision) {
-            continue;
-          }
-
-          const siblingG = g
+          const siblingG = siblingContainerG
             .append('g')
             .attr(
               'transform',
-              `translate(${siblingX - nodeWidth / 2},${siblingY - nodeHeight / 2})`,
+              `translate(${siblingX - nodeWidth / 2},${siblingY})`,
             );
 
+          // Opaque background for sibling tiles
           siblingG
             .append('rect')
             .attr('width', nodeWidth)
@@ -855,8 +991,113 @@ export function FamilyTreeUnified({
             .attr('fill', sibling.sex === 'F' ? '#fce7f3' : '#dbeafe')
             .attr('stroke', sibling.sex === 'F' ? '#ec4899' : '#3b82f6')
             .attr('stroke-width', 2)
-            .attr('stroke-dasharray', '4,4')
-            .attr('opacity', 0.8)
+            .style('cursor', 'pointer')
+            .on('click', () => onTileClick(sibling.id));
+
+          const siblingDisplayName =
+            sibling.name.length > maxNameLen
+              ? `${sibling.name.substring(0, maxNameLen - 2)}…`
+              : sibling.name;
+          siblingG
+            .append('text')
+            .attr('x', nodeWidth / 2)
+            .attr('y', 20)
+            .attr('text-anchor', 'middle')
+            .attr('font-size', '11px')
+            .attr('font-weight', '600')
+            .attr('fill', '#1f2937')
+            .text(siblingDisplayName);
+
+          const siblingYears = sibling.living
+            ? `${sibling.birth_year || '?'} – Living`
+            : `${sibling.birth_year || '?'} – ${sibling.death_year || '?'}`;
+          siblingG
+            .append('text')
+            .attr('x', nodeWidth / 2)
+            .attr('y', 36)
+            .attr('text-anchor', 'middle')
+            .attr('font-size', '10px')
+            .attr('fill', '#6b7280')
+            .text(siblingYears);
+
+          // Sibling indicator icon
+          siblingG
+            .append('text')
+            .attr('x', nodeWidth - 12)
+            .attr('y', 14)
+            .attr('font-size', '10px')
+            .attr('fill', '#9ca3af')
+            .text('↔');
+        }
+      }
+
+      // Render spouse siblings if visible (with collision detection)
+      if (
+        node.spouse &&
+        visibleSiblings.has(toTreePerson(node.spouse).id) &&
+        node.spouse.siblings &&
+        node.spouse.siblings.length > 0
+      ) {
+        const spouseSiblings = node.spouse.siblings;
+        const maxNameLen = 18;
+        const spouseX = node.x + nodeWidth / 2 + spouseGap;
+
+        // Stack siblings vertically to the right of the spouse node as an overlay
+        const siblingOffsetFromEdge = 50; // 50px to the right of the spouse's right edge
+        const siblingGap = 8; // Small gap between stacked siblings
+
+        // Create container group for all spouse siblings with border (in siblingsG to render on top)
+        const spouseSiblingContainerG = siblingsG.append('g');
+
+        // Background border for the spouse sibling group
+        const containerPadding = 8;
+        const containerWidth = nodeWidth + containerPadding * 2;
+        const containerHeight =
+          spouseSiblings.length * (nodeHeight + siblingGap) -
+          siblingGap +
+          containerPadding * 2;
+        // spouseX is the LEFT edge of spouse tile, so right edge = spouseX + nodeWidth
+        const containerX =
+          spouseX + nodeWidth + siblingOffsetFromEdge - containerPadding;
+        const containerY = node.y - nodeHeight / 2 - containerPadding;
+
+        spouseSiblingContainerG
+          .append('rect')
+          .attr('x', containerX)
+          .attr('y', containerY)
+          .attr('width', containerWidth)
+          .attr('height', containerHeight)
+          .attr('rx', 8)
+          .attr('fill', '#f8fafc')
+          .attr('stroke', '#64748b')
+          .attr('stroke-width', 2);
+
+        for (let idx = 0; idx < spouseSiblings.length; idx++) {
+          const sibling = toTreePerson(spouseSiblings[idx]);
+
+          // Stack vertically, starting from the top of the spouse node
+          // spouseX is the LEFT edge of spouse tile, so we need: spouseX + nodeWidth + offset + nodeWidth/2 (to get center of sibling)
+          const siblingX =
+            spouseX + nodeWidth + siblingOffsetFromEdge + nodeWidth / 2;
+          const siblingY =
+            node.y - nodeHeight / 2 + idx * (nodeHeight + siblingGap);
+
+          const siblingG = spouseSiblingContainerG
+            .append('g')
+            .attr(
+              'transform',
+              `translate(${siblingX - nodeWidth / 2},${siblingY})`,
+            );
+
+          // Opaque background for spouse sibling tiles
+          siblingG
+            .append('rect')
+            .attr('width', nodeWidth)
+            .attr('height', nodeHeight)
+            .attr('rx', 6)
+            .attr('fill', sibling.sex === 'F' ? '#fce7f3' : '#dbeafe')
+            .attr('stroke', sibling.sex === 'F' ? '#ec4899' : '#3b82f6')
+            .attr('stroke-width', 2)
             .style('cursor', 'pointer')
             .on('click', () => onTileClick(sibling.id));
 

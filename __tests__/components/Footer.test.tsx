@@ -20,7 +20,7 @@ describe('Footer', () => {
     vi.clearAllMocks();
   });
 
-  it('renders copyright with family name and site name', () => {
+  it('renders copyright with family name only', () => {
     mockedUseSettings.mockReturnValue({
       family_name: 'Milanese',
       site_name: 'Family Tree',
@@ -32,7 +32,7 @@ describe('Footer', () => {
 
     const currentYear = new Date().getFullYear();
     expect(
-      screen.getByText(`© ${currentYear} Milanese Family Tree`),
+      screen.getByText(`© ${currentYear} Milanese`),
     ).toBeInTheDocument();
   });
 
@@ -105,11 +105,27 @@ describe('Footer', () => {
 
     const currentYear = new Date().getFullYear();
     expect(
-      screen.getByText(`© ${currentYear} Milanese Family History`),
+      screen.getByText(`© ${currentYear} Milanese`),
     ).toBeInTheDocument();
     expect(screen.getByText('Generations of stories')).toBeInTheDocument();
     expect(
       screen.getByRole('link', { name: 'contact@milanese.life' }),
     ).toBeInTheDocument();
+  });
+
+  it('renders Kindred link to GitHub', () => {
+    mockedUseSettings.mockReturnValue({
+      family_name: 'Test',
+      site_name: 'Tree',
+      footer_text: null,
+      admin_email: null,
+    });
+
+    render(<Footer />);
+
+    const kindredLink = screen.getByRole('link', { name: /Powered by.*Kindred/i });
+    expect(kindredLink).toHaveAttribute('href', 'https://github.com/pmilano1/kindred');
+    expect(kindredLink).toHaveAttribute('target', '_blank');
+    expect(kindredLink).toHaveAttribute('rel', 'noopener noreferrer');
   });
 });

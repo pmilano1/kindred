@@ -135,10 +135,35 @@ export function FamilyTreeLazy({
   });
 
   // Fetch root person context (siblings and parents) for descendant view
-  const { data: rootContext } = useQuery(ROOT_PERSON_CONTEXT, {
-    variables: { id: rootPersonId },
-    skip: showAncestors, // Only needed for descendant view
-  });
+  interface GraphQLPerson {
+    id: string;
+    name_full: string;
+    sex: 'M' | 'F' | null;
+    birth_year: number | null;
+    death_year: number | null;
+    birth_place: string | null;
+    death_place: string | null;
+    living: boolean;
+    familysearch_id: string | null;
+    is_notable?: boolean;
+    research_status?: string;
+    research_priority?: number;
+    last_researched?: string;
+    coatOfArms?: string | null;
+  }
+  interface RootPersonContextData {
+    person: GraphQLPerson & {
+      siblings: GraphQLPerson[];
+      parents: GraphQLPerson[];
+    };
+  }
+  const { data: rootContext } = useQuery<RootPersonContextData>(
+    ROOT_PERSON_CONTEXT,
+    {
+      variables: { id: rootPersonId },
+      skip: showAncestors, // Only needed for descendant view
+    },
+  );
 
   const loading = showAncestors ? ancestorLoading : descendantLoading;
   const error = showAncestors ? ancestorError : descendantError;
@@ -875,12 +900,13 @@ export function FamilyTreeLazy({
       const rootY = descendantTree.y;
       const parents = rootContext.person.parents || [];
       const siblings = rootContext.person.siblings || [];
+      const maxNameLen = 18;
 
       // Draw parents at generation -1 (above root)
       if (parents.length > 0) {
         const parentY = rootY - (nodeHeight + levelGap);
-        const father = parents.find((p: TreePerson) => p.sex === 'M');
-        const mother = parents.find((p: TreePerson) => p.sex === 'F');
+        const father = parents.find((p: GraphQLPerson) => p.sex === 'M');
+        const mother = parents.find((p: GraphQLPerson) => p.sex === 'F');
 
         // Position parents side by side
         const fatherX = father ? rootX - nodeWidth / 2 - spouseGap / 2 : rootX;

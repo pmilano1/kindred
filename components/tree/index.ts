@@ -2,6 +2,7 @@
 
 // Components
 export { FamilyTreeLazy } from './FamilyTreeLazy';
+export { FamilyTreeUnified } from './FamilyTreeUnified';
 export type { PriorityPopupState } from './PriorityPopup';
 export { PriorityPopup } from './PriorityPopup';
 export { TreeControls } from './TreeControls';
@@ -10,3 +11,4 @@ export * from './tree-types';
 // Hooks
 export { useAncestorTree } from './useAncestorTree';
 export { useDescendantTree } from './useDescendantTree';
+export { useFamilyTree } from './useFamilyTree';

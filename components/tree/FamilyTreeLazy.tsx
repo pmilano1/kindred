@@ -18,7 +18,6 @@ import {
   DEFAULT_LAYOUT_CONFIG,
   type DescendantNode,
   type PedigreeNode,
-  type TreePerson,
   toTreePerson,
 } from './tree-types';
 import { useAncestorTree } from './useAncestorTree';

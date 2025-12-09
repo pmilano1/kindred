@@ -375,7 +375,7 @@ interface UseAncestorTreeResult {
 export function useAncestorTree({
   rootPersonId,
   initialGenerations = 3,
-  expansionGenerations = 2,
+  expansionGenerations = 1,
 }: UseAncestorTreeOptions): UseAncestorTreeResult {
   // Track which nodes have been expanded
   const [expandedNodes, setExpandedNodes] = useState<Set<string>>(new Set());

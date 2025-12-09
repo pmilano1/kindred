@@ -109,7 +109,9 @@ export function useInfiniteScroll({
       observerRef.current = new IntersectionObserver(
         (entries) => {
           const [entry] = entries;
-          if (entry.isIntersecting && !loading && hasNextPage) {
+          // Only trigger if intersecting and hasNextPage
+          // Don't check loading state here to avoid dependency issues
+          if (entry.isIntersecting && hasNextPage) {
             setIsLoading(true);
             loadMoreRef.current();
           }
@@ -122,7 +124,9 @@ export function useInfiniteScroll({
 
       observerRef.current.observe(node);
     },
-    [enabled, hasNextPage, loading, threshold, scrollContainerSelector],
+    // Removed 'loading' and 'isLoading' from dependencies to prevent observer recreation
+    // The loadMoreRef callback handles the loading check
+    [enabled, hasNextPage, threshold, scrollContainerSelector],
   );
 
   // Cleanup on unmount

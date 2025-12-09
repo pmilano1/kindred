@@ -37,12 +37,18 @@ function subscribe(callback: () => void) {
   return () => window.removeEventListener('storage', callback);
 }
 
+// Cache server snapshot to avoid infinite loop warning
+const cachedServerSnapshot: RecentSearch[] = [];
+function getServerSnapshot(): RecentSearch[] {
+  return cachedServerSnapshot;
+}
+
 export function useRecentSearches() {
   // Use useSyncExternalStore for localStorage to avoid setState in useEffect
   const storedSearches = useSyncExternalStore(
     subscribe,
     getStoredSearches,
-    () => [], // Server snapshot
+    getServerSnapshot,
   );
 
   // Local state for immediate updates (before storage event fires)

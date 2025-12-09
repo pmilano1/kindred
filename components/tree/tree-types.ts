@@ -7,16 +7,10 @@ export interface TreePerson {
   sex: 'M' | 'F' | null;
   birth_year: number | null;
   death_year: number | null;
-  birth_place: string | null;
-  death_place: string | null;
   living: boolean;
-  familysearch_id: string | null;
   isNotable?: boolean;
   research_status?: string;
   research_priority?: number;
-  last_researched?: string;
-  hasCoatOfArms?: boolean;
-  coatOfArmsUrl?: string | null;
 }
 
 // GraphQL Person type (as returned from API)
@@ -26,15 +20,10 @@ export interface GraphQLPerson {
   sex: 'M' | 'F' | null;
   birth_year: number | null;
   death_year: number | null;
-  birth_place: string | null;
-  death_place: string | null;
   living: boolean;
-  familysearch_id: string | null;
   is_notable?: boolean;
   research_status?: string;
   research_priority?: number;
-  last_researched?: string;
-  coatOfArms?: string | null;
 }
 
 // Pedigree node for ancestor view (from GraphQL)
@@ -79,16 +68,10 @@ export function toTreePerson(p: GraphQLPerson): TreePerson {
     sex: p.sex,
     birth_year: p.birth_year,
     death_year: p.death_year,
-    birth_place: p.birth_place,
-    death_place: p.death_place,
     living: p.living,
-    familysearch_id: p.familysearch_id,
     isNotable: p.is_notable,
     research_status: p.research_status,
     research_priority: p.research_priority,
-    last_researched: p.last_researched,
-    hasCoatOfArms: !!p.coatOfArms,
-    coatOfArmsUrl: p.coatOfArms,
   };
 }
 

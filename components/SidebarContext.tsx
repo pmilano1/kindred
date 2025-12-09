@@ -23,8 +23,10 @@ function getSnapshot(): boolean {
   return localStorage.getItem(STORAGE_KEY) === 'true';
 }
 
+// Cache server snapshot to avoid infinite loop warning
+const cachedServerSnapshot = false;
 function getServerSnapshot(): boolean {
-  return false;
+  return cachedServerSnapshot;
 }
 
 function subscribe(callback: () => void): () => void {

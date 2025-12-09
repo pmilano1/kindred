@@ -322,6 +322,32 @@ export const migrations: Migration[] = [
       return results;
     },
   },
+  {
+    version: 8,
+    name: 'families_marriage_year',
+    up: async (pool: Pool) => {
+      const results: string[] = [];
+
+      // Add marriage_year column to families table
+      await pool.query(`
+        ALTER TABLE families
+        ADD COLUMN IF NOT EXISTS marriage_year INT
+      `);
+      results.push('Added marriage_year column to families table');
+
+      // Populate marriage_year from marriage_date where possible
+      await pool.query(`
+        UPDATE families
+        SET marriage_year = CAST(SUBSTRING(marriage_date FROM 1 FOR 4) AS INT)
+        WHERE marriage_date IS NOT NULL
+          AND marriage_date ~ '^[0-9]{4}'
+          AND marriage_year IS NULL
+      `);
+      results.push('Populated marriage_year from existing marriage_date values');
+
+      return results;
+    },
+  },
 ];
 
 // Get current database version

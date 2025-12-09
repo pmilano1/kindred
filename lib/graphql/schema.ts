@@ -383,6 +383,31 @@ export const typeDefs = `#graphql
   }
 
   # ===========================================
+  # TREE VIEW TYPES
+  # ===========================================
+
+  # Pedigree node for ancestor tree view (nested structure)
+  type PedigreeNode {
+    id: ID!
+    person: Person!
+    father: PedigreeNode
+    mother: PedigreeNode
+    generation: Int!
+    hasMoreAncestors: Boolean!
+  }
+
+  # Descendant node for descendant tree view (nested structure)
+  type DescendantNode {
+    id: ID!
+    person: Person!
+    spouse: Person
+    marriageYear: Int
+    children: [DescendantNode!]!
+    generation: Int!
+    hasMoreDescendants: Boolean!
+  }
+
+  # ===========================================
   # QUERIES
   # ===========================================
 
@@ -414,9 +439,9 @@ export const typeDefs = `#graphql
     recentActivity(limit: Int): [ActivityEntry!]!
     incompleteProfiles(limit: Int): [IncompleteProfile!]!
 
-    # Ancestry traversal (optimized single query)
-    ancestors(personId: ID!, generations: Int): [Person!]!
-    descendants(personId: ID!, generations: Int): [Person!]!
+    # Ancestry traversal (returns nested tree structure)
+    ancestors(personId: ID!, generations: Int): PedigreeNode
+    descendants(personId: ID!, generations: Int): DescendantNode
 
     # Timeline (with optional year range filtering)
     timeline(startYear: Int, endYear: Int): [TimelineYear!]!

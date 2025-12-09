@@ -490,46 +490,55 @@ describe('GraphQL Resolvers', () => {
   });
 
   describe('Query.ancestors', () => {
-    it('returns ancestors using recursive CTE', async () => {
+    it('returns nested pedigree tree structure', async () => {
       mockedQuery.mockReset();
-      const mockAncestors = [
-        { id: 'a1', name_full: 'Grandfather', gen: 1 },
-        { id: 'a2', name_full: 'Grandmother', gen: 1 },
-      ];
-      mockedQuery.mockResolvedValueOnce({ rows: mockAncestors });
+
+      // Mock person query
+      mockedQuery.mockResolvedValueOnce({
+        rows: [{ id: 'p1', name_full: 'Person 1', sex: 'M' }],
+      });
+
+      // Mock parents query (no parents)
+      mockedQuery.mockResolvedValueOnce({ rows: [] });
 
       const result = await resolvers.Query.ancestors(null, {
         personId: 'p1',
-        generations: 5,
+        generations: 3,
       });
 
-      expect(result).toEqual(mockAncestors);
-      expect(mockedQuery).toHaveBeenCalledWith(
-        expect.stringContaining('WITH RECURSIVE ancestry'),
-        ['p1', 5],
-      );
+      expect(result).toMatchObject({
+        id: 'p1',
+        person: { id: 'p1', name_full: 'Person 1' },
+        generation: 0,
+        hasMoreAncestors: false,
+      });
     });
   });
 
   describe('Query.descendants', () => {
-    it('returns descendants using recursive CTE', async () => {
+    it('returns nested descendant tree structure', async () => {
       mockedQuery.mockReset();
-      const mockDescendants = [
-        { id: 'd1', name_full: 'Child', gen: 1 },
-        { id: 'd2', name_full: 'Grandchild', gen: 2 },
-      ];
-      mockedQuery.mockResolvedValueOnce({ rows: mockDescendants });
+
+      // Mock person query
+      mockedQuery.mockResolvedValueOnce({
+        rows: [{ id: 'p1', name_full: 'Person 1', sex: 'M' }],
+      });
+
+      // Mock families query (no families)
+      mockedQuery.mockResolvedValueOnce({ rows: [] });
 
       const result = await resolvers.Query.descendants(null, {
         personId: 'p1',
-        generations: 5,
+        generations: 3,
       });
 
-      expect(result).toEqual(mockDescendants);
-      expect(mockedQuery).toHaveBeenCalledWith(
-        expect.stringContaining('WITH RECURSIVE descendancy'),
-        ['p1', 5],
-      );
+      expect(result).toMatchObject({
+        id: 'p1',
+        person: { id: 'p1', name_full: 'Person 1' },
+        generation: 0,
+        children: [],
+        hasMoreDescendants: false,
+      });
     });
   });
 

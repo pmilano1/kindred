@@ -1,0 +1,893 @@
+'use client';
+
+import { useMutation } from '@apollo/client/react';
+import { select } from 'd3-selection';
+import 'd3-transition';
+import type { ZoomBehavior } from 'd3-zoom';
+import { zoom, zoomIdentity } from 'd3-zoom';
+import Image from 'next/image';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import {
+  UPDATE_RESEARCH_PRIORITY,
+  UPDATE_RESEARCH_STATUS,
+} from '@/lib/graphql/queries';
+import { PriorityPopup, type PriorityPopupState } from './PriorityPopup';
+import { TreeControls } from './TreeControls';
+import {
+  DEFAULT_LAYOUT_CONFIG,
+  type DescendantNode,
+  type PedigreeNode,
+  toTreePerson,
+} from './tree-types';
+import { useAncestorTree } from './useAncestorTree';
+import { useDescendantTree } from './useDescendantTree';
+
+interface FamilyTreeLazyProps {
+  rootPersonId: string;
+  showAncestors: boolean;
+  onPersonClick: (id: string) => void;
+  onTileClick: (id: string) => void;
+}
+
+interface CrestPopup {
+  url: string;
+  x: number;
+  y: number;
+}
+
+export function FamilyTreeLazy({
+  rootPersonId,
+  showAncestors,
+  onPersonClick,
+  onTileClick,
+}: FamilyTreeLazyProps) {
+  const svgRef = useRef<SVGSVGElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const zoomBehaviorRef = useRef<ZoomBehavior<SVGSVGElement, unknown> | null>(
+    null,
+  );
+  const [dimensions, setDimensions] = useState({ width: 800, height: 600 });
+  const [priorityPopup, setPriorityPopup] = useState<PriorityPopupState | null>(
+    null,
+  );
+  const [crestPopup, _setCrestPopup] = useState<CrestPopup | null>(null);
+  const [isFullscreen, setIsFullscreen] = useState(false);
+
+  // Use lazy-loading hooks
+  const {
+    pedigree,
+    loading: ancestorLoading,
+    error: ancestorError,
+    expandBranch: expandAncestorBranch,
+    expandingNode: expandingAncestor,
+  } = useAncestorTree({
+    rootPersonId,
+    initialGenerations: 3,
+    expansionGenerations: 2,
+  });
+
+  const {
+    tree: descendantTree,
+    loading: descendantLoading,
+    error: descendantError,
+    expandBranch: expandDescendantBranch,
+    expandingNode: expandingDescendant,
+  } = useDescendantTree({
+    rootPersonId,
+    initialGenerations: 3,
+    expansionGenerations: 2,
+  });
+
+  const loading = showAncestors ? ancestorLoading : descendantLoading;
+  const error = showAncestors ? ancestorError : descendantError;
+
+  // Mutations for priority/status
+  const [updatePriority] = useMutation(UPDATE_RESEARCH_PRIORITY);
+  const [updateStatus] = useMutation(UPDATE_RESEARCH_STATUS);
+
+  const handlePriorityChange = useCallback(
+    (personId: string, priority: number) => {
+      updatePriority({ variables: { id: personId, priority } });
+    },
+    [updatePriority],
+  );
+
+  const handleStatusChange = useCallback(
+    (personId: string, status: string) => {
+      updateStatus({ variables: { id: personId, status } });
+    },
+    [updateStatus],
+  );
+
+  // Resize observer
+  useEffect(() => {
+    const container = containerRef.current;
+    if (!container) return;
+
+    const resizeObserver = new ResizeObserver((entries) => {
+      for (const entry of entries) {
+        const { width, height } = entry.contentRect;
+        setDimensions({
+          width: Math.max(width, 400),
+          height: Math.max(height, 300),
+        });
+      }
+    });
+
+    resizeObserver.observe(container);
+    return () => resizeObserver.disconnect();
+  }, []);
+
+  // Zoom controls
+  const handleZoomIn = useCallback(() => {
+    const svg = svgRef.current;
+    if (svg && zoomBehaviorRef.current) {
+      select(svg)
+        .transition()
+        .duration(300)
+        .call(zoomBehaviorRef.current.scaleBy, 1.3);
+    }
+  }, []);
+
+  const handleZoomOut = useCallback(() => {
+    const svg = svgRef.current;
+    if (svg && zoomBehaviorRef.current) {
+      select(svg)
+        .transition()
+        .duration(300)
+        .call(zoomBehaviorRef.current.scaleBy, 0.7);
+    }
+  }, []);
+
+  const handleResetZoom = useCallback(() => {
+    const svg = svgRef.current;
+    if (svg && zoomBehaviorRef.current) {
+      select(svg)
+        .transition()
+        .duration(300)
+        .call(zoomBehaviorRef.current.transform, zoomIdentity);
+    }
+  }, []);
+
+  // Fullscreen toggle
+  const toggleFullscreen = useCallback(() => {
+    setIsFullscreen((prev) => !prev);
+  }, []);
+
+  // Keyboard shortcut for fullscreen
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'f' || e.key === 'F') {
+        if (
+          document.activeElement?.tagName !== 'INPUT' &&
+          document.activeElement?.tagName !== 'TEXTAREA'
+        ) {
+          toggleFullscreen();
+        }
+      }
+      if (e.key === 'Escape' && isFullscreen) {
+        setIsFullscreen(false);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isFullscreen, toggleFullscreen]);
+
+  // Status colors and labels
+  const statusColors: Record<string, string> = {
+    not_started: '#9ca3af',
+    in_progress: '#3b82f6',
+    partial: '#eab308',
+    verified: '#22c55e',
+    needs_review: '#f97316',
+    brick_wall: '#ef4444',
+  };
+
+  const statusLabels: Record<string, string> = {
+    not_started: 'Not Started',
+    in_progress: 'In Progress',
+    partial: 'Partial',
+    verified: 'Verified',
+    needs_review: 'Needs Review',
+    brick_wall: 'Brick Wall',
+  };
+
+  // D3 Rendering - Ancestor Tree
+  useEffect(() => {
+    if (!svgRef.current || !pedigree || !showAncestors) return;
+
+    const svg = select(svgRef.current);
+    svg.selectAll('*').remove();
+
+    const { nodeWidth, nodeHeight, levelGap, nodeGap } = DEFAULT_LAYOUT_CONFIG;
+
+    // Position nodes - assign Y (generation) and X positions
+    let leafX = 0;
+    const visitedPositions = new Map<string, { x: number; y: number }>();
+
+    const assignPositions = (
+      node: PedigreeNode,
+      gen: number,
+    ): { minX: number; maxX: number } => {
+      node.y = gen * (nodeHeight + levelGap);
+
+      const existing = visitedPositions.get(node.id);
+      if (existing) {
+        node.x = existing.x;
+        return { minX: node.x - nodeWidth / 2, maxX: node.x + nodeWidth / 2 };
+      }
+
+      const hasParents = node.father || node.mother;
+
+      if (!hasParents) {
+        node.x = leafX + nodeWidth / 2;
+        leafX += nodeWidth + nodeGap;
+        visitedPositions.set(node.id, { x: node.x, y: node.y });
+        return { minX: node.x - nodeWidth / 2, maxX: node.x + nodeWidth / 2 };
+      }
+
+      let minX = Infinity;
+      let maxX = -Infinity;
+
+      if (node.father) {
+        const bounds = assignPositions(node.father, gen + 1);
+        minX = Math.min(minX, bounds.minX);
+        maxX = Math.max(maxX, bounds.maxX);
+      }
+      if (node.mother) {
+        const bounds = assignPositions(node.mother, gen + 1);
+        minX = Math.min(minX, bounds.minX);
+        maxX = Math.max(maxX, bounds.maxX);
+      }
+
+      node.x = (minX + maxX) / 2;
+      visitedPositions.set(node.id, { x: node.x, y: node.y });
+
+      return {
+        minX: Math.min(minX, node.x - nodeWidth / 2),
+        maxX: Math.max(maxX, node.x + nodeWidth / 2),
+      };
+    };
+
+    assignPositions(pedigree, 0);
+
+    // Collect all nodes
+    const allNodes: PedigreeNode[] = [];
+    const seenIds = new Set<string>();
+    const collectNodes = (node: PedigreeNode) => {
+      if (seenIds.has(node.id)) return;
+      seenIds.add(node.id);
+      allNodes.push(node);
+      if (node.father) collectNodes(node.father);
+      if (node.mother) collectNodes(node.mother);
+    };
+    collectNodes(pedigree);
+
+    // Calculate bounds and center
+    const padding = 50;
+    const minX = Math.min(...allNodes.map((n) => (n.x ?? 0) - nodeWidth / 2));
+    const maxX = Math.max(...allNodes.map((n) => (n.x ?? 0) + nodeWidth / 2));
+    const maxY = Math.max(...allNodes.map((n) => (n.y ?? 0) + nodeHeight));
+    const treeWidth = maxX - minX + padding * 2;
+    const _treeHeight = maxY + padding * 2;
+
+    // Setup zoom
+    const g = svg.append('g');
+    const zoomBehavior = zoom<SVGSVGElement, unknown>()
+      .scaleExtent([0.1, 3])
+      .on('zoom', (event) => {
+        g.attr('transform', event.transform);
+      });
+
+    svg.call(zoomBehavior);
+    zoomBehaviorRef.current = zoomBehavior;
+
+    // Initial transform to center tree
+    const initialX = dimensions.width / 2 - (minX + treeWidth / 2 - padding);
+    const initialY = padding;
+    svg.call(
+      zoomBehavior.transform,
+      zoomIdentity.translate(initialX, initialY),
+    );
+
+    // Draw connecting lines
+    const drawnLineKeys = new Set<string>();
+    const drawLine = (x1: number, y1: number, x2: number, y2: number) => {
+      const key = `${Math.round(x1)},${Math.round(y1)}-${Math.round(x2)},${Math.round(y2)}`;
+      if (drawnLineKeys.has(key)) return;
+      drawnLineKeys.add(key);
+      g.append('line')
+        .attr('x1', x1)
+        .attr('y1', y1)
+        .attr('x2', x2)
+        .attr('y2', y2)
+        .attr('stroke', '#94a3b8')
+        .attr('stroke-width', 1.5);
+    };
+
+    const drawLinks = (node: PedigreeNode, visited = new Set<string>()) => {
+      if (!node.x || node.y === undefined) return;
+      if (visited.has(node.id)) return;
+      visited.add(node.id);
+
+      if (node.father || node.mother) {
+        const nodeTop = node.y - nodeHeight / 2;
+        const parentY =
+          Math.min(node.father?.y ?? Infinity, node.mother?.y ?? Infinity) +
+          nodeHeight / 2;
+        const midY = nodeTop + (parentY - nodeTop) / 2 - levelGap / 2;
+
+        drawLine(node.x, nodeTop, node.x, midY);
+
+        const parentXs: number[] = [];
+        if (node.father?.x !== undefined) parentXs.push(node.father.x);
+        if (node.mother?.x !== undefined) parentXs.push(node.mother.x);
+
+        if (parentXs.length > 0) {
+          const lineMinX = Math.min(...parentXs);
+          const lineMaxX = Math.max(...parentXs);
+          drawLine(lineMinX, midY, lineMaxX, midY);
+
+          if (node.father?.x !== undefined && node.father?.y !== undefined) {
+            drawLine(
+              node.father.x,
+              midY,
+              node.father.x,
+              node.father.y + nodeHeight / 2,
+            );
+            drawLinks(node.father, visited);
+          }
+          if (node.mother?.x !== undefined && node.mother?.y !== undefined) {
+            drawLine(
+              node.mother.x,
+              midY,
+              node.mother.x,
+              node.mother.y + nodeHeight / 2,
+            );
+            drawLinks(node.mother, visited);
+          }
+        }
+      }
+    };
+    drawLinks(pedigree);
+
+    // Draw nodes
+    for (const node of allNodes) {
+      if (node.x === undefined || node.y === undefined) continue;
+      const person = toTreePerson(node.person);
+      const isExpanding = expandingAncestor === node.id;
+      const status = person.research_status || 'not_started';
+      const priority = person.research_priority || 0;
+
+      const nodeG = g
+        .append('g')
+        .attr(
+          'transform',
+          `translate(${node.x - nodeWidth / 2},${node.y - nodeHeight / 2})`,
+        );
+
+      // Box
+      nodeG
+        .append('rect')
+        .attr('width', nodeWidth)
+        .attr('height', nodeHeight)
+        .attr('rx', 6)
+        .attr(
+          'fill',
+          person.isNotable
+            ? '#fef3c7'
+            : person.sex === 'F'
+              ? '#fce7f3'
+              : '#dbeafe',
+        )
+        .attr(
+          'stroke',
+          person.isNotable
+            ? '#f59e0b'
+            : person.sex === 'F'
+              ? '#ec4899'
+              : '#3b82f6',
+        )
+        .attr('stroke-width', person.isNotable ? 3 : 2)
+        .style('cursor', 'pointer')
+        .on('click', () => onTileClick(person.id))
+        .on('contextmenu', (e: MouseEvent) => {
+          e.preventDefault();
+          const containerRect = containerRef.current?.getBoundingClientRect();
+          if (containerRect) {
+            setPriorityPopup({
+              personId: person.id,
+              personName: person.name,
+              x: e.clientX - containerRect.left,
+              y: e.clientY - containerRect.top,
+              priority,
+              status,
+            });
+          }
+        });
+
+      // Crown for notable
+      if (person.isNotable) {
+        nodeG
+          .append('text')
+          .attr('x', 8)
+          .attr('y', 14)
+          .attr('font-size', '12px')
+          .text('👑');
+      }
+
+      // Status indicator
+      const statusG = nodeG.append('g').style('cursor', 'help');
+      statusG.append('title').text(statusLabels[status] || 'Unknown status');
+      statusG
+        .append('circle')
+        .attr('cx', nodeWidth - 10)
+        .attr('cy', nodeHeight - 10)
+        .attr('r', 5)
+        .attr('fill', statusColors[status] || '#9ca3af')
+        .attr('stroke', '#fff')
+        .attr('stroke-width', 1);
+
+      // Name
+      const maxNameLen = 18;
+      const displayName =
+        person.name.length > maxNameLen
+          ? `${person.name.substring(0, maxNameLen - 2)}…`
+          : person.name;
+      const nameText = nodeG
+        .append('text')
+        .attr('x', nodeWidth / 2)
+        .attr('y', 20)
+        .attr('text-anchor', 'middle')
+        .attr('font-size', '11px')
+        .attr('font-weight', '600')
+        .attr('fill', '#1f2937')
+        .style('cursor', 'pointer')
+        .on('click', (e: MouseEvent) => {
+          e.stopPropagation();
+          onPersonClick(person.id);
+        })
+        .text(displayName);
+      nameText.append('title').text(person.name);
+
+      // Years
+      const years = person.living
+        ? `${person.birth_year || '?'} – Living`
+        : `${person.birth_year || '?'} – ${person.death_year || '?'}`;
+      nodeG
+        .append('text')
+        .attr('x', nodeWidth / 2)
+        .attr('y', 36)
+        .attr('text-anchor', 'middle')
+        .attr('font-size', '10px')
+        .attr('fill', '#6b7280')
+        .text(years);
+
+      // Expand button [+] for nodes with more ancestors
+      if (node.hasMoreAncestors) {
+        const expandG = nodeG
+          .append('g')
+          .attr('transform', `translate(${nodeWidth / 2 - 10}, ${nodeHeight})`)
+          .style('cursor', isExpanding ? 'wait' : 'pointer')
+          .on('click', (e: MouseEvent) => {
+            e.stopPropagation();
+            if (!isExpanding) {
+              expandAncestorBranch(node.id);
+            }
+          });
+
+        expandG
+          .append('rect')
+          .attr('width', 20)
+          .attr('height', 16)
+          .attr('rx', 3)
+          .attr('fill', isExpanding ? '#94a3b8' : '#3b82f6')
+          .attr('stroke', '#fff')
+          .attr('stroke-width', 1);
+
+        expandG
+          .append('text')
+          .attr('x', 10)
+          .attr('y', 12)
+          .attr('text-anchor', 'middle')
+          .attr('font-size', '12px')
+          .attr('font-weight', 'bold')
+          .attr('fill', '#fff')
+          .text(isExpanding ? '…' : '+');
+      }
+    }
+  }, [
+    pedigree,
+    showAncestors,
+    dimensions,
+    expandAncestorBranch,
+    expandingAncestor,
+    onPersonClick,
+    onTileClick,
+  ]);
+
+  // D3 Rendering - Descendant Tree (similar logic)
+  useEffect(() => {
+    if (!svgRef.current || !descendantTree || showAncestors) return;
+
+    const svg = select(svgRef.current);
+    svg.selectAll('*').remove();
+
+    const { nodeWidth, nodeHeight, levelGap, nodeGap, spouseGap } =
+      DEFAULT_LAYOUT_CONFIG;
+
+    // Position nodes
+    let leafX = 0;
+
+    const assignPositions = (
+      node: DescendantNode,
+      gen: number,
+    ): { minX: number; maxX: number } => {
+      node.y = gen * (nodeHeight + levelGap);
+
+      if (node.children.length === 0) {
+        const totalWidth = node.spouse ? nodeWidth * 2 + spouseGap : nodeWidth;
+        node.x = leafX + totalWidth / 2;
+        leafX += totalWidth + nodeGap;
+        return { minX: node.x - totalWidth / 2, maxX: node.x + totalWidth / 2 };
+      }
+
+      let minX = Infinity;
+      let maxX = -Infinity;
+
+      for (const child of node.children) {
+        const bounds = assignPositions(child, gen + 1);
+        minX = Math.min(minX, bounds.minX);
+        maxX = Math.max(maxX, bounds.maxX);
+      }
+
+      node.x = (minX + maxX) / 2;
+
+      return {
+        minX: Math.min(minX, node.x - nodeWidth / 2),
+        maxX: Math.max(maxX, node.x + nodeWidth / 2),
+      };
+    };
+
+    assignPositions(descendantTree, 0);
+
+    // Collect all nodes
+    const allNodes: DescendantNode[] = [];
+    const collectNodes = (node: DescendantNode) => {
+      allNodes.push(node);
+      for (const child of node.children) {
+        collectNodes(child);
+      }
+    };
+    collectNodes(descendantTree);
+
+    // Calculate bounds
+    const padding = 50;
+    const minX = Math.min(...allNodes.map((n) => (n.x ?? 0) - nodeWidth));
+    const maxX = Math.max(...allNodes.map((n) => (n.x ?? 0) + nodeWidth));
+    const _maxY = Math.max(...allNodes.map((n) => (n.y ?? 0) + nodeHeight));
+
+    // Setup zoom
+    const g = svg.append('g');
+    const zoomBehavior = zoom<SVGSVGElement, unknown>()
+      .scaleExtent([0.1, 3])
+      .on('zoom', (event) => {
+        g.attr('transform', event.transform);
+      });
+
+    svg.call(zoomBehavior);
+    zoomBehaviorRef.current = zoomBehavior;
+
+    const initialX = dimensions.width / 2 - (minX + (maxX - minX) / 2);
+    const initialY = padding;
+    svg.call(
+      zoomBehavior.transform,
+      zoomIdentity.translate(initialX, initialY),
+    );
+
+    // Draw connecting lines
+    const drawLinks = (node: DescendantNode) => {
+      if (node.x === undefined || node.y === undefined) return;
+      if (node.children.length === 0) return;
+
+      const nodeBottom = node.y + nodeHeight / 2;
+      const childrenY = node.children[0]?.y ?? node.y + levelGap;
+      const childTop = childrenY - nodeHeight / 2;
+      const midY = nodeBottom + (childTop - nodeBottom) / 2;
+
+      // Vertical line down from parent
+      g.append('line')
+        .attr('x1', node.x)
+        .attr('y1', nodeBottom)
+        .attr('x2', node.x)
+        .attr('y2', midY)
+        .attr('stroke', '#94a3b8')
+        .attr('stroke-width', 1.5);
+
+      // Horizontal line spanning children
+      const childXs = node.children.map((c) => c.x ?? 0);
+      const minChildX = Math.min(...childXs);
+      const maxChildX = Math.max(...childXs);
+
+      g.append('line')
+        .attr('x1', minChildX)
+        .attr('y1', midY)
+        .attr('x2', maxChildX)
+        .attr('y2', midY)
+        .attr('stroke', '#94a3b8')
+        .attr('stroke-width', 1.5);
+
+      // Vertical lines down to each child
+      for (const child of node.children) {
+        if (child.x === undefined || child.y === undefined) continue;
+        g.append('line')
+          .attr('x1', child.x)
+          .attr('y1', midY)
+          .attr('x2', child.x)
+          .attr('y2', child.y - nodeHeight / 2)
+          .attr('stroke', '#94a3b8')
+          .attr('stroke-width', 1.5);
+        drawLinks(child);
+      }
+    };
+    drawLinks(descendantTree);
+
+    // Draw nodes
+    for (const node of allNodes) {
+      if (node.x === undefined || node.y === undefined) continue;
+      const person = toTreePerson(node.person);
+      const isExpanding = expandingDescendant === node.id;
+      const status = person.research_status || 'not_started';
+      const priority = person.research_priority || 0;
+
+      const nodeG = g
+        .append('g')
+        .attr(
+          'transform',
+          `translate(${node.x - nodeWidth / 2},${node.y - nodeHeight / 2})`,
+        );
+
+      // Box
+      nodeG
+        .append('rect')
+        .attr('width', nodeWidth)
+        .attr('height', nodeHeight)
+        .attr('rx', 6)
+        .attr('fill', person.sex === 'F' ? '#fce7f3' : '#dbeafe')
+        .attr('stroke', person.sex === 'F' ? '#ec4899' : '#3b82f6')
+        .attr('stroke-width', 2)
+        .style('cursor', 'pointer')
+        .on('click', () => onTileClick(person.id))
+        .on('contextmenu', (e: MouseEvent) => {
+          e.preventDefault();
+          const containerRect = containerRef.current?.getBoundingClientRect();
+          if (containerRect) {
+            setPriorityPopup({
+              personId: person.id,
+              personName: person.name,
+              x: e.clientX - containerRect.left,
+              y: e.clientY - containerRect.top,
+              priority,
+              status,
+            });
+          }
+        });
+
+      // Name
+      const maxNameLen = 18;
+      const displayName =
+        person.name.length > maxNameLen
+          ? `${person.name.substring(0, maxNameLen - 2)}…`
+          : person.name;
+      nodeG
+        .append('text')
+        .attr('x', nodeWidth / 2)
+        .attr('y', 20)
+        .attr('text-anchor', 'middle')
+        .attr('font-size', '11px')
+        .attr('font-weight', '600')
+        .attr('fill', '#1f2937')
+        .style('cursor', 'pointer')
+        .on('click', (e: MouseEvent) => {
+          e.stopPropagation();
+          onPersonClick(person.id);
+        })
+        .text(displayName);
+
+      // Years
+      const years = person.living
+        ? `${person.birth_year || '?'} – Living`
+        : `${person.birth_year || '?'} – ${person.death_year || '?'}`;
+      nodeG
+        .append('text')
+        .attr('x', nodeWidth / 2)
+        .attr('y', 36)
+        .attr('text-anchor', 'middle')
+        .attr('font-size', '10px')
+        .attr('fill', '#6b7280')
+        .text(years);
+
+      // Status indicator
+      nodeG
+        .append('circle')
+        .attr('cx', nodeWidth - 10)
+        .attr('cy', nodeHeight - 10)
+        .attr('r', 5)
+        .attr('fill', statusColors[status] || '#9ca3af')
+        .attr('stroke', '#fff')
+        .attr('stroke-width', 1);
+
+      // Expand button for nodes with more descendants
+      if (node.hasMoreDescendants) {
+        const expandG = nodeG
+          .append('g')
+          .attr('transform', `translate(${nodeWidth / 2 - 10}, ${nodeHeight})`)
+          .style('cursor', isExpanding ? 'wait' : 'pointer')
+          .on('click', (e: MouseEvent) => {
+            e.stopPropagation();
+            if (!isExpanding) {
+              expandDescendantBranch(node.id);
+            }
+          });
+
+        expandG
+          .append('rect')
+          .attr('width', 20)
+          .attr('height', 16)
+          .attr('rx', 3)
+          .attr('fill', isExpanding ? '#94a3b8' : '#22c55e')
+          .attr('stroke', '#fff')
+          .attr('stroke-width', 1);
+
+        expandG
+          .append('text')
+          .attr('x', 10)
+          .attr('y', 12)
+          .attr('text-anchor', 'middle')
+          .attr('font-size', '12px')
+          .attr('font-weight', 'bold')
+          .attr('fill', '#fff')
+          .text(isExpanding ? '…' : '+');
+      }
+
+      // Draw spouse next to person
+      if (node.spouse) {
+        const spouse = toTreePerson(node.spouse);
+        const spouseX = node.x + nodeWidth / 2 + spouseGap;
+
+        const spouseG = g
+          .append('g')
+          .attr(
+            'transform',
+            `translate(${spouseX},${node.y - nodeHeight / 2})`,
+          );
+
+        spouseG
+          .append('rect')
+          .attr('width', nodeWidth)
+          .attr('height', nodeHeight)
+          .attr('rx', 6)
+          .attr('fill', spouse.sex === 'F' ? '#fce7f3' : '#dbeafe')
+          .attr('stroke', spouse.sex === 'F' ? '#ec4899' : '#3b82f6')
+          .attr('stroke-width', 2)
+          .style('cursor', 'pointer')
+          .on('click', () => onTileClick(spouse.id));
+
+        const spouseDisplayName =
+          spouse.name.length > maxNameLen
+            ? `${spouse.name.substring(0, maxNameLen - 2)}…`
+            : spouse.name;
+        spouseG
+          .append('text')
+          .attr('x', nodeWidth / 2)
+          .attr('y', 20)
+          .attr('text-anchor', 'middle')
+          .attr('font-size', '11px')
+          .attr('font-weight', '600')
+          .attr('fill', '#1f2937')
+          .text(spouseDisplayName);
+
+        const spouseYears = spouse.living
+          ? `${spouse.birth_year || '?'} – Living`
+          : `${spouse.birth_year || '?'} – ${spouse.death_year || '?'}`;
+        spouseG
+          .append('text')
+          .attr('x', nodeWidth / 2)
+          .attr('y', 36)
+          .attr('text-anchor', 'middle')
+          .attr('font-size', '10px')
+          .attr('fill', '#6b7280')
+          .text(spouseYears);
+      }
+    }
+  }, [
+    descendantTree,
+    showAncestors,
+    dimensions,
+    expandDescendantBranch,
+    expandingDescendant,
+    onPersonClick,
+    onTileClick,
+  ]);
+
+  // Container classes for fullscreen mode
+  const containerClasses = isFullscreen
+    ? 'fixed inset-0 z-50 bg-white'
+    : 'relative w-full h-full';
+
+  return (
+    <div
+      className={containerClasses}
+      ref={containerRef}
+      onClick={() => setPriorityPopup(null)}
+      onKeyDown={(e) => {
+        if (e.key === 'Escape') {
+          setPriorityPopup(null);
+        }
+      }}
+      role="application"
+      tabIndex={-1}
+    >
+      <svg
+        ref={svgRef}
+        width={dimensions.width}
+        height={dimensions.height}
+        className="bg-gradient-to-br from-slate-50 to-slate-100 rounded-lg"
+      />
+
+      {error && (
+        <div className="absolute inset-0 flex items-center justify-center text-red-600">
+          Failed to load data: {error.message}
+        </div>
+      )}
+
+      {loading && (
+        <div className="absolute inset-0 flex items-center justify-center text-[var(--muted-foreground)]">
+          Loading...
+        </div>
+      )}
+
+      {/* Tree Controls */}
+      <TreeControls
+        isFullscreen={isFullscreen}
+        onToggleFullscreen={toggleFullscreen}
+        onZoomIn={handleZoomIn}
+        onZoomOut={handleZoomOut}
+        onResetZoom={handleResetZoom}
+      />
+
+      {/* Priority Popup */}
+      {priorityPopup && (
+        <PriorityPopup
+          popup={priorityPopup}
+          onClose={() => setPriorityPopup(null)}
+          onPriorityChange={handlePriorityChange}
+          onStatusChange={handleStatusChange}
+          onPopupUpdate={(updates) =>
+            setPriorityPopup((prev) => (prev ? { ...prev, ...updates } : null))
+          }
+        />
+      )}
+
+      {/* Crest Hover Popup */}
+      {crestPopup && (
+        <div
+          className="absolute pointer-events-none z-50"
+          style={{ left: crestPopup.x, top: crestPopup.y }}
+        >
+          <div className="bg-[var(--card)] rounded-lg shadow-xl border-2 border-amber-400 p-2">
+            <div className="relative w-36 h-36">
+              <Image
+                src={crestPopup.url}
+                alt="Coat of Arms"
+                fill
+                className="object-contain"
+                unoptimized
+              />
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}

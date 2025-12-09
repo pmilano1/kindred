@@ -343,7 +343,9 @@ export const migrations: Migration[] = [
           AND marriage_date ~ '^[0-9]{4}'
           AND marriage_year IS NULL
       `);
-      results.push('Populated marriage_year from existing marriage_date values');
+      results.push(
+        'Populated marriage_year from existing marriage_date values',
+      );
 
       return results;
     },

@@ -1,21 +1,20 @@
 'use client';
 
 import { useQuery } from '@apollo/client/react';
-import { ArrowDown, ArrowUp } from 'lucide-react';
 import dynamic from 'next/dynamic';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useSession } from 'next-auth/react';
 import { Suspense, useCallback, useEffect, useState } from 'react';
 import LoadingSpinner from '@/components/LoadingSpinner';
 import PersonSearchSelect from '@/components/PersonSearchSelect';
-import { Button, PageHeader } from '@/components/ui';
+import { PageHeader } from '@/components/ui';
 import { GET_PERSON } from '@/lib/graphql/queries';
 import type { Person } from '@/lib/types';
 
-const FamilyTreeLazy = dynamic(
+const FamilyTreeUnified = dynamic(
   () =>
-    import('@/components/tree/FamilyTreeLazy').then((mod) => ({
-      default: mod.FamilyTreeLazy,
+    import('@/components/tree/FamilyTreeUnified').then((mod) => ({
+      default: mod.FamilyTreeUnified,
     })),
   {
     ssr: false,
@@ -27,7 +26,6 @@ function TreePageContent() {
   const searchParams = useSearchParams();
   const { data: session } = useSession();
   const [selectedPerson, setSelectedPerson] = useState<string>('');
-  const [showAncestors, setShowAncestors] = useState(true);
   const [initialized, setInitialized] = useState(false);
 
   // Fetch selected person details
@@ -43,10 +41,9 @@ function TreePageContent() {
 
   // Update URL when state changes
   const updateUrl = useCallback(
-    (personId: string, ancestors: boolean) => {
+    (personId: string) => {
       const params = new URLSearchParams();
       if (personId) params.set('person', personId);
-      params.set('view', ancestors ? 'ancestors' : 'descendants');
       router.replace(`/tree?${params.toString()}`, { scroll: false });
     },
     [router],
@@ -57,7 +54,6 @@ function TreePageContent() {
     if (initialized) return;
 
     const urlPerson = searchParams.get('person');
-    const urlView = searchParams.get('view');
 
     if (urlPerson) {
       // URL param takes priority
@@ -66,37 +62,21 @@ function TreePageContent() {
     } else if (session?.user?.personId) {
       // Fall back to user's linked person
       setSelectedPerson(session.user.personId);
-      updateUrl(session.user.personId, showAncestors);
+      updateUrl(session.user.personId);
       setInitialized(true);
     }
-
-    if (urlView === 'descendants') {
-      setShowAncestors(false);
-    }
-  }, [
-    searchParams,
-    session?.user?.personId,
-    initialized,
-    showAncestors,
-    updateUrl,
-  ]);
+  }, [searchParams, session?.user?.personId, initialized, updateUrl]);
 
   // Handle person selection change
   const handlePersonChange = (personId: string) => {
     setSelectedPerson(personId);
-    updateUrl(personId, showAncestors);
-  };
-
-  // Handle view mode change
-  const handleViewChange = (ancestors: boolean) => {
-    setShowAncestors(ancestors);
-    updateUrl(selectedPerson, ancestors);
+    updateUrl(personId);
   };
 
   // Handle tile click - navigate to that person's tree
   const handleTileClick = (personId: string) => {
     setSelectedPerson(personId);
-    updateUrl(personId, showAncestors);
+    updateUrl(personId);
   };
 
   // Build subtitle with person info
@@ -118,20 +98,6 @@ function TreePageContent() {
             onChange={handlePersonChange}
             placeholder="Search for a person..."
           />
-          <Button
-            variant={showAncestors ? 'primary' : 'secondary'}
-            onClick={() => handleViewChange(true)}
-            icon={<ArrowUp className="w-4 h-4" />}
-          >
-            Ancestors
-          </Button>
-          <Button
-            variant={!showAncestors ? 'primary' : 'secondary'}
-            onClick={() => handleViewChange(false)}
-            icon={<ArrowDown className="w-4 h-4" />}
-          >
-            Descendants
-          </Button>
         </div>
 
         {loading ? (
@@ -140,9 +106,8 @@ function TreePageContent() {
           </div>
         ) : selected ? (
           <div className="card" style={{ height: '600px' }}>
-            <FamilyTreeLazy
+            <FamilyTreeUnified
               rootPersonId={selectedPerson}
-              showAncestors={showAncestors}
               onPersonClick={(id) => router.push(`/person/${id}`)}
               onTileClick={handleTileClick}
             />

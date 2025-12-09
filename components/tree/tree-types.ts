@@ -54,6 +54,28 @@ export interface DescendantNode {
   y?: number;
 }
 
+// Unified family tree node - supports both ancestors and descendants
+export interface FamilyTreeNode {
+  id: string;
+  person: GraphQLPerson;
+  // Ancestor relationships (for upward expansion)
+  father?: FamilyTreeNode;
+  mother?: FamilyTreeNode;
+  // Descendant relationships (for downward expansion)
+  spouse?: GraphQLPerson;
+  marriageYear?: number;
+  children: FamilyTreeNode[];
+  // Generation: 0 = root, positive = ancestors, negative = descendants
+  generation: number;
+  // Expansion flags
+  hasMoreAncestors: boolean;
+  hasMoreDescendants: boolean;
+  // Layout properties (set during rendering)
+  x?: number;
+  y?: number;
+  isNotableBranch?: boolean;
+}
+
 // Notable relative info
 export interface NotableRelative {
   person: { id: string; name_full: string };

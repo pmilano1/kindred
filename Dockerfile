@@ -40,8 +40,10 @@ COPY --from=builder /app/public ./public
 COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
 COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
 
-# Copy startup script that runs migrations
-COPY --from=builder --chown=nextjs:nodejs /app/scripts/start.sh ./scripts/
+# Copy migration runner (industry standard pattern: separate migration step)
+# This follows the same pattern as Prisma's "migrate deploy" and Drizzle ORM
+COPY --from=builder --chown=nextjs:nodejs /app/migrate.js ./
+COPY --from=builder --chown=nextjs:nodejs /app/lib/migrations.ts ./lib/
 
 USER nextjs
 
@@ -49,6 +51,12 @@ EXPOSE 3000
 
 ENV PORT=3000
 
-# Run startup script (migrations + server)
-CMD ["sh", "./scripts/start.sh"]
+# Industry standard deployment pattern:
+# 1. Run migrations (exits with error if migrations fail)
+# 2. Start the server (only if migrations succeeded)
+#
+# This is the same pattern used by:
+# - Prisma: npx prisma migrate deploy && node server.js
+# - Drizzle: node migrate.js && node server.js
+CMD ["sh", "-c", "node migrate.js && node server.js"]
 

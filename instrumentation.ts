@@ -1,12 +1,16 @@
 /**
- * Next.js Instrumentation Hook
- * Runs once when the server starts (not during build)
+ * DEPRECATED: This file is no longer used for production migrations.
  *
- * Used to run database migrations automatically on deployment.
- * This ensures the database schema is always up-to-date when a new
- * version is deployed, without manual intervention.
+ * Production migrations now use the industry standard pattern:
+ * - Separate migration script (migrate.js) runs before server starts
+ * - Same pattern as Prisma (migrate deploy) and Drizzle ORM
+ * - Platform-agnostic, works on any Node.js environment
  *
- * See: https://nextjs.org/docs/app/building-your-application/optimizing/instrumentation
+ * This file is kept for:
+ * - Local development (Next.js dev server may still call it)
+ * - Reference implementation
+ *
+ * See: migrate.js and docs/DEPLOYMENT.md for production migration flow
  */
 
 export async function register() {

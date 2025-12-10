@@ -262,6 +262,71 @@ query {
 }
 ```
 
+## Database Migrations
+
+Kindred uses version-controlled database migrations to manage schema changes. Migrations run automatically on every deployment using the **industry standard pattern** used by Prisma and Drizzle ORM.
+
+### How Migrations Work
+
+1. **Migration files** are defined in `lib/migrations.ts`
+2. **On deployment**, `migrate.js` runs as a separate step before the server starts
+3. **Migrations execute** and exit with code 0 (success) or 1 (failure)
+4. **Server starts** only if migrations succeeded
+
+This follows the same pattern as:
+- **Prisma**: `npx prisma migrate deploy && node server.js`
+- **Drizzle**: `node migrate.js && node server.js`
+
+**Deployment Flow:**
+```
+Docker Build → node migrate.js → (success) → node server.js
+                              ↓ (failure)
+                           Exit with error
+```
+
+See [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) for detailed deployment documentation.
+
+### Migration Status
+
+Check migration status in the admin dashboard at `/admin` or via GraphQL:
+
+```graphql
+query {
+  migrationStatus {
+    currentVersion
+    latestVersion
+    migrationNeeded
+  }
+}
+```
+
+### Manual Migration (if needed)
+
+If you need to run migrations manually:
+
+```bash
+# Connect to your database
+psql $DATABASE_URL
+
+# Check current version
+SELECT version FROM schema_migrations ORDER BY version DESC LIMIT 1;
+
+# Migrations are defined in lib/migrations.ts
+# They run automatically on deployment, but you can trigger them by restarting the app
+```
+
+### Troubleshooting
+
+**Migrations not running?**
+- Check App Runner logs for `[Instrumentation]` messages
+- Verify `scripts/start.sh` is being executed (look for `[Startup]` logs)
+- Ensure `DATABASE_URL` is set correctly
+
+**Migration failed?**
+- Server won't start if migrations fail (by design)
+- Check logs for error details
+- Fix the issue and redeploy
+
 ## Data Management
 
 > 📝 **Note:** Kindred currently manages genealogy records through the GraphQL API. This is great for bulk imports, scripting, and integration with other tools. A full-featured UI for adding and editing people, families, and events is on the roadmap—stay tuned!

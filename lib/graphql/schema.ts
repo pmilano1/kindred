@@ -153,6 +153,7 @@ export const typeDefs = `#graphql
     id: ID!
     surname: String!
     coat_of_arms: String!
+    storage_url: String
     description: String
     origin: String
     motto: String
@@ -554,6 +555,7 @@ export const typeDefs = `#graphql
   input SurnameCrestInput {
     surname: String
     coat_of_arms: String
+    storage_url: String
     description: String
     origin: String
     motto: String

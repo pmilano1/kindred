@@ -1,8 +1,6 @@
-import crypto from 'node:crypto';
-import { mkdir, writeFile } from 'node:fs/promises';
-import { join } from 'node:path';
 import { type NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
+import { uploadFile, generateFileId } from '@/lib/storage';
 
 // Configure max file size (10MB)
 const MAX_FILE_SIZE = 10 * 1024 * 1024;
@@ -57,20 +55,16 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Generate unique filename
+    // Generate unique filename with nanoid
     const ext = file.name.split('.').pop() || 'bin';
-    const uniqueId = crypto.randomBytes(16).toString('hex');
-    const filename = `${uniqueId}.${ext}`;
+    const fileId = generateFileId();
+    const filename = `${fileId}.${ext}`;
+    const storagePath = `media/${personId}/${filename}`;
 
-    // Create upload directory if it doesn't exist
-    const uploadDir = join(process.cwd(), 'public', 'uploads', personId);
-    await mkdir(uploadDir, { recursive: true });
-
-    // Write file
+    // Upload file to storage (S3 or local based on settings)
     const bytes = await file.arrayBuffer();
     const buffer = Buffer.from(bytes);
-    const filepath = join(uploadDir, filename);
-    await writeFile(filepath, buffer);
+    await uploadFile(buffer, storagePath, file.type);
 
     // Determine media type
     let mediaType = 'other';
@@ -85,7 +79,7 @@ export async function POST(request: NextRequest) {
         original_filename: file.name,
         mime_type: file.type,
         file_size: file.size,
-        storage_path: `uploads/${personId}/${filename}`,
+        storage_path: storagePath,
         media_type: mediaType,
       },
     });

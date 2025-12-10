@@ -40,6 +40,9 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 
+# Generated migration file (compiled from migrations.ts)
+lib/migrations.js
+
 # Terraform
 terraform/.terraform/
 terraform/*.tfstate

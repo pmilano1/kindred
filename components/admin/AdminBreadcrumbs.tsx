@@ -25,7 +25,11 @@ const pathLabels: Record<string, string> = {
   database: 'Database',
   system: 'System',
   logs: 'Logs',
+  errors: 'Client Errors',
 };
+
+// Paths that don't have their own pages (only serve as parent segments)
+const nonLinkablePaths = new Set(['data', 'integrations', 'system', 'settings']);
 
 export function AdminBreadcrumbs() {
   const pathname = usePathname();
@@ -36,10 +40,13 @@ export function AdminBreadcrumbs() {
     const href = `/${segments.slice(0, index + 1).join('/')}`;
     const label = pathLabels[segment] || segment;
 
-    // Last segment shouldn't be a link
+    // Last segment shouldn't be a link, and neither should non-linkable paths
+    const isLinkable =
+      index !== segments.length - 1 && !nonLinkablePaths.has(segment);
+
     return {
       label,
-      href: index === segments.length - 1 ? undefined : href,
+      href: isLinkable ? href : undefined,
     };
   });
 

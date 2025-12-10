@@ -24,6 +24,9 @@ ENV NEXTAUTH_URL=${NEXTAUTH_URL}
 # Use BuildKit cache mount for Next.js build cache
 RUN --mount=type=cache,target=/app/.next/cache npm run build
 
+# Compile migrations.ts to migrations.js for production use
+RUN npx tsc lib/migrations.ts --outDir lib --module commonjs --target es2020 --esModuleInterop --skipLibCheck
+
 # Production image
 FROM base AS runner
 WORKDIR /app
@@ -43,7 +46,7 @@ COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
 # Copy migration runner (industry standard pattern: separate migration step)
 # This follows the same pattern as Prisma's "migrate deploy" and Drizzle ORM
 COPY --from=builder --chown=nextjs:nodejs /app/migrate.js ./
-COPY --from=builder --chown=nextjs:nodejs /app/lib/migrations.ts ./lib/
+COPY --from=builder --chown=nextjs:nodejs /app/lib/migrations.js ./lib/
 
 USER nextjs
 

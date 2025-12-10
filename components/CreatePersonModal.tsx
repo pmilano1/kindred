@@ -37,7 +37,7 @@ export default function CreatePersonModal({
     name_full: '',
     name_given: '',
     name_surname: '',
-    sex: '',
+    sex: 'UNKNOWN',
     birth_year: '',
     birth_place: '',
     death_year: '',
@@ -67,7 +67,7 @@ export default function CreatePersonModal({
       name_full: '',
       name_given: '',
       name_surname: '',
-      sex: '',
+      sex: 'UNKNOWN',
       birth_year: '',
       birth_place: '',
       death_year: '',
@@ -95,7 +95,7 @@ export default function CreatePersonModal({
     if (formData.name_given) input.name_given = formData.name_given.trim();
     if (formData.name_surname)
       input.name_surname = formData.name_surname.trim();
-    if (formData.sex) input.sex = formData.sex;
+    if (formData.sex && formData.sex !== 'UNKNOWN') input.sex = formData.sex;
     if (formData.birth_year)
       input.birth_year = parseInt(formData.birth_year, 10);
     if (formData.birth_place) input.birth_place = formData.birth_place.trim();
@@ -206,7 +206,7 @@ export default function CreatePersonModal({
                     <SelectValue placeholder="Unknown" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">Unknown</SelectItem>
+                    <SelectItem value="UNKNOWN">Unknown</SelectItem>
                     <SelectItem value="M">Male</SelectItem>
                     <SelectItem value="F">Female</SelectItem>
                   </SelectContent>

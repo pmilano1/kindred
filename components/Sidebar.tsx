@@ -5,6 +5,7 @@ import {
   ChevronLeft,
   ChevronRight,
   ClipboardList,
+  GitBranch,
   LayoutDashboard,
   type LucideIcon,
   Settings,
@@ -32,6 +33,12 @@ const navItems: NavItem[] = [
   { href: '/tree', label: 'Family Tree', icon: TreeDeciduous, group: 'main' },
   { href: '/people', label: 'People', icon: Users, group: 'main' },
   { href: '/timeline', label: 'Timeline', icon: Calendar, group: 'main' },
+  {
+    href: '/relationship',
+    label: 'Relationship',
+    icon: GitBranch,
+    group: 'main',
+  },
   {
     href: '/research',
     label: 'Research Queue',

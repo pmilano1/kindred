@@ -6,6 +6,7 @@ import {
   ClipboardList,
   Clock,
   FlaskConical,
+  GitBranch,
   Key,
   LayoutDashboard,
   Network,
@@ -39,6 +40,7 @@ const iconMap = {
   ClipboardList,
   Calendar,
   TreeDeciduous,
+  GitBranch,
 } as const;
 
 export type IconName = keyof typeof iconMap;

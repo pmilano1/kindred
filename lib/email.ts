@@ -11,8 +11,6 @@ import { pool } from './pool';
 // Configurable app name and URLs - set via environment variables
 const APP_NAME = process.env.APP_NAME || 'Kindred';
 const APP_URL = process.env.NEXTAUTH_URL || 'http://localhost:3000';
-const EMAIL_FROM =
-  process.env.EMAIL_FROM || `${APP_NAME} <noreply@example.com>`;
 
 // Email transport configuration
 type EmailTransportType = 'ses' | 'smtp' | 'none';
@@ -21,25 +19,117 @@ interface EmailConfig {
   type: EmailTransportType;
   configured: boolean;
   details?: string;
+  from?: string;
+  sesRegion?: string;
+  smtpHost?: string;
+  smtpPort?: number;
+  smtpSecure?: boolean;
+  smtpUser?: string;
+  smtpPassword?: string;
+}
+
+// Cache email config for 5 minutes (same as settings cache)
+let emailConfigCache: { config: EmailConfig; timestamp: number } | null = null;
+const EMAIL_CONFIG_CACHE_TTL = 5 * 60 * 1000; // 5 minutes
+
+/**
+ * Clear email config cache (called when settings are updated)
+ */
+export function clearEmailConfigCache() {
+  emailConfigCache = null;
+  // Also clear SES and SMTP clients to pick up new config
+  sesClient = null;
+  smtpTransporter = null;
 }
 
 /**
- * Determine which email transport is configured
- * Priority: AWS SES > SMTP > None
+ * Get email configuration from database settings
+ * Falls back to environment variables for backward compatibility
  */
-export function getEmailConfig(): EmailConfig {
+async function getEmailConfigFromDatabase(): Promise<EmailConfig> {
+  try {
+    const { rows } = await pool.query(
+      `SELECT key, value FROM settings WHERE key LIKE 'email_%'`,
+    );
+
+    const settings: Record<string, string> = {};
+    for (const row of rows) {
+      settings[row.key] = row.value;
+    }
+
+    const provider = settings.email_provider || 'none';
+
+    // If provider is explicitly set in database, use database config
+    if (provider === 'ses') {
+      const from = settings.email_from;
+      if (!from) {
+        return {
+          type: 'ses',
+          configured: false,
+          details: 'SES selected but email_from not configured',
+        };
+      }
+      return {
+        type: 'ses',
+        configured: true,
+        details: `AWS SES (from: ${from})`,
+        from,
+        sesRegion: settings.email_ses_region || 'us-east-1',
+      };
+    }
+
+    if (provider === 'smtp') {
+      const host = settings.email_smtp_host;
+      const port = parseInt(settings.email_smtp_port || '587', 10);
+      const from = settings.email_from;
+
+      if (!host || !from) {
+        return {
+          type: 'smtp',
+          configured: false,
+          details: 'SMTP selected but host or from address not configured',
+        };
+      }
+
+      return {
+        type: 'smtp',
+        configured: true,
+        details: `SMTP (${host}:${port})`,
+        from,
+        smtpHost: host,
+        smtpPort: port,
+        smtpSecure: settings.email_smtp_secure === 'true',
+        smtpUser: settings.email_smtp_user || undefined,
+        smtpPassword: settings.email_smtp_password || undefined,
+      };
+    }
+
+    // If provider is 'none' or not set, fall back to environment variables
+    return getEmailConfigFromEnv();
+  } catch (_error) {
+    // Database not available or settings table doesn't exist - fall back to env
+    return getEmailConfigFromEnv();
+  }
+}
+
+/**
+ * Get email configuration from environment variables (backward compatibility)
+ */
+function getEmailConfigFromEnv(): EmailConfig {
+  const EMAIL_FROM =
+    process.env.EMAIL_FROM || `${APP_NAME} <noreply@example.com>`;
+
   // Check for AWS SES configuration
-  // SES is configured if EMAIL_FROM is set to a real email (not the placeholder)
   if (
     process.env.EMAIL_FROM &&
     !process.env.EMAIL_FROM.includes('noreply@example.com')
   ) {
-    // If EMAIL_FROM is set to a real value, assume SES is intended
-    // SES will use AWS credentials from environment or IAM role
     return {
       type: 'ses',
       configured: true,
       details: `AWS SES (from: ${process.env.EMAIL_FROM})`,
+      from: process.env.EMAIL_FROM,
+      sesRegion: process.env.AWS_REGION || 'us-east-1',
     };
   }
 
@@ -52,6 +142,12 @@ export function getEmailConfig(): EmailConfig {
       details: smtpConfigured
         ? `SMTP (${process.env.SMTP_HOST}:${process.env.SMTP_PORT})`
         : 'SMTP host configured but missing port',
+      from: EMAIL_FROM,
+      smtpHost: process.env.SMTP_HOST,
+      smtpPort: parseInt(process.env.SMTP_PORT || '587', 10),
+      smtpSecure: process.env.SMTP_SECURE === 'true',
+      smtpUser: process.env.SMTP_USER,
+      smtpPassword: process.env.SMTP_PASSWORD,
     };
   }
 
@@ -59,23 +155,42 @@ export function getEmailConfig(): EmailConfig {
     type: 'none',
     configured: false,
     details:
-      'No email transport configured. Set EMAIL_FROM for AWS SES or SMTP_HOST for SMTP.',
+      'No email transport configured. Configure in admin settings or set EMAIL_FROM for AWS SES or SMTP_HOST for SMTP.',
   };
+}
+
+/**
+ * Determine which email transport is configured
+ * Priority: Database settings > Environment variables
+ */
+export async function getEmailConfig(): Promise<EmailConfig> {
+  // Return cached if valid
+  if (
+    emailConfigCache &&
+    Date.now() - emailConfigCache.timestamp < EMAIL_CONFIG_CACHE_TTL
+  ) {
+    return emailConfigCache.config;
+  }
+
+  const config = await getEmailConfigFromDatabase();
+  emailConfigCache = { config, timestamp: Date.now() };
+  return config;
 }
 
 /**
  * Check if email is properly configured
  */
-export function isEmailConfigured(): boolean {
-  return getEmailConfig().configured;
+export async function isEmailConfigured(): Promise<boolean> {
+  const config = await getEmailConfig();
+  return config.configured;
 }
 
 // Initialize SES client (lazy, only if needed)
 let sesClient: SESClient | null = null;
-function getSESClient(): SESClient {
+function getSESClient(config: EmailConfig): SESClient {
   if (!sesClient) {
     sesClient = new SESClient({
-      region: process.env.AWS_REGION || 'us-east-1',
+      region: config.sesRegion || 'us-east-1',
     });
   }
   return sesClient;
@@ -83,16 +198,16 @@ function getSESClient(): SESClient {
 
 // Initialize SMTP transporter (lazy, only if needed)
 let smtpTransporter: Transporter | null = null;
-function getSMTPTransporter(): Transporter {
+function getSMTPTransporter(config: EmailConfig): Transporter {
   if (!smtpTransporter) {
     smtpTransporter = nodemailer.createTransport({
-      host: process.env.SMTP_HOST,
-      port: parseInt(process.env.SMTP_PORT || '587', 10),
-      secure: process.env.SMTP_SECURE === 'true',
-      auth: process.env.SMTP_USER
+      host: config.smtpHost,
+      port: config.smtpPort || 587,
+      secure: config.smtpSecure || false,
+      auth: config.smtpUser
         ? {
-            user: process.env.SMTP_USER,
-            pass: process.env.SMTP_PASSWORD || '',
+            user: config.smtpUser,
+            pass: config.smtpPassword || '',
           }
         : undefined,
     });
@@ -112,19 +227,21 @@ interface EmailMessage {
  * Send an email using the configured transport (SES or SMTP)
  */
 async function sendEmail(message: EmailMessage): Promise<boolean> {
-  const config = getEmailConfig();
+  const config = await getEmailConfig();
 
   if (!config.configured) {
     console.error('[Email] No email transport configured');
     return false;
   }
 
+  const fromAddress = config.from || `${APP_NAME} <noreply@example.com>`;
+
   try {
     if (config.type === 'ses') {
-      const ses = getSESClient();
+      const ses = getSESClient(config);
       await ses.send(
         new SendEmailCommand({
-          Source: EMAIL_FROM,
+          Source: fromAddress,
           ReplyToAddresses: message.replyTo ? [message.replyTo] : undefined,
           Destination: { ToAddresses: [message.to] },
           Message: {
@@ -139,9 +256,9 @@ async function sendEmail(message: EmailMessage): Promise<boolean> {
       console.log(`[Email] Sent via SES to ${message.to}`);
       return true;
     } else if (config.type === 'smtp') {
-      const transporter = getSMTPTransporter();
+      const transporter = getSMTPTransporter(config);
       await transporter.sendMail({
-        from: EMAIL_FROM,
+        from: fromAddress,
         to: message.to,
         replyTo: message.replyTo,
         subject: message.subject,
@@ -165,7 +282,8 @@ export type EmailType =
   | 'welcome'
   | 'password_reset'
   | 'verification'
-  | 'notification';
+  | 'notification'
+  | 'test';
 
 /**
  * Log an email send attempt to the database
@@ -194,7 +312,7 @@ async function logEmail(
  * Only works when using SES transport.
  */
 export async function verifyEmailForSandbox(email: string): Promise<boolean> {
-  const config = getEmailConfig();
+  const config = await getEmailConfig();
   if (config.type !== 'ses') {
     console.log(
       `[Email] Skipping SES verification - using ${config.type} transport`,
@@ -203,7 +321,7 @@ export async function verifyEmailForSandbox(email: string): Promise<boolean> {
   }
 
   try {
-    const ses = getSESClient();
+    const ses = getSESClient(config);
     // Check if already verified
     const checkResponse = await ses.send(
       new GetIdentityVerificationAttributesCommand({
@@ -509,6 +627,88 @@ If you didn't request this reset, please ignore this email.
     return true;
   } catch (error) {
     console.error('[Email] Failed to send password reset:', error);
+    return false;
+  }
+}
+
+/**
+ * Send a test email to verify email configuration
+ */
+export async function sendTestEmail(to: string): Promise<boolean> {
+  const config = await getEmailConfig();
+  const subject = `Test Email from ${APP_NAME}`;
+
+  const htmlBody = `
+<!DOCTYPE html>
+<html>
+<head>
+  <style>
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; line-height: 1.6; color: #333; }
+    .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+    .header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 30px; text-align: center; border-radius: 8px 8px 0 0; }
+    .content { background: white; padding: 30px; border: 1px solid #e5e7eb; border-top: none; border-radius: 0 0 8px 8px; }
+    .success { background: #d1fae5; border: 1px solid #6ee7b7; padding: 16px; border-radius: 6px; margin: 20px 0; }
+    .footer { text-align: center; margin-top: 20px; color: #6b7280; font-size: 14px; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h1>🌳 ${APP_NAME}</h1>
+      <p>Email Configuration Test</p>
+    </div>
+    <div class="content">
+      <div class="success">
+        <strong>✅ Success!</strong> Your email configuration is working correctly.
+      </div>
+      <p>This is a test email to verify your email settings.</p>
+      <p><strong>Configuration Details:</strong></p>
+      <ul>
+        <li>Provider: ${config.type.toUpperCase()}</li>
+        <li>From: ${config.from}</li>
+        <li>Details: ${config.details}</li>
+      </ul>
+      <p>If you received this email, your email configuration is working properly!</p>
+    </div>
+    <div class="footer">
+      <p><a href="${APP_URL}">${APP_URL.replace('https://', '')}</a></p>
+      <p>Powered by Kindred</p>
+    </div>
+  </div>
+</body>
+</html>`;
+
+  const textBody = `
+Test Email from ${APP_NAME}
+
+✅ Success! Your email configuration is working correctly.
+
+This is a test email to verify your email settings.
+
+Configuration Details:
+- Provider: ${config.type.toUpperCase()}
+- From: ${config.from}
+- Details: ${config.details}
+
+If you received this email, your email configuration is working properly!
+
+---
+Powered by Kindred
+${APP_URL}
+`;
+
+  try {
+    await sendEmail({
+      to,
+      subject,
+      html: htmlBody,
+      text: textBody,
+    });
+    await logEmail('test', to, subject, true);
+    return true;
+  } catch (error) {
+    console.error('[Email] Failed to send test email:', error);
+    await logEmail('test', to, subject, false, (error as Error).message);
     return false;
   }
 }

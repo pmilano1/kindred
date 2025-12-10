@@ -321,6 +321,12 @@ export const typeDefs = `#graphql
     birthday_reminders: Boolean!
   }
 
+  type EmailTestResult {
+    success: Boolean!
+    message: String!
+    recipient: String
+  }
+
   # Dashboard types
   type ActivityEntry {
     id: ID!
@@ -648,6 +654,7 @@ export const typeDefs = `#graphql
     # Settings mutations (requires admin role)
     updateSettings(input: SettingsInput!): SiteSettings!
     runMigrations: MigrationResult!
+    testEmail(recipientEmail: String): EmailTestResult!
 
     # User profile mutations (current user)
     setMyPerson(personId: ID): User

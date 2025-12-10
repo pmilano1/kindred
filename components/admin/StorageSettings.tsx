@@ -1,10 +1,17 @@
 'use client';
 
-import { useState } from 'react';
-import { useMutation, useQuery } from '@apollo/client';
 import { gql } from '@apollo/client';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
+import { useMutation, useQuery } from '@apollo/client/react';
+import { useEffect, useState } from 'react';
+import { Button } from '@/components/ui/Button';
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui/Card';
+import { Input } from '@/components/ui/Input';
 import { Label } from '@/components/ui/label';
 import {
   Select,
@@ -13,7 +20,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 
 const GET_STORAGE_SETTINGS = gql`
   query GetStorageSettings {
@@ -33,8 +39,17 @@ const UPDATE_SETTING = gql`
   }
 `;
 
+interface Setting {
+  key: string;
+  value: string;
+}
+
+interface StorageSettingsData {
+  settings: Setting[];
+}
+
 export function StorageSettings() {
-  const { data, loading, refetch } = useQuery(GET_STORAGE_SETTINGS);
+  const { data, loading, refetch } = useQuery<StorageSettingsData>(GET_STORAGE_SETTINGS);
   const [updateSetting] = useMutation(UPDATE_SETTING);
 
   const [provider, setProvider] = useState('local');
@@ -45,12 +60,15 @@ export function StorageSettings() {
   const [saving, setSaving] = useState(false);
 
   // Load settings from query
-  useState(() => {
+  useEffect(() => {
     if (data?.settings) {
-      const settings = data.settings.reduce((acc: Record<string, string>, s: { key: string; value: string }) => {
-        acc[s.key] = s.value;
-        return acc;
-      }, {});
+      const settings = data.settings.reduce(
+        (acc: Record<string, string>, s: { key: string; value: string }) => {
+          acc[s.key] = s.value;
+          return acc;
+        },
+        {},
+      );
 
       setProvider(settings.storage_provider || 'local');
       setS3Bucket(settings.storage_s3_bucket || '');
@@ -58,16 +76,26 @@ export function StorageSettings() {
       setS3AccessKey(settings.storage_s3_access_key || '');
       setS3SecretKey(settings.storage_s3_secret_key || '');
     }
-  });
+  }, [data]);
 
   const handleSave = async () => {
     setSaving(true);
     try {
-      await updateSetting({ variables: { key: 'storage_provider', value: provider } });
-      await updateSetting({ variables: { key: 'storage_s3_bucket', value: s3Bucket } });
-      await updateSetting({ variables: { key: 'storage_s3_region', value: s3Region } });
-      await updateSetting({ variables: { key: 'storage_s3_access_key', value: s3AccessKey } });
-      await updateSetting({ variables: { key: 'storage_s3_secret_key', value: s3SecretKey } });
+      await updateSetting({
+        variables: { key: 'storage_provider', value: provider },
+      });
+      await updateSetting({
+        variables: { key: 'storage_s3_bucket', value: s3Bucket },
+      });
+      await updateSetting({
+        variables: { key: 'storage_s3_region', value: s3Region },
+      });
+      await updateSetting({
+        variables: { key: 'storage_s3_access_key', value: s3AccessKey },
+      });
+      await updateSetting({
+        variables: { key: 'storage_s3_secret_key', value: s3SecretKey },
+      });
 
       await refetch();
       alert('Storage settings saved successfully!');
@@ -86,7 +114,8 @@ export function StorageSettings() {
       <CardHeader>
         <CardTitle>Storage Configuration</CardTitle>
         <CardDescription>
-          Configure where media files (photos, documents, coat of arms) are stored
+          Configure where media files (photos, documents, coat of arms) are
+          stored
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
@@ -97,8 +126,12 @@ export function StorageSettings() {
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="local">Local Storage (ephemeral in production)</SelectItem>
-              <SelectItem value="s3">Amazon S3 (recommended for production)</SelectItem>
+              <SelectItem value="local">
+                Local Storage (ephemeral in production)
+              </SelectItem>
+              <SelectItem value="s3">
+                Amazon S3 (recommended for production)
+              </SelectItem>
             </SelectContent>
           </Select>
           <p className="text-sm text-muted-foreground">
@@ -142,7 +175,9 @@ export function StorageSettings() {
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="s3-secret-key">Secret Access Key (optional)</Label>
+              <Label htmlFor="s3-secret-key">
+                Secret Access Key (optional)
+              </Label>
               <Input
                 id="s3-secret-key"
                 type="password"
@@ -161,4 +196,3 @@ export function StorageSettings() {
     </Card>
   );
 }
-

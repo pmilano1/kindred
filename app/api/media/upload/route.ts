@@ -1,6 +1,6 @@
 import { type NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
-import { uploadFile, generateFileId } from '@/lib/storage';
+import { generateFileId, uploadFile } from '@/lib/storage';
 
 // Configure max file size (10MB)
 const MAX_FILE_SIZE = 10 * 1024 * 1024;

@@ -4,10 +4,11 @@ import { getFileUrl } from '@/lib/storage';
 // Serve media files via presigned URLs (S3) or direct paths (local)
 export async function GET(
   request: NextRequest,
-  { params }: { params: { path: string[] } },
+  { params }: { params: Promise<{ path: string[] }> },
 ) {
   try {
-    const storagePath = params.path.join('/');
+    const { path } = await params;
+    const storagePath = path.join('/');
 
     // Get URL (presigned for S3, local path for local storage)
     const url = await getFileUrl(storagePath);
@@ -25,4 +26,3 @@ export async function GET(
     return NextResponse.json({ error: 'File not found' }, { status: 404 });
   }
 }
-

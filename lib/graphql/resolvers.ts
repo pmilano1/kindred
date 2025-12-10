@@ -2822,7 +2822,10 @@ export const resolvers = {
     // Return URL for coat of arms image
     // If storage_path exists, use it (S3 or local file)
     // Otherwise fall back to base64 data URL
-    coat_of_arms: (crest: { coat_of_arms: string | null; storage_path: string | null }) => {
+    coat_of_arms: (crest: {
+      coat_of_arms: string | null;
+      storage_path: string | null;
+    }) => {
       if (crest.storage_path) {
         return `/api/media/${crest.storage_path}`;
       }

@@ -13,14 +13,14 @@
  *   npx tsx scripts/migrate-crests-to-storage.ts
  */
 
-import { db } from '../lib/db';
+import { pool } from '../lib/pool';
 import { uploadFile, generateFileId } from '../lib/storage';
 
 async function migrateCrests() {
   console.log('🚀 Starting coat of arms migration to storage...\n');
 
   // Get all crests with base64 data but no storage_path
-  const { rows: crests } = await db.query(
+  const { rows: crests } = await pool.query(
     `SELECT id, surname, coat_of_arms 
      FROM surname_crests 
      WHERE coat_of_arms IS NOT NULL 
@@ -78,9 +78,9 @@ async function migrateCrests() {
       await uploadFile(buffer, storagePath, mimeType);
 
       // Update database
-      await db.query(
-        `UPDATE surname_crests 
-         SET storage_path = $1 
+      await pool.query(
+        `UPDATE surname_crests
+         SET storage_path = $1
          WHERE id = $2`,
         [storagePath, crest.id],
       );

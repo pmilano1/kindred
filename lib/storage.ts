@@ -1,13 +1,13 @@
+import { mkdir, unlink, writeFile } from 'node:fs/promises';
+import { join } from 'node:path';
 import {
-  S3Client,
-  PutObjectCommand,
-  GetObjectCommand,
   DeleteObjectCommand,
+  GetObjectCommand,
+  PutObjectCommand,
+  S3Client,
 } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
-import { mkdir, writeFile, unlink } from 'node:fs/promises';
-import { join } from 'node:path';
-import { db } from './db';
+import { pool } from './pool';
 
 // Storage configuration from database settings
 let storageConfig: {
@@ -22,8 +22,8 @@ let storageConfig: {
 async function getStorageConfig() {
   if (storageConfig) return storageConfig;
 
-  const settings = await db.query(
-    `SELECT key, value FROM settings WHERE category = 'storage'`,
+  const settings = await pool.query(
+    `SELECT key, value FROM settings WHERE key LIKE 'storage%'`,
   );
 
   const config: Record<string, string> = {};
@@ -166,4 +166,3 @@ export async function deleteFile(storagePath: string): Promise<void> {
     await unlink(filepath);
   }
 }
-

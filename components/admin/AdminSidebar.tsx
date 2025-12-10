@@ -65,7 +65,10 @@ const navSections: NavSection[] = [
   },
   {
     title: 'System',
-    items: [{ href: '/admin/system/logs', label: 'Logs', icon: FileText }],
+    items: [
+      { href: '/admin/system/logs', label: 'Email Logs', icon: FileText },
+      { href: '/admin/system/errors', label: 'Client Errors', icon: FileText },
+    ],
   },
 ];
 

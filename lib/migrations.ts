@@ -778,6 +778,53 @@ export const migrations: Migration[] = [
       return results;
     },
   },
+
+  // Migration #16: Client-side error logging (Issue #295)
+  {
+    version: 16,
+    name: 'client_errors_table',
+    up: async (pool: Pool) => {
+      const results: string[] = [];
+
+      // Create client_errors table for centralized error logging
+      await pool.query(`
+        CREATE TABLE IF NOT EXISTS client_errors (
+          id VARCHAR(12) PRIMARY KEY,
+          user_id VARCHAR(12) REFERENCES users(id) ON DELETE SET NULL,
+          error_message TEXT NOT NULL,
+          stack_trace TEXT,
+          url TEXT,
+          user_agent TEXT,
+          component_stack TEXT,
+          error_info JSONB,
+          created_at TIMESTAMP DEFAULT NOW()
+        )
+      `);
+
+      // Create indexes for efficient querying
+      await pool.query(`
+        CREATE INDEX IF NOT EXISTS idx_client_errors_created_at ON client_errors(created_at DESC);
+        CREATE INDEX IF NOT EXISTS idx_client_errors_user_id ON client_errors(user_id);
+        CREATE INDEX IF NOT EXISTS idx_client_errors_url ON client_errors(url);
+      `);
+
+      // Add setting to enable/disable client-side error logging
+      await pool.query(
+        `INSERT INTO settings (key, value, description, category)
+         VALUES ($1, $2, $3, $4)
+         ON CONFLICT (key) DO NOTHING`,
+        [
+          'enable_error_logging',
+          'true',
+          'Enable client-side error logging',
+          'system',
+        ],
+      );
+
+      results.push('Created client_errors table with indexes and settings');
+      return results;
+    },
+  },
 ];
 
 // Get current database version

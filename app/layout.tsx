@@ -1,7 +1,9 @@
 import type { Metadata } from 'next';
 import './globals.css';
 import DevApiIndicator from '@/components/DevApiIndicator';
+import { ErrorBoundary } from '@/components/ErrorBoundary';
 import Footer from '@/components/Footer';
+import { GlobalErrorHandler } from '@/components/GlobalErrorHandler';
 import MainContent from '@/components/MainContent';
 import { Providers } from '@/components/Providers';
 import Sidebar from '@/components/Sidebar';
@@ -67,12 +69,15 @@ export default async function RootLayout({
       </head>
       <body>
         <Providers settings={settings}>
-          <Sidebar />
-          <MainContent>
-            {children}
-            <Footer />
-          </MainContent>
-          <DevApiIndicator />
+          <ErrorBoundary>
+            <GlobalErrorHandler />
+            <Sidebar />
+            <MainContent>
+              {children}
+              <Footer />
+            </MainContent>
+            <DevApiIndicator />
+          </ErrorBoundary>
         </Providers>
       </body>
     </html>

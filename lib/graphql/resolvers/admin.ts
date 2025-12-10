@@ -146,6 +146,41 @@ export const adminResolvers = {
       return rows[0] || null;
     },
 
+    // Client errors (admin only)
+    clientErrors: async (
+      _: unknown,
+      { limit = 50, offset = 0 }: { limit?: number; offset?: number },
+      context: Context,
+    ) => {
+      requireAuth(context, 'admin');
+      const { rows } = await pool.query(
+        `SELECT id, user_id, error_message, stack_trace, url, user_agent, component_stack, error_info, created_at
+         FROM client_errors
+         ORDER BY created_at DESC
+         LIMIT $1 OFFSET $2`,
+        [limit, offset],
+      );
+      return rows;
+    },
+
+    clientErrorStats: async (_: unknown, __: unknown, context: Context) => {
+      requireAuth(context, 'admin');
+      const stats = await pool.query(`
+        SELECT
+          COUNT(*) as total,
+          COUNT(*) FILTER (WHERE created_at > NOW() - INTERVAL '24 hours') as last_24_hours,
+          COUNT(*) FILTER (WHERE created_at > NOW() - INTERVAL '7 days') as last_7_days,
+          COUNT(DISTINCT error_message) as unique_errors
+        FROM client_errors
+      `);
+      return {
+        total: parseInt(stats.rows[0].total, 10) || 0,
+        last24Hours: parseInt(stats.rows[0].last_24_hours, 10) || 0,
+        last7Days: parseInt(stats.rows[0].last_7_days, 10) || 0,
+        uniqueErrors: parseInt(stats.rows[0].unique_errors, 10) || 0,
+      };
+    },
+
     // GEDCOM export,
   },
   Mutation: {
@@ -744,6 +779,23 @@ export const adminResolvers = {
         user.id,
       ]);
 
+      return true;
+    },
+
+    // Client error mutations (admin only)
+    deleteClientError: async (
+      _: unknown,
+      { id }: { id: string },
+      context: Context,
+    ) => {
+      requireAuth(context, 'admin');
+      await pool.query('DELETE FROM client_errors WHERE id = $1', [id]);
+      return true;
+    },
+
+    clearAllClientErrors: async (_: unknown, __: unknown, context: Context) => {
+      requireAuth(context, 'admin');
+      await pool.query('DELETE FROM client_errors');
       return true;
     },
 

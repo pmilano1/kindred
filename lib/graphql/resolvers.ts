@@ -2810,7 +2810,7 @@ export const resolvers = {
       activity.created_at ? new Date(activity.created_at).toISOString() : null,
   },
 
-  // SurnameCrest type resolver to add peopleCount field
+  // SurnameCrest type resolver to add peopleCount field and handle URLs
   SurnameCrest: {
     peopleCount: async (crest: { surname: string }) => {
       const { rows } = await pool.query(
@@ -2818,6 +2818,19 @@ export const resolvers = {
         [crest.surname],
       );
       return Number.parseInt(rows[0]?.count || '0', 10);
+    },
+    // Return URL for coat of arms image
+    // If storage_path exists, use it (S3 or local file)
+    // Otherwise fall back to base64 data URL
+    coat_of_arms: (crest: {
+      coat_of_arms: string | null;
+      storage_path: string | null;
+    }) => {
+      if (crest.storage_path) {
+        return `/api/media/${crest.storage_path}`;
+      }
+      // Fall back to base64 (for backwards compatibility during migration)
+      return crest.coat_of_arms;
     },
   },
 };

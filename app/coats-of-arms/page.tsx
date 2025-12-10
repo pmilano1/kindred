@@ -1,8 +1,9 @@
 'use client';
 
 import { useMutation, useQuery } from '@apollo/client/react';
-import { Plus } from 'lucide-react';
+import { Plus, Users } from 'lucide-react';
 import Image from 'next/image';
+import Link from 'next/link';
 import { useSession } from 'next-auth/react';
 import { useState } from 'react';
 import LoadingSpinner from '@/components/LoadingSpinner';
@@ -20,6 +21,7 @@ interface SurnameCrest {
   description: string | null;
   origin: string | null;
   motto: string | null;
+  peopleCount: number;
 }
 
 export default function CoatsOfArmsPage() {
@@ -217,6 +219,23 @@ export default function CoatsOfArmsPage() {
                     {crest.description}
                   </p>
                 )}
+                <div className="mt-4 pt-4 border-t border-gray-200">
+                  <div className="flex items-center justify-center gap-2 text-sm text-gray-600">
+                    <Users className="w-4 h-4" />
+                    <span>
+                      {crest.peopleCount}{' '}
+                      {crest.peopleCount === 1 ? 'person' : 'people'}
+                    </span>
+                  </div>
+                  {crest.peopleCount > 0 && (
+                    <Link
+                      href={`/people?surname=${encodeURIComponent(crest.surname)}`}
+                      className="block mt-2 text-sm text-green-600 hover:underline"
+                    >
+                      View People →
+                    </Link>
+                  )}
+                </div>
                 {isEditor && (
                   <Button
                     variant="link"

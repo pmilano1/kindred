@@ -49,7 +49,8 @@ interface StorageSettingsData {
 }
 
 export function StorageSettings() {
-  const { data, loading, refetch } = useQuery<StorageSettingsData>(GET_STORAGE_SETTINGS);
+  const { data, loading, refetch } =
+    useQuery<StorageSettingsData>(GET_STORAGE_SETTINGS);
   const [updateSetting] = useMutation(UPDATE_SETTING);
 
   const [provider, setProvider] = useState('local');

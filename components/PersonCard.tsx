@@ -91,19 +91,22 @@ export default function PersonCard({
         <div className="flex gap-1 ml-2">
           <Link
             href={`/tree?person=${person.id}&view=ancestors`}
-            className="p-1.5 rounded hover:bg-blue-100 text-blue-600 transition-colors"
+            className="p-2 sm:p-1.5 rounded hover:bg-blue-100 text-blue-600 transition-colors min-w-[44px] min-h-[44px] sm:min-w-0 sm:min-h-0 flex items-center justify-center"
             title="View ancestor tree"
             aria-label={`View ancestor tree for ${person.name_full}`}
           >
-            <TreeDeciduous className="w-4 h-4" aria-hidden="true" />
+            <TreeDeciduous
+              className="w-5 h-5 sm:w-4 sm:h-4"
+              aria-hidden="true"
+            />
           </Link>
           <Link
             href={`/tree?person=${person.id}&view=descendants`}
-            className="p-1.5 rounded hover:bg-green-100 text-green-600 transition-colors"
+            className="p-2 sm:p-1.5 rounded hover:bg-green-100 text-green-600 transition-colors min-w-[44px] min-h-[44px] sm:min-w-0 sm:min-h-0 flex items-center justify-center"
             title="View descendant tree"
             aria-label={`View descendant tree for ${person.name_full}`}
           >
-            <Users className="w-4 h-4" aria-hidden="true" />
+            <Users className="w-5 h-5 sm:w-4 sm:h-4" aria-hidden="true" />
           </Link>
         </div>
       </div>

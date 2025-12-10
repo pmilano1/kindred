@@ -1,20 +1,26 @@
 #!/usr/bin/env node
 /**
  * Production Migration Runner
- * 
+ *
  * Industry standard approach: Run migrations as a separate step before starting the app.
  * This is the pattern used by Prisma (prisma migrate deploy) and Drizzle ORM.
- * 
+ *
  * This script:
  * 1. Connects to the database
  * 2. Runs pending migrations
  * 3. Exits with code 0 on success, 1 on failure
- * 
+ *
  * Usage:
  *   node migrate.js && node server.js
  */
 
 const { Pool } = require('pg');
+
+// Check if DATABASE_URL is set
+if (!process.env.DATABASE_URL) {
+  console.log('[Migrate] DATABASE_URL not set, skipping migrations (likely CI/build environment)');
+  process.exit(0);
+}
 
 // Database connection
 const pool = new Pool({

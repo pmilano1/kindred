@@ -60,8 +60,8 @@ ENV HOSTNAME=0.0.0.0
 # 1. Run migrations (exits with error if migrations fail)
 # 2. Start the server (only if migrations succeeded)
 #
-# This is the same pattern used by:
-# - Prisma: npx prisma migrate deploy && node server.js
-# - Drizzle: node migrate.js && node server.js
-CMD ["sh", "-c", "node migrate.js && node server.js"]
+# HOSTNAME=0.0.0.0 must be set at runtime (not just ENV) because
+# AWS App Runner/ECS override the HOSTNAME env var with the container's
+# internal DNS name, causing Next.js to bind to that instead of all interfaces.
+CMD ["sh", "-c", "node migrate.js && HOSTNAME=0.0.0.0 node server.js"]
 

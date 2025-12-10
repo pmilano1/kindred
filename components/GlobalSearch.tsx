@@ -125,7 +125,7 @@ export default function GlobalSearch() {
   return (
     <div ref={containerRef} className="relative">
       <div className="flex items-center bg-white/10 rounded-lg border border-white/20 focus-within:border-white/40 transition-colors">
-        <Search className="w-4 h-4 text-white/60 ml-3" />
+        <Search className="w-4 h-4 text-white/60 ml-3" aria-hidden="true" />
         <input
           ref={inputRef}
           type="text"
@@ -135,21 +135,35 @@ export default function GlobalSearch() {
           onKeyDown={handleKeyDown}
           placeholder="Search people..."
           className="bg-transparent text-white placeholder-white/50 px-3 py-2 w-48 focus:w-64 transition-all outline-none text-sm"
+          role="combobox"
+          aria-label="Search people in family tree"
+          aria-expanded={isOpen}
+          aria-controls={isOpen ? 'search-results' : undefined}
+          aria-activedescendant={
+            selectedIndex >= 0 ? `search-result-${selectedIndex}` : undefined
+          }
+          aria-autocomplete="list"
         />
         {query && (
           <button
             type="button"
             onClick={() => handleQueryChange('')}
             className="pr-3 text-white/60 hover:text-white"
+            aria-label="Clear search"
           >
-            <X className="w-4 h-4" />
+            <X className="w-4 h-4" aria-hidden="true" />
           </button>
         )}
       </div>
 
       {/* Dropdown */}
       {isOpen && (
-        <div className="absolute top-full mt-2 w-72 bg-[var(--card)] text-[var(--card-foreground)] rounded-lg shadow-xl border border-[var(--border)] z-50 max-h-80 overflow-y-auto">
+        <div
+          id="search-results"
+          role="listbox"
+          aria-label={showRecent ? 'Recent searches' : 'Search results'}
+          className="absolute top-full mt-2 w-72 bg-[var(--card)] text-[var(--card-foreground)] rounded-lg shadow-xl border border-[var(--border)] z-50 max-h-80 overflow-y-auto"
+        >
           {/* Recent searches (when no query) */}
           {showRecent && (
             <>
@@ -172,6 +186,9 @@ export default function GlobalSearch() {
                 <button
                   type="button"
                   key={search.timestamp}
+                  id={`search-result-${index}`}
+                  role="option"
+                  aria-selected={selectedIndex === index}
                   onClick={() => handleRecentClick(search.query)}
                   className={`w-full px-4 py-2 text-left border-b border-[var(--border)] last:border-b-0 transition-colors flex items-center gap-2 ${
                     selectedIndex === index
@@ -179,7 +196,10 @@ export default function GlobalSearch() {
                       : 'hover:bg-[var(--accent)]'
                   }`}
                 >
-                  <Clock className="w-3 h-3 text-[var(--muted-foreground)]" />
+                  <Clock
+                    className="w-3 h-3 text-[var(--muted-foreground)]"
+                    aria-hidden="true"
+                  />
                   <span className="text-sm">{search.query}</span>
                 </button>
               ))}
@@ -197,6 +217,9 @@ export default function GlobalSearch() {
                   <button
                     type="button"
                     key={person.id}
+                    id={`search-result-${index}`}
+                    role="option"
+                    aria-selected={selectedIndex === index}
                     onClick={() => {
                       addSearch(query);
                       handleSelect(person.id);
@@ -219,6 +242,9 @@ export default function GlobalSearch() {
                 {data?.search?.totalCount && data.search.totalCount > 8 && (
                   <button
                     type="button"
+                    id={`search-result-${results.length}`}
+                    role="option"
+                    aria-selected={selectedIndex === results.length}
                     onClick={() => {
                       addSearch(query);
                       router.push(`/search?q=${encodeURIComponent(query)}`);

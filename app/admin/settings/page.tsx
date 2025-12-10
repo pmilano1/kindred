@@ -1,9 +1,6 @@
 'use client';
 
 import { Download, Play, Save, Upload } from 'lucide-react';
-import Link from 'next/link';
-import { useRouter } from 'next/navigation';
-import { useSession } from 'next-auth/react';
 import { useCallback, useEffect, useState } from 'react';
 import { EmailSettings } from '@/components/admin/EmailSettings';
 import { StorageSettings } from '@/components/admin/StorageSettings';
@@ -14,7 +11,6 @@ import {
   Checkbox,
   Input,
   Label,
-  PageHeader,
   Select,
   SelectContent,
   SelectItem,
@@ -74,8 +70,6 @@ const graphqlFetch = async (
 };
 
 export default function SettingsPage() {
-  const { data: session, status } = useSession();
-  const router = useRouter();
   const refetchGlobalSettings = useSettingsRefetch();
   const [settings, setSettings] = useState<Record<string, string>>({});
   const [rows, setRows] = useState<SettingRow[]>([]);
@@ -134,13 +128,8 @@ export default function SettingsPage() {
   }, []);
 
   useEffect(() => {
-    if (status === 'loading') return;
-    if (!session || session.user.role !== 'admin') {
-      router.push('/');
-      return;
-    }
     loadSettings();
-  }, [session, status, router, loadSettings]);
+  }, [loadSettings]);
 
   const handleSave = async () => {
     setSaving(true);
@@ -299,349 +288,319 @@ export default function SettingsPage() {
 
   if (loading) {
     return (
-      <>
-        <PageHeader
-          title="Site Settings"
-          subtitle="Configure your genealogy site"
-          icon="Sliders"
-        />
-        <div className="content-wrapper flex justify-center py-12">
-          <LoadingSpinner size="lg" message="Loading settings..." />
-        </div>
-      </>
+      <div className="flex justify-center py-12">
+        <LoadingSpinner size="lg" message="Loading settings..." />
+      </div>
     );
   }
 
   return (
-    <>
-      <PageHeader
-        title="Site Settings"
-        subtitle="Configure your genealogy site"
-        icon="Sliders"
-      />
-      <div className="content-wrapper">
-        {/* Navigation */}
-        <div className="flex gap-4 mb-8">
-          <Link href="/admin" className="nav-tab">
-            Users
-          </Link>
-          <span className="nav-tab-active">Site Settings</span>
-          <Link href="/admin/api-keys" className="nav-tab">
-            API Keys
-          </Link>
+    <div>
+      <div className="mb-6">
+        <h1 className="text-2xl font-bold text-gray-900">Site Settings</h1>
+        <p className="text-gray-600 mt-1">
+          Configure your genealogy site branding, privacy, and display options
+        </p>
+      </div>
+
+      {/* Message */}
+      {message && (
+        <div
+          className={`mb-6 p-4 rounded-lg ${message.type === 'success' ? 'bg-green-50 text-green-800 border border-green-200' : 'bg-red-50 text-red-800 border border-red-200'}`}
+        >
+          {message.text}
         </div>
+      )}
 
-        {/* Message */}
-        {message && (
-          <div
-            className={`mb-6 p-4 rounded-lg ${message.type === 'success' ? 'bg-green-50 text-green-800 border border-green-200' : 'bg-red-50 text-red-800 border border-red-200'}`}
+      {/* Migration needed */}
+      {needsMigration && (
+        <div className="mb-6 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
+          <p className="text-yellow-800 mb-3">
+            Settings table needs to be created.
+          </p>
+          <Button
+            onClick={handleMigrate}
+            disabled={migrating}
+            loading={migrating}
+            icon={<Play className="w-4 h-4" />}
           >
-            {message.text}
-          </div>
-        )}
+            Run Migration
+          </Button>
+        </div>
+      )}
 
-        {/* Migration needed */}
-        {needsMigration && (
-          <div className="mb-6 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
-            <p className="text-yellow-800 mb-3">
-              Settings table needs to be created.
-            </p>
-            <Button
-              onClick={handleMigrate}
-              disabled={migrating}
-              loading={migrating}
-              icon={<Play className="w-4 h-4" />}
+      {/* Settings Form */}
+      {!needsMigration && Object.keys(groupedSettings).length > 0 && (
+        <div className="space-y-8">
+          {Object.entries(groupedSettings).map(([category, categoryRows]) => (
+            <div
+              key={category}
+              className="bg-white rounded-xl shadow-sm border p-6"
             >
-              Run Migration
-            </Button>
-          </div>
-        )}
-
-        {/* Settings Form */}
-        {!needsMigration && Object.keys(groupedSettings).length > 0 && (
-          <div className="space-y-8">
-            {Object.entries(groupedSettings).map(([category, categoryRows]) => (
-              <div
-                key={category}
-                className="bg-white rounded-xl shadow-sm border p-6"
-              >
-                <h2 className="text-xl font-semibold mb-4">
-                  {CATEGORY_LABELS[category] || category}
-                </h2>
-                <div className="space-y-4">
-                  {categoryRows.map((row) => (
-                    <div
-                      key={row.key}
-                      className="grid grid-cols-3 gap-4 items-start"
-                    >
-                      <div>
-                        <span className="block font-medium text-gray-700">
-                          {SETTING_LABELS[row.key] || row.key}
-                        </span>
-                        <p className="text-sm text-gray-500">
-                          {row.description}
-                        </p>
-                        {/* Show preview for branding fields */}
-                        {category === 'branding' && row.key === 'site_name' && (
+              <h2 className="text-xl font-semibold mb-4">
+                {CATEGORY_LABELS[category] || category}
+              </h2>
+              <div className="space-y-4">
+                {categoryRows.map((row) => (
+                  <div
+                    key={row.key}
+                    className="grid grid-cols-3 gap-4 items-start"
+                  >
+                    <div>
+                      <span className="block font-medium text-gray-700">
+                        {SETTING_LABELS[row.key] || row.key}
+                      </span>
+                      <p className="text-sm text-gray-500">{row.description}</p>
+                      {/* Show preview for branding fields */}
+                      {category === 'branding' && row.key === 'site_name' && (
+                        <div className="mt-2 p-2 bg-blue-50 border border-blue-200 rounded text-xs">
+                          <p className="font-medium text-blue-900 mb-1">
+                            Used in:
+                          </p>
+                          <ul className="text-blue-700 space-y-0.5">
+                            <li>• Browser tab title</li>
+                            <li>• Footer copyright</li>
+                          </ul>
+                        </div>
+                      )}
+                      {category === 'branding' && row.key === 'family_name' && (
+                        <div className="mt-2 p-2 bg-blue-50 border border-blue-200 rounded text-xs">
+                          <p className="font-medium text-blue-900 mb-1">
+                            Used in:
+                          </p>
+                          <ul className="text-blue-700 space-y-0.5">
+                            <li>• Sidebar header</li>
+                            <li>• Browser tab title</li>
+                            <li>• Footer copyright</li>
+                          </ul>
+                        </div>
+                      )}
+                      {category === 'branding' &&
+                        row.key === 'site_tagline' && (
                           <div className="mt-2 p-2 bg-blue-50 border border-blue-200 rounded text-xs">
                             <p className="font-medium text-blue-900 mb-1">
                               Used in:
                             </p>
                             <ul className="text-blue-700 space-y-0.5">
-                              <li>• Browser tab title</li>
-                              <li>• Footer copyright</li>
+                              <li>• Sidebar header (below family name)</li>
+                              <li>• Browser meta description</li>
                             </ul>
                           </div>
                         )}
-                        {category === 'branding' &&
-                          row.key === 'family_name' && (
-                            <div className="mt-2 p-2 bg-blue-50 border border-blue-200 rounded text-xs">
-                              <p className="font-medium text-blue-900 mb-1">
-                                Used in:
-                              </p>
-                              <ul className="text-blue-700 space-y-0.5">
-                                <li>• Sidebar header</li>
-                                <li>• Browser tab title</li>
-                                <li>• Footer copyright</li>
-                              </ul>
-                            </div>
-                          )}
-                        {category === 'branding' &&
-                          row.key === 'site_tagline' && (
-                            <div className="mt-2 p-2 bg-blue-50 border border-blue-200 rounded text-xs">
-                              <p className="font-medium text-blue-900 mb-1">
-                                Used in:
-                              </p>
-                              <ul className="text-blue-700 space-y-0.5">
-                                <li>• Sidebar header (below family name)</li>
-                                <li>• Browser meta description</li>
-                              </ul>
-                            </div>
-                          )}
-                      </div>
-                      <div className="col-span-2">
-                        {row.key === 'theme_color' ? (
-                          <ThemePresetPicker
-                            value={settings[row.key] || '#37b24d'}
-                            onSelectPreset={(preset) => {
-                              updateSetting(
-                                'theme_color',
-                                preset.colors.primary,
-                              );
-                              // Apply theme immediately for preview
-                              applyThemePreset(preset);
-                            }}
-                          />
-                        ) : row.key === 'date_format' ? (
-                          <Select
-                            value={settings[row.key] || 'MDY'}
-                            onValueChange={(v) => updateSetting(row.key, v)}
-                          >
-                            <SelectTrigger className="w-48">
-                              <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="MDY">
-                                MM/DD/YYYY (US)
-                              </SelectItem>
-                              <SelectItem value="DMY">
-                                DD/MM/YYYY (EU)
-                              </SelectItem>
-                              <SelectItem value="ISO">
-                                YYYY-MM-DD (ISO)
-                              </SelectItem>
-                            </SelectContent>
-                          </Select>
-                        ) : [
-                            'require_login',
-                            'show_living_details',
-                            'show_coats_of_arms',
-                          ].includes(row.key) ? (
-                          <Select
-                            value={settings[row.key] || 'false'}
-                            onValueChange={(v) => updateSetting(row.key, v)}
-                          >
-                            <SelectTrigger className="w-32">
-                              <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="true">Yes</SelectItem>
-                              <SelectItem value="false">No</SelectItem>
-                            </SelectContent>
-                          </Select>
-                        ) : row.key === 'footer_text' ? (
-                          <Textarea
-                            value={settings[row.key] || ''}
-                            onChange={(e) =>
-                              updateSetting(row.key, e.target.value)
-                            }
-                            rows={2}
-                            placeholder="Optional footer message"
-                          />
-                        ) : (
-                          <Input
-                            type={
-                              [
-                                'living_cutoff_years',
-                                'default_tree_generations',
-                              ].includes(row.key)
-                                ? 'number'
-                                : 'text'
-                            }
-                            value={settings[row.key] || ''}
-                            onChange={(e) =>
-                              updateSetting(row.key, e.target.value)
-                            }
-                            placeholder={
-                              row.key.includes('url') ? 'https://...' : ''
-                            }
-                          />
-                        )}
-                      </div>
                     </div>
-                  ))}
-                </div>
+                    <div className="col-span-2">
+                      {row.key === 'theme_color' ? (
+                        <ThemePresetPicker
+                          value={settings[row.key] || '#37b24d'}
+                          onSelectPreset={(preset) => {
+                            updateSetting('theme_color', preset.colors.primary);
+                            // Apply theme immediately for preview
+                            applyThemePreset(preset);
+                          }}
+                        />
+                      ) : row.key === 'date_format' ? (
+                        <Select
+                          value={settings[row.key] || 'MDY'}
+                          onValueChange={(v) => updateSetting(row.key, v)}
+                        >
+                          <SelectTrigger className="w-48">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="MDY">MM/DD/YYYY (US)</SelectItem>
+                            <SelectItem value="DMY">DD/MM/YYYY (EU)</SelectItem>
+                            <SelectItem value="ISO">
+                              YYYY-MM-DD (ISO)
+                            </SelectItem>
+                          </SelectContent>
+                        </Select>
+                      ) : [
+                          'require_login',
+                          'show_living_details',
+                          'show_coats_of_arms',
+                        ].includes(row.key) ? (
+                        <Select
+                          value={settings[row.key] || 'false'}
+                          onValueChange={(v) => updateSetting(row.key, v)}
+                        >
+                          <SelectTrigger className="w-32">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="true">Yes</SelectItem>
+                            <SelectItem value="false">No</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      ) : row.key === 'footer_text' ? (
+                        <Textarea
+                          value={settings[row.key] || ''}
+                          onChange={(e) =>
+                            updateSetting(row.key, e.target.value)
+                          }
+                          rows={2}
+                          placeholder="Optional footer message"
+                        />
+                      ) : (
+                        <Input
+                          type={
+                            [
+                              'living_cutoff_years',
+                              'default_tree_generations',
+                            ].includes(row.key)
+                              ? 'number'
+                              : 'text'
+                          }
+                          value={settings[row.key] || ''}
+                          onChange={(e) =>
+                            updateSetting(row.key, e.target.value)
+                          }
+                          placeholder={
+                            row.key.includes('url') ? 'https://...' : ''
+                          }
+                        />
+                      )}
+                    </div>
+                  </div>
+                ))}
               </div>
-            ))}
-
-            {/* Save Button */}
-            <div className="flex justify-end">
-              <Button
-                onClick={handleSave}
-                disabled={saving}
-                loading={saving}
-                icon={<Save className="w-4 h-4" />}
-              >
-                Save Settings
-              </Button>
             </div>
+          ))}
 
-            {/* Email Configuration */}
-            <div className="mt-8">
-              <EmailSettings refetchTrigger={refetchTrigger} />
-            </div>
-
-            {/* Storage Configuration */}
-            <div className="mt-8">
-              <StorageSettings refetchTrigger={refetchTrigger} />
-            </div>
-
-            {/* GEDCOM Export Section */}
-            <div className="bg-gray-50 rounded-lg p-6 mt-8">
-              <h3 className="text-lg font-semibold mb-4">📤 Export Data</h3>
-              <p className="text-gray-600 mb-4">
-                Export your family tree data in GEDCOM format for backup or
-                import into other genealogy software.
-              </p>
-              <div className="flex flex-wrap gap-4 mb-4">
-                <div className="flex items-center gap-2">
-                  <Checkbox
-                    id="export-living"
-                    checked={exportIncludeLiving}
-                    onCheckedChange={(checked) =>
-                      setExportIncludeLiving(checked === true)
-                    }
-                  />
-                  <Label
-                    htmlFor="export-living"
-                    className="text-sm cursor-pointer"
-                  >
-                    Include living people
-                  </Label>
-                </div>
-                <div className="flex items-center gap-2">
-                  <Checkbox
-                    id="export-sources"
-                    checked={exportIncludeSources}
-                    onCheckedChange={(checked) =>
-                      setExportIncludeSources(checked === true)
-                    }
-                  />
-                  <Label
-                    htmlFor="export-sources"
-                    className="text-sm cursor-pointer"
-                  >
-                    Include sources
-                  </Label>
-                </div>
-              </div>
-              <Button
-                onClick={handleExportGedcom}
-                disabled={exporting}
-                loading={exporting}
-                variant="secondary"
-                icon={<Download className="w-4 h-4" />}
-              >
-                Export GEDCOM
-              </Button>
-            </div>
-
-            {/* GEDCOM Import Section */}
-            <div className="bg-blue-50 rounded-lg p-6 mt-6">
-              <h3 className="text-lg font-semibold mb-4">📥 Import Data</h3>
-              <p className="text-gray-600 mb-4">
-                Import family tree data from a GEDCOM file. Standard GEDCOM
-                5.5.1 format is supported.
-              </p>
-              <div className="flex items-center gap-4">
-                <input
-                  type="file"
-                  id="gedcom-import"
-                  accept=".ged,.gedcom"
-                  onChange={handleImportGedcom}
-                  disabled={importing}
-                  className="hidden"
-                />
-                <Button
-                  onClick={() =>
-                    document.getElementById('gedcom-import')?.click()
-                  }
-                  disabled={importing}
-                  loading={importing}
-                  variant="secondary"
-                  icon={<Upload className="w-4 h-4" />}
-                >
-                  {importing ? 'Importing...' : 'Import GEDCOM'}
-                </Button>
-              </div>
-              {importResult && (
-                <div className="mt-4 p-4 bg-white rounded-lg border">
-                  <p className="font-medium">Import Results:</p>
-                  <ul className="mt-2 text-sm space-y-1">
-                    <li>✅ People imported: {importResult.peopleImported}</li>
-                    <li>
-                      ✅ Families imported: {importResult.familiesImported}
-                    </li>
-                    {importResult.warnings.length > 0 && (
-                      <li className="text-yellow-600">
-                        ⚠️ Warnings: {importResult.warnings.length}
-                      </li>
-                    )}
-                    {importResult.errors.length > 0 && (
-                      <li className="text-red-600">
-                        ❌ Errors: {importResult.errors.length}
-                      </li>
-                    )}
-                  </ul>
-                  {importResult.errors.length > 0 && (
-                    <details className="mt-2">
-                      <summary className="text-sm text-red-600 cursor-pointer">
-                        View errors
-                      </summary>
-                      <ul className="mt-1 text-xs text-red-600 max-h-32 overflow-y-auto">
-                        {importResult.errors.map((err) => (
-                          <li key={err}>{err}</li>
-                        ))}
-                      </ul>
-                    </details>
-                  )}
-                </div>
-              )}
-            </div>
+          {/* Save Button */}
+          <div className="flex justify-end">
+            <Button
+              onClick={handleSave}
+              disabled={saving}
+              loading={saving}
+              icon={<Save className="w-4 h-4" />}
+            >
+              Save Settings
+            </Button>
           </div>
-        )}
-      </div>
-    </>
+
+          {/* Email Configuration */}
+          <div className="mt-8">
+            <EmailSettings refetchTrigger={refetchTrigger} />
+          </div>
+
+          {/* Storage Configuration */}
+          <div className="mt-8">
+            <StorageSettings refetchTrigger={refetchTrigger} />
+          </div>
+
+          {/* GEDCOM Export Section */}
+          <div className="bg-gray-50 rounded-lg p-6 mt-8">
+            <h3 className="text-lg font-semibold mb-4">📤 Export Data</h3>
+            <p className="text-gray-600 mb-4">
+              Export your family tree data in GEDCOM format for backup or import
+              into other genealogy software.
+            </p>
+            <div className="flex flex-wrap gap-4 mb-4">
+              <div className="flex items-center gap-2">
+                <Checkbox
+                  id="export-living"
+                  checked={exportIncludeLiving}
+                  onCheckedChange={(checked) =>
+                    setExportIncludeLiving(checked === true)
+                  }
+                />
+                <Label
+                  htmlFor="export-living"
+                  className="text-sm cursor-pointer"
+                >
+                  Include living people
+                </Label>
+              </div>
+              <div className="flex items-center gap-2">
+                <Checkbox
+                  id="export-sources"
+                  checked={exportIncludeSources}
+                  onCheckedChange={(checked) =>
+                    setExportIncludeSources(checked === true)
+                  }
+                />
+                <Label
+                  htmlFor="export-sources"
+                  className="text-sm cursor-pointer"
+                >
+                  Include sources
+                </Label>
+              </div>
+            </div>
+            <Button
+              onClick={handleExportGedcom}
+              disabled={exporting}
+              loading={exporting}
+              variant="secondary"
+              icon={<Download className="w-4 h-4" />}
+            >
+              Export GEDCOM
+            </Button>
+          </div>
+
+          {/* GEDCOM Import Section */}
+          <div className="bg-blue-50 rounded-lg p-6 mt-6">
+            <h3 className="text-lg font-semibold mb-4">📥 Import Data</h3>
+            <p className="text-gray-600 mb-4">
+              Import family tree data from a GEDCOM file. Standard GEDCOM 5.5.1
+              format is supported.
+            </p>
+            <div className="flex items-center gap-4">
+              <input
+                type="file"
+                id="gedcom-import"
+                accept=".ged,.gedcom"
+                onChange={handleImportGedcom}
+                disabled={importing}
+                className="hidden"
+              />
+              <Button
+                onClick={() =>
+                  document.getElementById('gedcom-import')?.click()
+                }
+                disabled={importing}
+                loading={importing}
+                variant="secondary"
+                icon={<Upload className="w-4 h-4" />}
+              >
+                {importing ? 'Importing...' : 'Import GEDCOM'}
+              </Button>
+            </div>
+            {importResult && (
+              <div className="mt-4 p-4 bg-white rounded-lg border">
+                <p className="font-medium">Import Results:</p>
+                <ul className="mt-2 text-sm space-y-1">
+                  <li>✅ People imported: {importResult.peopleImported}</li>
+                  <li>✅ Families imported: {importResult.familiesImported}</li>
+                  {importResult.warnings.length > 0 && (
+                    <li className="text-yellow-600">
+                      ⚠️ Warnings: {importResult.warnings.length}
+                    </li>
+                  )}
+                  {importResult.errors.length > 0 && (
+                    <li className="text-red-600">
+                      ❌ Errors: {importResult.errors.length}
+                    </li>
+                  )}
+                </ul>
+                {importResult.errors.length > 0 && (
+                  <details className="mt-2">
+                    <summary className="text-sm text-red-600 cursor-pointer">
+                      View errors
+                    </summary>
+                    <ul className="mt-1 text-xs text-red-600 max-h-32 overflow-y-auto">
+                      {importResult.errors.map((err) => (
+                        <li key={err}>{err}</li>
+                      ))}
+                    </ul>
+                  </details>
+                )}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+    </div>
   );
 }
 

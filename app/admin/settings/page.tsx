@@ -1,7 +1,7 @@
 'use client';
 
 import { Download, Play, Save, Upload } from 'lucide-react';
-import { useCallback, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { EmailSettings } from '@/components/admin/EmailSettings';
 import { StorageSettings } from '@/components/admin/StorageSettings';
 import LoadingSpinner from '@/components/LoadingSpinner';

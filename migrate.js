@@ -49,14 +49,25 @@ async function getCurrentVersion() {
 
 async function runMigrations() {
   console.log('[Migrate] Starting migration process...');
-  
+
   try {
+    // Test database connection first (for CI/build environments with fake DATABASE_URL)
+    try {
+      await pool.query('SELECT 1');
+    } catch (error) {
+      if (error.code === 'ECONNREFUSED') {
+        console.log('[Migrate] Database not available (likely CI/build environment), skipping migrations');
+        return true; // Exit successfully
+      }
+      throw error; // Re-throw other errors
+    }
+
     // Acquire advisory lock (10 second timeout)
     const lockResult = await pool.query(
       'SELECT pg_try_advisory_lock($1) as acquired',
       [MIGRATION_LOCK_ID]
     );
-    
+
     if (!lockResult.rows[0].acquired) {
       console.log('[Migrate] Another migration is in progress, waiting...');
       await pool.query('SELECT pg_advisory_lock($1)', [MIGRATION_LOCK_ID]);

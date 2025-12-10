@@ -189,15 +189,101 @@ function describeRelationship(
   const downSteps = path.filter((s) => s.relationship === 'child').length;
   const hasSpouse = path.some((s) => s.relationship === 'spouse');
 
+  // Handle in-law relationships (spouse in path)
+  if (hasSpouse) {
+    // Find where the spouse connection is
+    const spouseIndex = path.findIndex((s) => s.relationship === 'spouse');
+
+    // Count steps before and after spouse
+    const beforeSpouse = path.slice(0, spouseIndex);
+    const afterSpouse = path.slice(spouseIndex + 1);
+
+    const upBeforeSpouse = beforeSpouse.filter(
+      (s) => s.relationship === 'parent',
+    ).length;
+    const downBeforeSpouse = beforeSpouse.filter(
+      (s) => s.relationship === 'child',
+    ).length;
+    const upAfterSpouse = afterSpouse.filter(
+      (s) => s.relationship === 'parent',
+    ).length;
+    const downAfterSpouse = afterSpouse.filter(
+      (s) => s.relationship === 'child',
+    ).length;
+
+    // Spouse's parent = parent-in-law
+    if (
+      upBeforeSpouse === 0 &&
+      downBeforeSpouse === 0 &&
+      upAfterSpouse === 1 &&
+      downAfterSpouse === 0
+    ) {
+      return 'Parent-in-law';
+    }
+
+    // Spouse's grandparent = grandparent-in-law
+    if (
+      upBeforeSpouse === 0 &&
+      downBeforeSpouse === 0 &&
+      upAfterSpouse === 2 &&
+      downAfterSpouse === 0
+    ) {
+      return 'Grandparent-in-law';
+    }
+
+    // Spouse's child = step-child
+    if (
+      upBeforeSpouse === 0 &&
+      downBeforeSpouse === 0 &&
+      upAfterSpouse === 0 &&
+      downAfterSpouse === 1
+    ) {
+      return 'Step-child';
+    }
+
+    // Spouse's sibling = sibling-in-law
+    if (
+      upBeforeSpouse === 0 &&
+      downBeforeSpouse === 0 &&
+      upAfterSpouse === 1 &&
+      downAfterSpouse === 1
+    ) {
+      return 'Sibling-in-law';
+    }
+
+    // Child's spouse = child-in-law
+    if (
+      upBeforeSpouse === 0 &&
+      downBeforeSpouse === 1 &&
+      upAfterSpouse === 0 &&
+      downAfterSpouse === 0
+    ) {
+      return 'Child-in-law';
+    }
+
+    // Sibling's spouse = sibling-in-law
+    if (
+      upBeforeSpouse === 1 &&
+      downBeforeSpouse === 1 &&
+      upAfterSpouse === 0 &&
+      downAfterSpouse === 0
+    ) {
+      return 'Sibling-in-law';
+    }
+
+    // Fallback for other in-law relationships
+    return 'Related by marriage';
+  }
+
   // Direct ancestor/descendant
-  if (downSteps === 0 && upSteps > 0 && !hasSpouse) {
+  if (downSteps === 0 && upSteps > 0) {
     if (upSteps === 1) return 'Parent';
     if (upSteps === 2) return 'Grandparent';
     if (upSteps === 3) return 'Great-grandparent';
     return `${getGreatPrefix(upSteps - 2)}grandparent`;
   }
 
-  if (upSteps === 0 && downSteps > 0 && !hasSpouse) {
+  if (upSteps === 0 && downSteps > 0) {
     if (downSteps === 1) return 'Child';
     if (downSteps === 2) return 'Grandchild';
     if (downSteps === 3) return 'Great-grandchild';
@@ -235,11 +321,6 @@ function describeRelationship(
     const removedText =
       removed === 1 ? 'once removed' : `${removed} times removed`;
     return `${cousinType} Cousin ${removedText}`;
-  }
-
-  // In-laws (spouse in path)
-  if (hasSpouse) {
-    return 'Related by marriage';
   }
 
   // Fallback

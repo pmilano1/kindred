@@ -2410,6 +2410,14 @@ export const resolvers = {
         [id, personId, user.id, parentCommentId || null, content],
       );
 
+      // Audit log
+      await logAudit(user.id, 'add_comment', {
+        commentId: id,
+        personId,
+        parentCommentId,
+        contentLength: content.length,
+      });
+
       return rows[0];
     },
 
@@ -2422,7 +2430,7 @@ export const resolvers = {
 
       // Check if user owns the comment
       const { rows: existing } = await pool.query(
-        'SELECT user_id FROM person_comments WHERE id = $1',
+        'SELECT user_id, person_id FROM person_comments WHERE id = $1',
         [id],
       );
 
@@ -2439,6 +2447,13 @@ export const resolvers = {
         [content, id],
       );
 
+      // Audit log
+      await logAudit(user.id, 'update_comment', {
+        commentId: id,
+        personId: existing[0].person_id,
+        contentLength: content.length,
+      });
+
       return rows[0] || null;
     },
 
@@ -2451,7 +2466,7 @@ export const resolvers = {
 
       // Check if user owns the comment
       const { rows: existing } = await pool.query(
-        'SELECT user_id FROM person_comments WHERE id = $1',
+        'SELECT user_id, person_id FROM person_comments WHERE id = $1',
         [id],
       );
 
@@ -2467,6 +2482,13 @@ export const resolvers = {
         'DELETE FROM person_comments WHERE id = $1',
         [id],
       );
+
+      // Audit log
+      await logAudit(user.id, 'delete_comment', {
+        commentId: id,
+        personId: existing[0].person_id,
+      });
+
       return (result.rowCount ?? 0) > 0;
     },
   },

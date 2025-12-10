@@ -44,7 +44,7 @@ export default function TimelinePage() {
         icon="Calendar"
       />
       <div className="content-wrapper">
-        <fieldset className="flex gap-2 mb-6 border-0 p-0">
+        <fieldset className="flex flex-wrap gap-2 mb-6 border-0 p-0">
           <legend className="sr-only">Filter timeline events</legend>
           {(['all', 'births', 'deaths'] as const).map((f) => (
             <Button
@@ -52,6 +52,7 @@ export default function TimelinePage() {
               onClick={() => setFilter(f)}
               variant={filter === f ? 'primary' : 'secondary'}
               aria-pressed={filter === f}
+              className="flex-1 sm:flex-none min-w-[120px]"
             >
               {f === 'all'
                 ? 'All Events'

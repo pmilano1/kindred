@@ -165,7 +165,7 @@ export default async function Home() {
           <h2 className="section-title">Tree Completeness</h2>
           <div className="flex flex-col md:flex-row items-center gap-6">
             <CompletenessRing score={dashboardStats.average_completeness} />
-            <div className="flex-1 grid grid-cols-3 gap-4 text-center">
+            <div className="flex-1 grid grid-cols-1 sm:grid-cols-3 gap-4 text-center">
               <div>
                 <div className="text-2xl font-bold text-green-600">
                   {dashboardStats.complete_count}

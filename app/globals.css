@@ -465,9 +465,28 @@ body {
   .sidebar { transform: translateX(-100%); width: 280px; transition: transform 0.3s; }
   .sidebar.active { transform: translateX(0); }
   .main-content { margin-left: 0; }
-  .mobile-toggle { display: flex; position: fixed; top: 1rem; left: 1rem; z-index: 1001; background: var(--primary-color); color: white; border: none; border-radius: 8px; padding: 0.75rem; cursor: pointer; align-items: center; justify-content: center; }
-  .stats-grid { grid-template-columns: repeat(2, 1fr); }
+  .mobile-toggle { display: flex; position: fixed; top: 1rem; left: 1rem; z-index: 1001; background: var(--primary-color); color: white; border: none; border-radius: 8px; padding: 0.75rem; cursor: pointer; align-items: center; justify-content: center; min-width: 44px; min-height: 44px; }
+  .stats-grid { grid-template-columns: 1fr; gap: 1rem; }
   .content-wrapper { padding: 1rem; }
+
+  /* Ensure minimum touch target sizes */
+  button, a, input[type="button"], input[type="submit"] {
+    min-height: 44px;
+  }
+
+  /* Better spacing for cards on mobile */
+  .card { padding: 1rem; }
+
+  /* Improve form layouts on mobile */
+  .form-grid { grid-template-columns: 1fr !important; }
+
+  /* Better typography on mobile */
+  h1 { font-size: 1.75rem; }
+  h2 { font-size: 1.5rem; }
+  h3 { font-size: 1.25rem; }
+
+  /* Prevent horizontal scroll */
+  body, .main-content { overflow-x: hidden; }
 }
 
 @theme inline {

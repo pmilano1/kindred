@@ -1,10 +1,19 @@
 'use client';
 
 import Image from 'next/image';
+import { useEffect, useState } from 'react';
 import { useSettings } from './SettingsProvider';
 
 export default function Footer() {
   const settings = useSettings();
+  const [version, setVersion] = useState<string>('');
+
+  useEffect(() => {
+    fetch('/api/version')
+      .then((res) => res.json())
+      .then((data) => setVersion(data.version))
+      .catch(() => setVersion(''));
+  }, []);
 
   return (
     <footer className="footer">
@@ -46,6 +55,7 @@ export default function Footer() {
             unoptimized
           />
           <span className="font-medium">Kindred</span>
+          {version && <span className="opacity-60">v{version}</span>}
         </a>
       </div>
     </footer>

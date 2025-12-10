@@ -1,6 +1,6 @@
 # Deployment Guide
 
-This document explains how Kindred deploys and how database migrations work.
+This document explains how Kindred deploys and how database migrations work using **industry standard patterns**.
 
 ## Deployment Flow
 
@@ -30,27 +30,32 @@ RUN npm run build  # Creates .next/standalone
 # Production stage
 FROM node:20-alpine AS runner
 COPY --from=builder /app/.next/standalone ./
-COPY --from=builder /app/scripts/start.sh ./scripts/
-CMD ["sh", "./scripts/start.sh"]
+COPY --from=builder /app/migrate.js ./
+COPY --from=builder /app/lib/migrations.ts ./lib/
+CMD ["sh", "-c", "node migrate.js && node server.js"]
 ```
 
-### 3. Startup Sequence
+### 3. Startup Sequence (Industry Standard Pattern)
 
 When the container starts on App Runner:
 
 ```
-scripts/start.sh
-    ↓
-instrumentation.ts (register function)
+node migrate.js
     ↓
 lib/migrations.ts (runMigrations)
     ↓
 Database migrations execute
     ↓
-server.js (Next.js server)
+Exit code 0 (success) → node server.js (Next.js server starts)
+    ↓
+Exit code 1 (failure) → Container fails, deployment aborted
 ```
 
 **Key Point:** The server does NOT start until migrations complete successfully.
+
+This follows the **same pattern** used by:
+- **Prisma**: `npx prisma migrate deploy && node server.js`
+- **Drizzle ORM**: `node migrate.js && node server.js`
 
 ## Database Migrations
 
@@ -58,32 +63,41 @@ server.js (Next.js server)
 
 1. **Migration files** are defined in `lib/migrations.ts`
 2. **Version tracking** uses `schema_migrations` table
-3. **Advisory locks** prevent concurrent migrations
-4. **Automatic execution** on every deployment via `scripts/start.sh`
+3. **Advisory locks** prevent concurrent migrations (10 second timeout)
+4. **Automatic execution** on every deployment via `migrate.js`
 
-### Why Explicit Execution?
+### Industry Standard Pattern
 
-Next.js has an `instrumentation.ts` feature that's supposed to run automatically on server startup, but:
+We use the same migration pattern as **Prisma** and **Drizzle ORM**:
 
-- ❌ Doesn't work on AWS App Runner
-- ❌ Doesn't work reliably on many deployment platforms
-- ❌ No guarantee of execution order
-
-**Our solution:** Explicitly call `instrumentation.ts` from `scripts/start.sh` before starting the server.
+✅ **Separate migration step** before starting the app
+✅ **Platform-agnostic** (works on any Node.js environment)
+✅ **Fail-fast** (server won't start if migrations fail)
+✅ **No framework magic** (pure Node.js, no reliance on Next.js features)
 
 ### Migration Process
 
 ```javascript
-// scripts/start.sh
-const { register } = require('./instrumentation.js');
-register().then(() => {
-  // Migrations complete, start server
-  require('./server.js');
-}).catch((err) => {
-  // Migrations failed, exit (don't start server)
-  process.exit(1);
-});
+// migrate.js (simplified)
+const { runMigrations } = require('./lib/migrations');
+
+async function main() {
+  const success = await runMigrations(pool);
+
+  if (success) {
+    process.exit(0);  // Success - Docker will start server
+  } else {
+    process.exit(1);  // Failure - Docker will abort deployment
+  }
+}
 ```
+
+**Docker CMD:**
+```bash
+node migrate.js && node server.js
+```
+
+If `migrate.js` exits with code 1, the `&&` operator prevents `server.js` from starting.
 
 ### Adding New Migrations
 
@@ -138,16 +152,21 @@ SELECT version FROM schema_migrations ORDER BY version DESC LIMIT 1;
 Check App Runner logs for these messages:
 
 ```
-[Startup] Checking if instrumentation file exists...
-[Startup] Found instrumentation.js, running migrations...
-[Instrumentation] Server starting, checking migrations...
-[Instrumentation] Migrations complete: Already at version X
+[Migrate] Starting migration process...
+[Migrate] Current database version: 13
+[Migrate] Latest migration version: 15
+[Migrate] Found 2 pending migrations
+[Migrate] Running migration 14: create_indexes
+[Migrate] ✓ Migration 14 complete
+[Migrate] Running migration 15: email_settings
+[Migrate] ✓ Migration 15 complete
+[Migrate] ✓ All migrations complete
 ```
 
 If you don't see these messages:
-- Verify `scripts/start.sh` is in the Docker image
-- Check Dockerfile CMD is `["sh", "./scripts/start.sh"]`
-- Ensure `instrumentation.ts` is being built into standalone output
+- Verify `migrate.js` is in the Docker image
+- Check Dockerfile CMD is `["sh", "-c", "node migrate.js && node server.js"]`
+- Ensure `lib/migrations.ts` is being copied to the standalone output
 
 **Migration failed?**
 

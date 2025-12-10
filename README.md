@@ -264,23 +264,27 @@ query {
 
 ## Database Migrations
 
-Kindred uses version-controlled database migrations to manage schema changes. Migrations run automatically on every deployment.
+Kindred uses version-controlled database migrations to manage schema changes. Migrations run automatically on every deployment using the **industry standard pattern** used by Prisma and Drizzle ORM.
 
 ### How Migrations Work
 
 1. **Migration files** are defined in `lib/migrations.ts`
-2. **On deployment**, `scripts/start.sh` explicitly calls `instrumentation.ts`
-3. **Migrations run** before the server starts accepting requests
-4. **Server starts** only if migrations succeed
+2. **On deployment**, `migrate.js` runs as a separate step before the server starts
+3. **Migrations execute** and exit with code 0 (success) or 1 (failure)
+4. **Server starts** only if migrations succeeded
 
-### Why Explicit Execution?
-
-Next.js has an `instrumentation.ts` feature that's supposed to run automatically on server startup, but it doesn't work reliably on all deployment platforms (especially AWS App Runner). To guarantee migrations run, we explicitly call the instrumentation hook from our startup script.
+This follows the same pattern as:
+- **Prisma**: `npx prisma migrate deploy && node server.js`
+- **Drizzle**: `node migrate.js && node server.js`
 
 **Deployment Flow:**
 ```
-Docker Build → scripts/start.sh → instrumentation.ts → Migrations → Server Start
+Docker Build → node migrate.js → (success) → node server.js
+                              ↓ (failure)
+                           Exit with error
 ```
+
+See [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) for detailed deployment documentation.
 
 ### Migration Status
 

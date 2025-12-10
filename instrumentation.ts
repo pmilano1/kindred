@@ -1,24 +1,16 @@
 /**
- * Next.js Instrumentation Hook
+ * DEPRECATED: This file is no longer used for production migrations.
  *
- * IMPORTANT: This file is NOT called automatically by Next.js on AWS App Runner.
- * Instead, it is explicitly called by scripts/start.sh before the server starts.
+ * Production migrations now use the industry standard pattern:
+ * - Separate migration script (migrate.js) runs before server starts
+ * - Same pattern as Prisma (migrate deploy) and Drizzle ORM
+ * - Platform-agnostic, works on any Node.js environment
  *
- * Why we use explicit execution:
- * - Next.js instrumentation hooks don't work reliably on all deployment platforms
- * - AWS App Runner doesn't trigger the instrumentation hook automatically
- * - Explicit execution guarantees migrations run before server starts
+ * This file is kept for:
+ * - Local development (Next.js dev server may still call it)
+ * - Reference implementation
  *
- * How it works:
- * 1. Docker builds the app with Next.js standalone output
- * 2. scripts/start.sh explicitly calls register() from this file
- * 3. Migrations run and complete (or fail and prevent server start)
- * 4. Server starts only after migrations succeed
- *
- * This ensures the database schema is always up-to-date when a new
- * version is deployed, without manual intervention.
- *
- * See: https://nextjs.org/docs/app/building-your-application/optimizing/instrumentation
+ * See: migrate.js and docs/DEPLOYMENT.md for production migration flow
  */
 
 export async function register() {

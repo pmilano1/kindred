@@ -22,6 +22,8 @@ interface SurnameCrest {
   description: string | null;
   origin: string | null;
   motto: string | null;
+  blazon: string | null;
+  source_url: string | null;
   peopleCount: number;
 }
 
@@ -45,6 +47,8 @@ export default function CoatsOfArmsPage() {
   const [description, setDescription] = useState('');
   const [origin, setOrigin] = useState('');
   const [motto, setMotto] = useState('');
+  const [blazon, setBlazon] = useState('');
+  const [sourceUrl, setSourceUrl] = useState('');
   const [imageData, setImageData] = useState('');
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -71,6 +75,8 @@ export default function CoatsOfArmsPage() {
               description: description || null,
               origin: origin || null,
               motto: motto || null,
+              blazon: blazon || null,
+              source_url: sourceUrl || null,
             },
           },
         });
@@ -83,6 +89,8 @@ export default function CoatsOfArmsPage() {
             description: description || null,
             origin: origin || null,
             motto: motto || null,
+            blazon: blazon || null,
+            sourceUrl: sourceUrl || null,
           },
         });
       }
@@ -92,6 +100,8 @@ export default function CoatsOfArmsPage() {
       setDescription('');
       setOrigin('');
       setMotto('');
+      setBlazon('');
+      setSourceUrl('');
       setImageData('');
       refetch();
     } catch (err) {
@@ -105,6 +115,8 @@ export default function CoatsOfArmsPage() {
     setDescription(crest.description || '');
     setOrigin(crest.origin || '');
     setMotto(crest.motto || '');
+    setBlazon(crest.blazon || '');
+    setSourceUrl(crest.source_url || '');
     setImageData(crest.coat_of_arms);
     setShowForm(true);
   };
@@ -180,6 +192,24 @@ export default function CoatsOfArmsPage() {
               />
             </div>
             <div className="space-y-2">
+              <Label>Blazon</Label>
+              <Textarea
+                placeholder="Heraldic description (e.g., 'Azure, a lion rampant or')"
+                value={blazon}
+                onChange={(e) => setBlazon(e.target.value)}
+                rows={2}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Source URL</Label>
+              <Input
+                type="url"
+                placeholder="https://example.com/source"
+                value={sourceUrl}
+                onChange={(e) => setSourceUrl(e.target.value)}
+              />
+            </div>
+            <div className="space-y-2">
               <Label>Description</Label>
               <Textarea
                 placeholder="Description of the coat of arms"
@@ -245,10 +275,25 @@ export default function CoatsOfArmsPage() {
                     &ldquo;{crest.motto}&rdquo;
                   </p>
                 )}
+                {crest.blazon && (
+                  <p className="text-xs text-gray-600 mt-2 font-mono bg-gray-50 p-2 rounded">
+                    {crest.blazon}
+                  </p>
+                )}
                 {crest.description && (
                   <p className="text-sm text-gray-500 mt-2">
                     {crest.description}
                   </p>
+                )}
+                {crest.source_url && (
+                  <a
+                    href={crest.source_url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-xs text-blue-600 hover:underline mt-2 block"
+                  >
+                    View Source →
+                  </a>
                 )}
                 <div className="mt-4 pt-4 border-t border-gray-200">
                   <div className="flex items-center justify-center gap-2 text-sm text-gray-600">

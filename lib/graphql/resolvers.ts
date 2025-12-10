@@ -2739,4 +2739,10 @@ export const resolvers = {
         ? new Date(media.date_taken).toISOString().split('T')[0]
         : null,
   },
+
+  // ActivityEntry type resolver to properly format dates
+  ActivityEntry: {
+    created_at: (activity: { created_at: Date | string | null }) =>
+      activity.created_at ? new Date(activity.created_at).toISOString() : null,
+  },
 };

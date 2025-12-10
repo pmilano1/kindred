@@ -44,12 +44,14 @@ export default function TimelinePage() {
         icon="Calendar"
       />
       <div className="content-wrapper">
-        <div className="flex gap-2 mb-6">
+        <fieldset className="flex gap-2 mb-6 border-0 p-0">
+          <legend className="sr-only">Filter timeline events</legend>
           {(['all', 'births', 'deaths'] as const).map((f) => (
             <Button
               key={f}
               onClick={() => setFilter(f)}
               variant={filter === f ? 'primary' : 'secondary'}
+              aria-pressed={filter === f}
             >
               {f === 'all'
                 ? 'All Events'
@@ -58,7 +60,7 @@ export default function TimelinePage() {
                   : '✝️ Deaths'}
             </Button>
           ))}
-        </div>
+        </fieldset>
 
         {loading ? (
           <div className="text-center py-12 text-gray-500">

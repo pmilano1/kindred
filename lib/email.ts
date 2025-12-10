@@ -29,9 +29,10 @@ interface EmailConfig {
  */
 export function getEmailConfig(): EmailConfig {
   // Check for AWS SES configuration
+  // SES is configured if EMAIL_FROM is set to a real email (not the placeholder)
   if (
     process.env.EMAIL_FROM &&
-    process.env.EMAIL_FROM !== `${APP_NAME} <noreply@example.com>`
+    !process.env.EMAIL_FROM.includes('noreply@example.com')
   ) {
     // If EMAIL_FROM is set to a real value, assume SES is intended
     // SES will use AWS credentials from environment or IAM role

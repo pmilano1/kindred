@@ -236,6 +236,26 @@ export const typeDefs = `#graphql
     linked_person: Person
   }
 
+  type ClientError {
+    id: ID!
+    user_id: String
+    user: User
+    error_message: String!
+    stack_trace: String
+    url: String
+    user_agent: String
+    component_stack: String
+    error_info: String
+    created_at: String!
+  }
+
+  type ClientErrorStats {
+    total: Int!
+    last24Hours: Int!
+    last7Days: Int!
+    uniqueErrors: Int!
+  }
+
   type Invitation {
     id: ID!
     email: String!
@@ -509,6 +529,10 @@ export const typeDefs = `#graphql
     settings: [Setting!]!
     migrationStatus: MigrationStatus!
 
+    # Client errors (admin only)
+    clientErrors(limit: Int, offset: Int): [ClientError!]!
+    clientErrorStats: ClientErrorStats!
+
     # Email (admin only)
     emailLogs(limit: Int, offset: Int): [EmailLog!]!
     emailStats: EmailStats!
@@ -661,6 +685,10 @@ export const typeDefs = `#graphql
     updateSettings(input: SettingsInput!): SiteSettings!
     runMigrations: MigrationResult!
     testEmail(recipientEmail: String): EmailTestResult!
+
+    # Client error mutations (admin only)
+    deleteClientError(id: ID!): Boolean!
+    clearAllClientErrors: Boolean!
     testStorage: StorageTestResult!
 
     # User profile mutations (current user)

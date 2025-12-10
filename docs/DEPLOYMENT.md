@@ -31,7 +31,7 @@ RUN npm run build  # Creates .next/standalone
 FROM node:20-alpine AS runner
 COPY --from=builder /app/.next/standalone ./
 COPY --from=builder /app/migrate.js ./
-COPY --from=builder /app/lib/migrations.ts ./lib/
+COPY --from=builder /app/lib/migrations.js ./lib/
 CMD ["sh", "-c", "node migrate.js && node server.js"]
 ```
 
@@ -42,7 +42,7 @@ When the container starts on App Runner:
 ```
 node migrate.js
     ↓
-lib/migrations.ts (runMigrations)
+lib/migrations.js (runMigrations)
     ↓
 Database migrations execute
     ↓
@@ -61,7 +61,7 @@ This follows the **same pattern** used by:
 
 ### How Migrations Work
 
-1. **Migration files** are defined in `lib/migrations.ts`
+1. **Migration files** are defined in `lib/migrations.ts` (source) and compiled to `lib/migrations.js` (production)
 2. **Version tracking** uses `schema_migrations` table
 3. **Advisory locks** prevent concurrent migrations (10 second timeout)
 4. **Automatic execution** on every deployment via `migrate.js`

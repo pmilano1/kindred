@@ -155,22 +155,36 @@ export default function ResearchQueueClient() {
           </p>
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full">
+            <table className="w-full" aria-label="Research queue">
               <thead>
                 <tr className="border-b text-left">
-                  <th className="py-2 px-3 text-sm font-semibold w-48">
+                  <th
+                    className="py-2 px-3 text-sm font-semibold w-48"
+                    scope="col"
+                  >
                     Priority
                   </th>
-                  <th className="py-2 px-3 text-sm font-semibold">Name</th>
-                  <th className="py-2 px-3 text-sm font-semibold">Years</th>
-                  <th className="py-2 px-3 text-sm font-semibold">Status</th>
-                  <th className="py-2 px-3 text-sm font-semibold">
+                  <th className="py-2 px-3 text-sm font-semibold" scope="col">
+                    Name
+                  </th>
+                  <th className="py-2 px-3 text-sm font-semibold" scope="col">
+                    Years
+                  </th>
+                  <th className="py-2 px-3 text-sm font-semibold" scope="col">
+                    Status
+                  </th>
+                  <th className="py-2 px-3 text-sm font-semibold" scope="col">
                     Research Tip
                   </th>
-                  <th className="py-2 px-3 text-sm font-semibold">
+                  <th className="py-2 px-3 text-sm font-semibold" scope="col">
                     Last Researched
                   </th>
-                  <th className="py-2 px-3 text-sm font-semibold w-20">Tree</th>
+                  <th
+                    className="py-2 px-3 text-sm font-semibold w-20"
+                    scope="col"
+                  >
+                    Tree
+                  </th>
                 </tr>
               </thead>
               <tbody>
@@ -210,6 +224,7 @@ export default function ResearchQueueClient() {
                               )
                             }
                             className="w-24 h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-blue-600"
+                            aria-label={`Set research priority for ${person.name_full} (current: ${priority})`}
                           />
                         </div>
                       </td>
@@ -270,15 +285,20 @@ export default function ResearchQueueClient() {
                             href={`/tree?person=${person.id}&view=ancestors`}
                             className="p-1 rounded hover:bg-blue-100 text-blue-600 transition-colors"
                             title="View ancestor tree"
+                            aria-label={`View ancestor tree for ${person.name_full}`}
                           >
-                            <TreeDeciduous className="w-4 h-4" />
+                            <TreeDeciduous
+                              className="w-4 h-4"
+                              aria-hidden="true"
+                            />
                           </Link>
                           <Link
                             href={`/tree?person=${person.id}&view=descendants`}
                             className="p-1 rounded hover:bg-green-100 text-green-600 transition-colors"
                             title="View descendant tree"
+                            aria-label={`View descendant tree for ${person.name_full}`}
                           >
-                            <Users className="w-4 h-4" />
+                            <Users className="w-4 h-4" aria-hidden="true" />
                           </Link>
                         </div>
                       </td>

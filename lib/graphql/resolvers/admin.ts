@@ -1,4 +1,10 @@
-import { sendInviteEmail, verifyEmailForSandbox } from '../../email';
+import {
+  clearEmailConfigCache,
+  getEmailConfig,
+  sendInviteEmail,
+  sendTestEmail,
+  verifyEmailForSandbox,
+} from '../../email';
 import {
   getMigrationStatus,
   runMigrations as runMigrationsFromModule,
@@ -257,6 +263,12 @@ export const adminResolvers = {
       }
       clearSettingsCache();
 
+      // Clear email config cache if email settings were updated
+      const emailKeys = entries.filter(([key]) => key.startsWith('email_'));
+      if (emailKeys.length > 0) {
+        clearEmailConfigCache();
+      }
+
       // Audit log
       await logAudit(user.id, 'update_settings', {
         settingsKeys: entries.map(([key]) => key),
@@ -268,6 +280,54 @@ export const adminResolvers = {
     runMigrations: async (_: unknown, __: unknown, context: Context) => {
       requireAuth(context, 'admin');
       return runMigrationsFromModule(pool);
+    },
+    testEmail: async (
+      _: unknown,
+      { recipientEmail }: { recipientEmail?: string },
+      context: Context,
+    ) => {
+      const user = requireAuth(context, 'admin');
+
+      // Get email config to check if configured
+      const config = await getEmailConfig();
+      if (!config.configured) {
+        return {
+          success: false,
+          message:
+            'Email is not configured. Please configure email settings first.',
+          recipient: null,
+        };
+      }
+
+      // Use provided email or current user's email
+      const recipient = recipientEmail || user.email;
+
+      try {
+        // Send test email using the helper function
+        const success = await sendTestEmail(recipient);
+
+        if (success) {
+          await logAudit(user.id, 'test_email', { recipient });
+          return {
+            success: true,
+            message: `Test email sent successfully to ${recipient}`,
+            recipient,
+          };
+        } else {
+          return {
+            success: false,
+            message: `Failed to send test email to ${recipient}`,
+            recipient,
+          };
+        }
+      } catch (error) {
+        console.error('[Email] Test email failed:', error);
+        return {
+          success: false,
+          message: `Failed to send test email: ${(error as Error).message}`,
+          recipient,
+        };
+      }
     },
 
     // User profile mutations - allow users to link themselves to a person,

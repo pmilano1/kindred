@@ -745,6 +745,39 @@ export const migrations: Migration[] = [
       return results;
     },
   },
+
+  // Migration #15: Email configuration settings (Issue #278)
+  {
+    version: 15,
+    name: 'email_settings',
+    up: async (pool: Pool) => {
+      const results: string[] = [];
+
+      // Add email configuration settings to settings table
+      const emailSettings = [
+        ['email_provider', 'none', 'Email provider (none, ses, smtp)', 'email'],
+        ['email_from', null, 'From email address', 'email'],
+        ['email_ses_region', 'us-east-1', 'AWS SES region', 'email'],
+        ['email_smtp_host', null, 'SMTP server hostname', 'email'],
+        ['email_smtp_port', '587', 'SMTP server port', 'email'],
+        ['email_smtp_secure', 'false', 'Use TLS/SSL for SMTP', 'email'],
+        ['email_smtp_user', null, 'SMTP username', 'email'],
+        ['email_smtp_password', null, 'SMTP password', 'email'],
+      ];
+
+      for (const [key, value, description, category] of emailSettings) {
+        await pool.query(
+          `INSERT INTO settings (key, value, description, category)
+           VALUES ($1, $2, $3, $4)
+           ON CONFLICT (key) DO NOTHING`,
+          [key, value, description, category],
+        );
+      }
+      results.push('Added email configuration settings');
+
+      return results;
+    },
+  },
 ];
 
 // Get current database version

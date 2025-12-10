@@ -5,6 +5,8 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useSession } from 'next-auth/react';
 import { useCallback, useEffect, useState } from 'react';
+import { EmailSettings } from '@/components/admin/EmailSettings';
+import { StorageSettings } from '@/components/admin/StorageSettings';
 import LoadingSpinner from '@/components/LoadingSpinner';
 import { useSettingsRefetch } from '@/components/SettingsProvider';
 import {
@@ -508,6 +510,16 @@ export default function SettingsPage() {
               >
                 Save Settings
               </Button>
+            </div>
+
+            {/* Email Configuration */}
+            <div className="mt-8">
+              <EmailSettings />
+            </div>
+
+            {/* Storage Configuration */}
+            <div className="mt-8">
+              <StorageSettings />
             </div>
 
             {/* GEDCOM Export Section */}

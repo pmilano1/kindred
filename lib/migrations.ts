@@ -789,7 +789,7 @@ export const migrations: Migration[] = [
       await pool.query(`
         CREATE TABLE IF NOT EXISTS client_errors (
           id VARCHAR(12) PRIMARY KEY,
-          user_id VARCHAR(12) REFERENCES users(id) ON DELETE SET NULL,
+          user_id UUID REFERENCES users(id) ON DELETE SET NULL,
           error_message TEXT NOT NULL,
           stack_trace TEXT,
           url TEXT,

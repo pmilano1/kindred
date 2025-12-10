@@ -80,7 +80,7 @@ export function AdminSidebar() {
   };
 
   return (
-    <aside className="w-64 bg-white border-r border-gray-200 min-h-screen">
+    <aside className="w-64 bg-white border-r border-gray-200 h-screen sticky top-0 overflow-y-auto">
       <div className="p-6">
         <h2 className="text-lg font-semibold text-gray-900">Admin Panel</h2>
         <p className="text-sm text-gray-500 mt-1">Manage your site</p>

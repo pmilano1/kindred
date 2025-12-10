@@ -350,6 +350,54 @@ export const migrations: Migration[] = [
       return results;
     },
   },
+  {
+    version: 9,
+    name: 'person_comments',
+    up: async (pool: Pool) => {
+      const results: string[] = [];
+
+      // Create person_comments table for collaboration (Issue #181 - Phase 1)
+      await pool.query(`
+        CREATE TABLE IF NOT EXISTS person_comments (
+          id VARCHAR(12) PRIMARY KEY,
+          person_id VARCHAR(12) NOT NULL REFERENCES people(id) ON DELETE CASCADE,
+          user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+          parent_comment_id VARCHAR(12) REFERENCES person_comments(id) ON DELETE CASCADE,
+          content TEXT NOT NULL,
+          created_at TIMESTAMP DEFAULT NOW(),
+          updated_at TIMESTAMP DEFAULT NOW()
+        )
+      `);
+      results.push('Created person_comments table');
+
+      // Create indexes for performance
+      await pool.query(`
+        CREATE INDEX IF NOT EXISTS idx_person_comments_person_id
+        ON person_comments(person_id)
+      `);
+      results.push('Created index on person_comments.person_id');
+
+      await pool.query(`
+        CREATE INDEX IF NOT EXISTS idx_person_comments_user_id
+        ON person_comments(user_id)
+      `);
+      results.push('Created index on person_comments.user_id');
+
+      await pool.query(`
+        CREATE INDEX IF NOT EXISTS idx_person_comments_parent_id
+        ON person_comments(parent_comment_id)
+      `);
+      results.push('Created index on person_comments.parent_comment_id');
+
+      await pool.query(`
+        CREATE INDEX IF NOT EXISTS idx_person_comments_created_at
+        ON person_comments(created_at DESC)
+      `);
+      results.push('Created index on person_comments.created_at');
+
+      return results;
+    },
+  },
 ];
 
 // Get current database version

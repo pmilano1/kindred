@@ -64,6 +64,9 @@ export const typeDefs = `#graphql
     media: [Media!]!
     coatOfArms: String
 
+    # Comments (Issue #181 - Phase 1)
+    comments: [Comment!]!
+
     # Notable relatives connected through ancestry
     notableRelatives: [NotableRelative!]!
   }
@@ -129,6 +132,23 @@ export const typeDefs = `#graphql
     uploaded_by: String
     created_at: String!
     url: String!
+  }
+
+  # ===========================================
+  # COMMENTS (Issue #181 - Phase 1)
+  # ===========================================
+
+  type Comment {
+    id: ID!
+    person_id: String!
+    user_id: String!
+    parent_comment_id: String
+    content: String!
+    created_at: String!
+    updated_at: String!
+    # Resolved fields
+    user: User
+    replies: [Comment!]!
   }
 
   # Data completeness tracking
@@ -462,6 +482,9 @@ export const typeDefs = `#graphql
     surnameCrests: [SurnameCrest!]!
     surnameCrest(surname: String!): SurnameCrest
 
+    # Comments (Issue #181 - Phase 1)
+    personComments(personId: ID!): [Comment!]!
+
     # Current user (authenticated user info)
     me: User
 
@@ -643,6 +666,11 @@ export const typeDefs = `#graphql
     uploadMedia(personId: ID!, input: MediaInput!): Media!
     updateMedia(id: ID!, input: MediaUpdateInput!): Media
     deleteMedia(id: ID!): Boolean!
+
+    # Comment mutations (Issue #181 - Phase 1)
+    addComment(personId: ID!, content: String!, parentCommentId: ID): Comment!
+    updateComment(id: ID!, content: String!): Comment
+    deleteComment(id: ID!): Boolean!
   }
 
   input MediaInput {

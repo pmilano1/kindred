@@ -36,11 +36,11 @@ export default function AdminLayout({
   }
 
   return (
-    <div className="flex bg-gray-50">
+    <div className="flex h-screen bg-gray-50">
       <AdminSidebar />
-      <main className="flex-1 p-8 min-h-screen">
+      <main className="flex-1 overflow-y-auto p-8">
         <AdminBreadcrumbs />
-        <div className="mt-6">{children}</div>
+        <div className="mt-6 pb-8">{children}</div>
       </main>
     </div>
   );

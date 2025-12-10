@@ -150,6 +150,7 @@ export default function Sidebar() {
                   <Link
                     href={item.href}
                     className={`nav-link ${isActive ? 'active' : ''} ${isCollapsed ? 'justify-center px-0' : ''}`}
+                    aria-current={isActive ? 'page' : undefined}
                   >
                     <Icon
                       className={`w-5 h-5 flex-shrink-0 ${isCollapsed ? '' : 'mr-3'}`}
@@ -181,6 +182,7 @@ export default function Sidebar() {
                   <Link
                     href={item.href}
                     className={`nav-link ${isActive ? 'active' : ''} ${isCollapsed ? 'justify-center px-0' : ''}`}
+                    aria-current={isActive ? 'page' : undefined}
                   >
                     <Icon
                       className={`w-5 h-5 flex-shrink-0 ${isCollapsed ? '' : 'mr-3'}`}
@@ -197,6 +199,7 @@ export default function Sidebar() {
                 <Link
                   href="/admin"
                   className={`nav-link ${pathname === '/admin' ? 'active' : ''} ${isLoading ? 'opacity-50' : ''} ${isCollapsed ? 'justify-center px-0' : ''}`}
+                  aria-current={pathname === '/admin' ? 'page' : undefined}
                 >
                   <Settings
                     className={`w-5 h-5 flex-shrink-0 ${isCollapsed ? '' : 'mr-3'}`}

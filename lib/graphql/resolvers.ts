@@ -1508,6 +1508,331 @@ export const resolvers = {
       return true;
     },
 
+    // High-level family mutations (Issue #283)
+    addSpouse: async (
+      _: unknown,
+      {
+        personId,
+        spouseId,
+        marriageDate,
+        marriageYear,
+        marriagePlace,
+      }: {
+        personId: string;
+        spouseId: string;
+        marriageDate?: string;
+        marriageYear?: number;
+        marriagePlace?: string;
+      },
+      context: Context,
+    ) => {
+      const user = requireAuth(context, 'editor');
+
+      // Get both people to determine sex
+      const { rows: people } = await pool.query(
+        'SELECT id, sex FROM people WHERE id = ANY($1)',
+        [[personId, spouseId]],
+      );
+
+      const person = people.find((p) => p.id === personId);
+      const spouse = people.find((p) => p.id === spouseId);
+
+      if (!person || !spouse) {
+        throw new Error('Person or spouse not found');
+      }
+
+      // Determine husband/wife based on sex
+      let husbandId = null;
+      let wifeId = null;
+
+      if (person.sex === 'M' && spouse.sex === 'F') {
+        husbandId = personId;
+        wifeId = spouseId;
+      } else if (person.sex === 'F' && spouse.sex === 'M') {
+        husbandId = spouseId;
+        wifeId = personId;
+      } else if (person.sex === 'M') {
+        husbandId = personId;
+        wifeId = spouseId;
+      } else {
+        husbandId = spouseId;
+        wifeId = personId;
+      }
+
+      // Create family record
+      const familyId = crypto.randomUUID().replace(/-/g, '').slice(0, 12);
+      const { rows } = await pool.query(
+        `INSERT INTO families (id, husband_id, wife_id, marriage_date, marriage_year, marriage_place)
+         VALUES ($1, $2, $3, $4, $5, $6) RETURNING *`,
+        [
+          familyId,
+          husbandId,
+          wifeId,
+          marriageDate || null,
+          marriageYear || null,
+          marriagePlace || null,
+        ],
+      );
+
+      // Audit log
+      await logAudit(user.id, 'add_spouse', {
+        personId,
+        spouseId,
+        familyId,
+      });
+
+      return rows[0];
+    },
+
+    addChild: async (
+      _: unknown,
+      {
+        personId,
+        childId,
+        otherParentId,
+      }: {
+        personId: string;
+        childId: string;
+        otherParentId?: string;
+      },
+      context: Context,
+    ) => {
+      const user = requireAuth(context, 'editor');
+
+      // Get person's sex to determine if they're husband or wife
+      const { rows: personRows } = await pool.query(
+        'SELECT sex FROM people WHERE id = $1',
+        [personId],
+      );
+
+      if (personRows.length === 0) {
+        throw new Error('Person not found');
+      }
+
+      const personSex = personRows[0].sex;
+
+      // If otherParentId provided, find or create family with both parents
+      if (otherParentId) {
+        // Check if family already exists with these parents
+        const { rows: existingFamilies } = await pool.query(
+          `SELECT * FROM families
+           WHERE (husband_id = $1 AND wife_id = $2)
+              OR (husband_id = $2 AND wife_id = $1)`,
+          [personId, otherParentId],
+        );
+
+        let familyId: string;
+
+        if (existingFamilies.length > 0) {
+          // Use existing family
+          familyId = existingFamilies[0].id;
+        } else {
+          // Create new family with both parents
+          const { rows: otherParentRows } = await pool.query(
+            'SELECT sex FROM people WHERE id = $1',
+            [otherParentId],
+          );
+
+          const otherParentSex =
+            otherParentRows.length > 0 ? otherParentRows[0].sex : null;
+
+          let husbandId = null;
+          let wifeId = null;
+
+          if (personSex === 'M' && otherParentSex === 'F') {
+            husbandId = personId;
+            wifeId = otherParentId;
+          } else if (personSex === 'F' && otherParentSex === 'M') {
+            husbandId = otherParentId;
+            wifeId = personId;
+          } else if (personSex === 'M') {
+            husbandId = personId;
+            wifeId = otherParentId;
+          } else {
+            husbandId = otherParentId;
+            wifeId = personId;
+          }
+
+          familyId = crypto.randomUUID().replace(/-/g, '').slice(0, 12);
+          await pool.query(
+            `INSERT INTO families (id, husband_id, wife_id)
+             VALUES ($1, $2, $3)`,
+            [familyId, husbandId, wifeId],
+          );
+        }
+
+        // Add child to family
+        const { rows: existingChild } = await pool.query(
+          'SELECT 1 FROM children WHERE family_id = $1 AND person_id = $2',
+          [familyId, childId],
+        );
+
+        if (existingChild.length === 0) {
+          await pool.query(
+            'INSERT INTO children (family_id, person_id) VALUES ($1, $2)',
+            [familyId, childId],
+          );
+        }
+
+        // Audit log
+        await logAudit(user.id, 'add_child', {
+          personId,
+          childId,
+          otherParentId,
+          familyId,
+        });
+
+        // Return the family
+        const { rows: familyRows } = await pool.query(
+          'SELECT * FROM families WHERE id = $1',
+          [familyId],
+        );
+        return familyRows[0];
+      } else {
+        // Single parent - find or create family with only this parent
+        const { rows: existingFamilies } = await pool.query(
+          `SELECT * FROM families
+           WHERE (husband_id = $1 AND wife_id IS NULL)
+              OR (wife_id = $1 AND husband_id IS NULL)`,
+          [personId],
+        );
+
+        let familyId: string;
+
+        if (existingFamilies.length > 0) {
+          // Use existing single-parent family
+          familyId = existingFamilies[0].id;
+        } else {
+          // Create new single-parent family
+          familyId = crypto.randomUUID().replace(/-/g, '').slice(0, 12);
+          const husbandId = personSex === 'M' ? personId : null;
+          const wifeId = personSex === 'F' ? personId : null;
+
+          await pool.query(
+            `INSERT INTO families (id, husband_id, wife_id)
+             VALUES ($1, $2, $3)`,
+            [familyId, husbandId, wifeId],
+          );
+        }
+
+        // Add child to family
+        const { rows: existingChild } = await pool.query(
+          'SELECT 1 FROM children WHERE family_id = $1 AND person_id = $2',
+          [familyId, childId],
+        );
+
+        if (existingChild.length === 0) {
+          await pool.query(
+            'INSERT INTO children (family_id, person_id) VALUES ($1, $2)',
+            [familyId, childId],
+          );
+        }
+
+        // Audit log
+        await logAudit(user.id, 'add_child', {
+          personId,
+          childId,
+          familyId,
+        });
+
+        // Return the family
+        const { rows: familyRows } = await pool.query(
+          'SELECT * FROM families WHERE id = $1',
+          [familyId],
+        );
+        return familyRows[0];
+      }
+    },
+
+    removeSpouse: async (
+      _: unknown,
+      { personId, spouseId }: { personId: string; spouseId: string },
+      context: Context,
+    ) => {
+      const user = requireAuth(context, 'editor');
+
+      // Find family with these spouses
+      const { rows: families } = await pool.query(
+        `SELECT id FROM families
+         WHERE (husband_id = $1 AND wife_id = $2)
+            OR (husband_id = $2 AND wife_id = $1)`,
+        [personId, spouseId],
+      );
+
+      if (families.length === 0) {
+        throw new Error('Family not found');
+      }
+
+      const familyId = families[0].id;
+
+      // Check if family has children
+      const { rows: children } = await pool.query(
+        'SELECT COUNT(*) as count FROM children WHERE family_id = $1',
+        [familyId],
+      );
+
+      if (parseInt(children[0].count, 10) > 0) {
+        throw new Error(
+          'Cannot remove spouse from family with children. Remove children first.',
+        );
+      }
+
+      // Delete the family
+      await pool.query('DELETE FROM families WHERE id = $1', [familyId]);
+
+      // Audit log
+      await logAudit(user.id, 'remove_spouse', {
+        personId,
+        spouseId,
+        familyId,
+      });
+
+      return true;
+    },
+
+    removeChild: async (
+      _: unknown,
+      { personId, childId }: { personId: string; childId: string },
+      context: Context,
+    ) => {
+      const user = requireAuth(context, 'editor');
+
+      // Find families where personId is a parent
+      const { rows: families } = await pool.query(
+        `SELECT id FROM families
+         WHERE husband_id = $1 OR wife_id = $1`,
+        [personId],
+      );
+
+      if (families.length === 0) {
+        throw new Error('No families found for this person');
+      }
+
+      // Remove child from all matching families
+      let removed = false;
+      for (const family of families) {
+        const { rowCount } = await pool.query(
+          'DELETE FROM children WHERE family_id = $1 AND person_id = $2',
+          [family.id, childId],
+        );
+        if (rowCount && rowCount > 0) {
+          removed = true;
+        }
+      }
+
+      if (!removed) {
+        throw new Error('Child not found in any family');
+      }
+
+      // Audit log
+      await logAudit(user.id, 'remove_child', {
+        personId,
+        childId,
+      });
+
+      return true;
+    },
+
     addSource: async (
       _: unknown,
       {

@@ -1,6 +1,6 @@
 'use client';
 
-import { useQuery } from '@apollo/client/react';
+import { gql, useQuery } from '@apollo/client/react';
 import { Database, Mail, Package, Users } from 'lucide-react';
 import Link from 'next/link';
 import { GET_USERS } from '@/lib/graphql/queries';
@@ -13,9 +13,56 @@ interface User {
   last_accessed: string | null;
 }
 
+interface Setting {
+  key: string;
+  value: string;
+}
+
+const GET_ADMIN_SETTINGS = gql`
+  query GetAdminSettings {
+    settings {
+      key
+      value
+    }
+    migrationStatus {
+      migrationNeeded
+    }
+  }
+`;
+
 export default function AdminDashboard() {
   const { data: usersData } = useQuery<{ users: User[] }>(GET_USERS);
+  const { data: settingsData } = useQuery<{
+    settings: Setting[];
+    migrationStatus: { migrationNeeded: boolean };
+  }>(GET_ADMIN_SETTINGS);
+
   const users = usersData?.users || [];
+  const settings = settingsData?.settings || [];
+  const migrationNeeded = settingsData?.migrationStatus?.migrationNeeded ?? false;
+
+  // Get email provider setting
+  const emailProvider =
+    settings.find((s) => s.key === 'email_provider')?.value || 'none';
+  const emailStatus =
+    emailProvider === 'none'
+      ? 'Not Set'
+      : emailProvider === 'ses'
+        ? 'AWS SES'
+        : 'SMTP';
+
+  // Get storage provider setting
+  const storageProvider =
+    settings.find((s) => s.key === 'storage_provider')?.value || 'local';
+  const storageStatus =
+    storageProvider === 'local'
+      ? 'Local'
+      : storageProvider === 's3'
+        ? 'AWS S3'
+        : 'Local';
+
+  // Database status
+  const dbStatus = migrationNeeded ? 'Needs Migration' : 'Up to Date';
 
   const stats = [
     {
@@ -27,24 +74,24 @@ export default function AdminDashboard() {
     },
     {
       label: 'Email Config',
-      value: 'Not Set',
+      value: emailStatus,
       icon: Mail,
       href: '/admin/integrations/email',
-      color: 'yellow',
+      color: emailProvider === 'none' ? 'yellow' : 'green',
     },
     {
       label: 'Storage',
-      value: 'Local',
+      value: storageStatus,
       icon: Package,
       href: '/admin/integrations/storage',
       color: 'green',
     },
     {
       label: 'Database',
-      value: 'Healthy',
+      value: dbStatus,
       icon: Database,
       href: '/admin/data/database',
-      color: 'purple',
+      color: migrationNeeded ? 'yellow' : 'purple',
     },
   ];
 

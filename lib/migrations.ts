@@ -398,6 +398,353 @@ export const migrations: Migration[] = [
       return results;
     },
   },
+
+  // Migration #10: Core genealogy tables (people, families, children)
+  {
+    version: 10,
+    name: 'core_genealogy_tables',
+    up: async (pool: Pool) => {
+      const results: string[] = [];
+
+      // Create people table
+      await pool.query(`
+        CREATE TABLE IF NOT EXISTS people (
+          id VARCHAR(12) PRIMARY KEY,
+          xref VARCHAR(20),
+          familysearch_id VARCHAR(50),
+          legacy_id VARCHAR(100),
+          name_given VARCHAR(200),
+          name_surname VARCHAR(100),
+          name_suffix VARCHAR(50),
+          name_full VARCHAR(300),
+          sex CHAR(1) CHECK (sex IN ('M', 'F', 'U')),
+          birth_date VARCHAR(50),
+          birth_year INT,
+          birth_month INT,
+          birth_day INT,
+          birth_place VARCHAR(500),
+          death_date VARCHAR(50),
+          death_year INT,
+          death_month INT,
+          death_day INT,
+          death_place VARCHAR(500),
+          burial_date VARCHAR(50),
+          burial_place VARCHAR(500),
+          christening_date VARCHAR(50),
+          christening_place VARCHAR(500),
+          immigration_date VARCHAR(50),
+          immigration_place VARCHAR(500),
+          naturalization_date VARCHAR(50),
+          naturalization_place VARCHAR(500),
+          religion VARCHAR(100),
+          living BOOLEAN DEFAULT FALSE,
+          description TEXT,
+          notes TEXT,
+          occupation VARCHAR(200),
+          is_notable BOOLEAN DEFAULT FALSE,
+          notable_description TEXT,
+          research_status VARCHAR(20) DEFAULT 'not_started',
+          research_priority INT DEFAULT 0,
+          last_researched TIMESTAMP,
+          source_count INT DEFAULT 0,
+          created_at TIMESTAMP DEFAULT NOW(),
+          updated_at TIMESTAMP DEFAULT NOW()
+        )
+      `);
+      results.push('Created people table');
+
+      // Create families table
+      await pool.query(`
+        CREATE TABLE IF NOT EXISTS families (
+          id VARCHAR(12) PRIMARY KEY,
+          husband_id VARCHAR(12) REFERENCES people(id),
+          wife_id VARCHAR(12) REFERENCES people(id),
+          marriage_date VARCHAR(50),
+          marriage_place VARCHAR(500),
+          created_at TIMESTAMP DEFAULT NOW()
+        )
+      `);
+      results.push('Created families table');
+
+      // Create children junction table
+      await pool.query(`
+        CREATE TABLE IF NOT EXISTS children (
+          family_id VARCHAR(12) REFERENCES families(id) ON DELETE CASCADE,
+          person_id VARCHAR(12) REFERENCES people(id) ON DELETE CASCADE,
+          birth_order INT,
+          PRIMARY KEY (family_id, person_id)
+        )
+      `);
+      results.push('Created children table');
+
+      return results;
+    },
+  },
+
+  // Migration #11: Research tables (sources, facts, life_events, alternate_names)
+  {
+    version: 11,
+    name: 'research_tables',
+    up: async (pool: Pool) => {
+      const results: string[] = [];
+
+      // Create sources table
+      await pool.query(`
+        CREATE TABLE IF NOT EXISTS sources (
+          id VARCHAR(12) PRIMARY KEY,
+          person_id VARCHAR(12) REFERENCES people(id) ON DELETE CASCADE,
+          source_type VARCHAR(50),
+          source_name VARCHAR(255),
+          source_url VARCHAR(500),
+          source_citation TEXT,
+          content TEXT,
+          confidence VARCHAR(20),
+          created_at TIMESTAMP DEFAULT NOW()
+        )
+      `);
+      results.push('Created sources table');
+
+      // Create facts table
+      await pool.query(`
+        CREATE TABLE IF NOT EXISTS facts (
+          id VARCHAR(12) PRIMARY KEY,
+          person_id VARCHAR(12) REFERENCES people(id) ON DELETE CASCADE,
+          fact_type VARCHAR(100),
+          fact_value TEXT,
+          created_at TIMESTAMP DEFAULT NOW()
+        )
+      `);
+      results.push('Created facts table');
+
+      // Create life_events table (renamed from events)
+      await pool.query(`
+        CREATE TABLE IF NOT EXISTS life_events (
+          id VARCHAR(12) PRIMARY KEY,
+          person_id VARCHAR(12) REFERENCES people(id) ON DELETE CASCADE,
+          event_type VARCHAR(100),
+          event_date VARCHAR(50),
+          event_year INT,
+          event_place VARCHAR(500),
+          event_value TEXT,
+          created_at TIMESTAMP DEFAULT NOW()
+        )
+      `);
+      results.push('Created life_events table');
+
+      // Create alternate_names table
+      await pool.query(`
+        CREATE TABLE IF NOT EXISTS alternate_names (
+          id SERIAL PRIMARY KEY,
+          person_id VARCHAR(12) REFERENCES people(id) ON DELETE CASCADE,
+          name_given VARCHAR(200),
+          name_surname VARCHAR(100),
+          name_full VARCHAR(300)
+        )
+      `);
+      results.push('Created alternate_names table');
+
+      return results;
+    },
+  },
+
+  // Migration #12: User/auth tables (users, invitations, audit_log)
+  {
+    version: 12,
+    name: 'user_auth_tables',
+    up: async (pool: Pool) => {
+      const results: string[] = [];
+
+      // Create users table
+      await pool.query(`
+        CREATE TABLE IF NOT EXISTS users (
+          id VARCHAR(12) PRIMARY KEY,
+          email VARCHAR(255) UNIQUE NOT NULL,
+          name VARCHAR(255),
+          image VARCHAR(500),
+          role VARCHAR(50) DEFAULT 'viewer' CHECK (role IN ('admin', 'editor', 'viewer')),
+          account_type VARCHAR(20) DEFAULT 'user' CHECK (account_type IN ('user', 'service')),
+          description TEXT,
+          invited_by VARCHAR(12) REFERENCES users(id),
+          invited_at TIMESTAMP,
+          created_at TIMESTAMP DEFAULT NOW(),
+          last_login TIMESTAMP
+        )
+      `);
+      results.push('Created users table');
+
+      // Create invitations table
+      await pool.query(`
+        CREATE TABLE IF NOT EXISTS invitations (
+          id VARCHAR(12) PRIMARY KEY,
+          email VARCHAR(255) NOT NULL,
+          role VARCHAR(50) DEFAULT 'viewer' CHECK (role IN ('admin', 'editor', 'viewer')),
+          invited_by VARCHAR(12) REFERENCES users(id),
+          token VARCHAR(255) UNIQUE NOT NULL,
+          expires_at TIMESTAMP NOT NULL,
+          accepted_at TIMESTAMP,
+          created_at TIMESTAMP DEFAULT NOW()
+        )
+      `);
+      results.push('Created invitations table');
+
+      // Create audit_log table
+      await pool.query(`
+        CREATE TABLE IF NOT EXISTS audit_log (
+          id SERIAL PRIMARY KEY,
+          user_id VARCHAR(12) REFERENCES users(id),
+          action VARCHAR(100) NOT NULL,
+          details JSONB,
+          ip_address VARCHAR(45),
+          created_at TIMESTAMP DEFAULT NOW()
+        )
+      `);
+      results.push('Created audit_log table');
+
+      return results;
+    },
+  },
+
+  // Migration #13: Specialized tables (surname_crests, media)
+  {
+    version: 13,
+    name: 'specialized_tables',
+    up: async (pool: Pool) => {
+      const results: string[] = [];
+
+      // Create surname_crests table
+      await pool.query(`
+        CREATE TABLE IF NOT EXISTS surname_crests (
+          id VARCHAR(12) PRIMARY KEY,
+          surname VARCHAR(100) NOT NULL,
+          coat_of_arms TEXT,
+          storage_path VARCHAR(500),
+          blazon TEXT,
+          source_url VARCHAR(500),
+          created_at TIMESTAMP DEFAULT NOW()
+        )
+      `);
+      results.push('Created surname_crests table');
+
+      // Create media table
+      await pool.query(`
+        CREATE TABLE IF NOT EXISTS media (
+          id VARCHAR(12) PRIMARY KEY,
+          person_id VARCHAR(12) REFERENCES people(id) ON DELETE CASCADE,
+          filename VARCHAR(255) NOT NULL,
+          original_filename VARCHAR(255) NOT NULL,
+          mime_type VARCHAR(100) NOT NULL,
+          file_size INTEGER NOT NULL,
+          storage_path VARCHAR(500) NOT NULL,
+          thumbnail_path VARCHAR(500),
+          media_type VARCHAR(50) NOT NULL CHECK (media_type IN ('photo', 'document', 'certificate', 'other')),
+          caption TEXT,
+          date_taken DATE,
+          source_attribution TEXT,
+          uploaded_by VARCHAR(12) REFERENCES users(id),
+          created_at TIMESTAMP DEFAULT NOW(),
+          updated_at TIMESTAMP DEFAULT NOW()
+        )
+      `);
+      results.push('Created media table');
+
+      return results;
+    },
+  },
+
+  // Migration #14: Create all indexes
+  {
+    version: 14,
+    name: 'create_indexes',
+    up: async (pool: Pool) => {
+      const results: string[] = [];
+
+      // People indexes
+      await pool.query(`
+        CREATE INDEX IF NOT EXISTS idx_people_birth_year ON people(birth_year);
+        CREATE INDEX IF NOT EXISTS idx_people_familysearch ON people(familysearch_id);
+        CREATE INDEX IF NOT EXISTS idx_people_legacy_id ON people(legacy_id);
+        CREATE INDEX IF NOT EXISTS idx_people_surname ON people(name_surname);
+        CREATE INDEX IF NOT EXISTS idx_people_research_priority ON people(research_priority DESC);
+        CREATE INDEX IF NOT EXISTS idx_people_research_status ON people(research_status);
+      `);
+      results.push('Created people indexes');
+
+      // Families indexes
+      await pool.query(`
+        CREATE INDEX IF NOT EXISTS idx_families_husband ON families(husband_id);
+        CREATE INDEX IF NOT EXISTS idx_families_wife ON families(wife_id);
+      `);
+      results.push('Created families indexes');
+
+      // Children indexes
+      await pool.query(`
+        CREATE INDEX IF NOT EXISTS idx_children_family ON children(family_id);
+        CREATE INDEX IF NOT EXISTS idx_children_person ON children(person_id);
+      `);
+      results.push('Created children indexes');
+
+      // Sources indexes
+      await pool.query(`
+        CREATE INDEX IF NOT EXISTS idx_sources_person ON sources(person_id);
+      `);
+      results.push('Created sources indexes');
+
+      // Facts indexes
+      await pool.query(`
+        CREATE INDEX IF NOT EXISTS idx_facts_person ON facts(person_id);
+      `);
+      results.push('Created facts indexes');
+
+      // Life events indexes
+      await pool.query(`
+        CREATE INDEX IF NOT EXISTS idx_life_events_person ON life_events(person_id);
+      `);
+      results.push('Created life_events indexes');
+
+      // Alternate names indexes
+      await pool.query(`
+        CREATE INDEX IF NOT EXISTS idx_alternate_names_person ON alternate_names(person_id);
+      `);
+      results.push('Created alternate_names indexes');
+
+      // Users indexes
+      await pool.query(`
+        CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);
+        CREATE INDEX IF NOT EXISTS idx_users_account_type ON users(account_type);
+      `);
+      results.push('Created users indexes');
+
+      // Invitations indexes
+      await pool.query(`
+        CREATE INDEX IF NOT EXISTS idx_invitations_email ON invitations(email);
+        CREATE INDEX IF NOT EXISTS idx_invitations_token ON invitations(token);
+      `);
+      results.push('Created invitations indexes');
+
+      // Audit log indexes
+      await pool.query(`
+        CREATE INDEX IF NOT EXISTS idx_audit_log_user_id ON audit_log(user_id);
+        CREATE INDEX IF NOT EXISTS idx_audit_log_created_at ON audit_log(created_at);
+      `);
+      results.push('Created audit_log indexes');
+
+      // Media indexes
+      await pool.query(`
+        CREATE INDEX IF NOT EXISTS idx_media_person_id ON media(person_id);
+        CREATE INDEX IF NOT EXISTS idx_media_type ON media(media_type);
+      `);
+      results.push('Created media indexes');
+
+      // Surname crests indexes
+      await pool.query(`
+        CREATE INDEX IF NOT EXISTS idx_surname_crests_surname ON surname_crests(surname);
+        CREATE INDEX IF NOT EXISTS idx_surname_crests_storage_path ON surname_crests(storage_path);
+      `);
+      results.push('Created surname_crests indexes');
+
+      return results;
+    },
+  },
 ];
 
 // Get current database version

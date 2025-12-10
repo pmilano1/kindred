@@ -29,7 +29,12 @@ const pathLabels: Record<string, string> = {
 };
 
 // Paths that don't have their own pages (only serve as parent segments)
-const nonLinkablePaths = new Set(['data', 'integrations', 'system', 'settings']);
+const nonLinkablePaths = new Set([
+  'data',
+  'integrations',
+  'system',
+  'settings',
+]);
 
 export function AdminBreadcrumbs() {
   const pathname = usePathname();

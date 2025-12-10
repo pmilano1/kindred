@@ -1,6 +1,7 @@
 'use client';
 
 import Image from 'next/image';
+import packageJson from '../package.json';
 import { useSettings } from './SettingsProvider';
 
 export default function Footer() {
@@ -30,23 +31,28 @@ export default function Footer() {
             </p>
           )}
         </div>
-        <a
-          href="https://github.com/pmilano1/kindred"
-          target="_blank"
-          rel="noopener noreferrer"
-          className="flex items-center gap-1.5 text-xs text-[var(--muted-foreground)] hover:text-[var(--primary-color)] transition-colors"
-        >
-          <span>Powered by</span>
-          <Image
-            src="/kindred-logo.svg"
-            alt="Kindred"
-            width={16}
-            height={16}
-            className="opacity-60"
-            unoptimized
-          />
-          <span className="font-medium">Kindred</span>
-        </a>
+        <div className="flex items-center gap-3">
+          <a
+            href="https://github.com/pmilano1/kindred"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center gap-1.5 text-xs text-[var(--muted-foreground)] hover:text-[var(--primary-color)] transition-colors"
+          >
+            <span>Powered by</span>
+            <Image
+              src="/kindred-logo.svg"
+              alt="Kindred"
+              width={16}
+              height={16}
+              className="opacity-60"
+              unoptimized
+            />
+            <span className="font-medium">Kindred</span>
+          </a>
+          <span className="text-xs text-[var(--muted-foreground)] opacity-60">
+            v{packageJson.version}
+          </span>
+        </div>
       </div>
     </footer>
   );

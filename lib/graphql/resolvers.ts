@@ -1056,7 +1056,7 @@ export const resolvers = {
       { input }: { input: Record<string, unknown> },
       context: Context,
     ) => {
-      requireAuth(context, 'editor');
+      const user = requireAuth(context, 'editor');
 
       // Generate a nanoid-style ID (12 chars alphanumeric)
       const id = crypto
@@ -1080,6 +1080,13 @@ export const resolvers = {
         values,
       );
 
+      // Audit log
+      await logAudit(user.id, 'create_person', {
+        personId: id,
+        personName: input.name_full,
+        fields: fields,
+      });
+
       return getPerson(id);
     },
 
@@ -1088,10 +1095,13 @@ export const resolvers = {
       { id, input }: { id: string; input: Record<string, unknown> },
       context: Context,
     ) => {
-      requireAuth(context, 'editor');
+      const user = requireAuth(context, 'editor');
 
       const fields = Object.keys(input).filter((k) => input[k] !== undefined);
       if (fields.length === 0) return getPerson(id);
+
+      // Get person name for audit log
+      const person = await getPerson(id);
 
       const setClause = fields.map((f, i) => `${f} = $${i + 2}`).join(', ');
       const values = fields.map((f) => input[f]);
@@ -1101,6 +1111,13 @@ export const resolvers = {
         ...values,
       ]);
 
+      // Audit log
+      await logAudit(user.id, 'update_person', {
+        personId: id,
+        personName: person?.name_full,
+        fields: fields,
+      });
+
       return getPerson(id);
     },
 
@@ -1109,7 +1126,7 @@ export const resolvers = {
       { id }: { id: string },
       context: Context,
     ) => {
-      requireAuth(context, 'admin'); // Only admin can delete
+      const user = requireAuth(context, 'admin'); // Only admin can delete
 
       // Check if person exists
       const person = await getPerson(id);
@@ -1137,6 +1154,12 @@ export const resolvers = {
       // Delete the person
       await pool.query('DELETE FROM people WHERE id = $1', [id]);
 
+      // Audit log
+      await logAudit(user.id, 'delete_person', {
+        personId: id,
+        personName: person.name_full,
+      });
+
       return true;
     },
 
@@ -1158,7 +1181,7 @@ export const resolvers = {
       },
       context: Context,
     ) => {
-      requireAuth(context, 'editor');
+      const user = requireAuth(context, 'editor');
       const { rows } = await pool.query(
         `INSERT INTO life_events (person_id, event_type, event_date, event_year, event_place, event_value)
          VALUES ($1, $2, $3, $4, $5, $6) RETURNING *`,
@@ -1171,6 +1194,14 @@ export const resolvers = {
           input.event_value || null,
         ],
       );
+
+      // Audit log
+      await logAudit(user.id, 'add_life_event', {
+        personId,
+        eventType: input.event_type,
+        eventId: rows[0].id,
+      });
+
       return rows[0];
     },
 
@@ -1191,7 +1222,14 @@ export const resolvers = {
       },
       context: Context,
     ) => {
-      requireAuth(context, 'editor');
+      const user = requireAuth(context, 'editor');
+
+      // Get person_id for audit log
+      const { rows: existing } = await pool.query(
+        'SELECT person_id FROM life_events WHERE id = $1',
+        [id],
+      );
+
       const { rows } = await pool.query(
         `UPDATE life_events SET event_type = $2, event_date = $3, event_year = $4, event_place = $5, event_value = $6 WHERE id = $1 RETURNING *`,
         [
@@ -1203,6 +1241,14 @@ export const resolvers = {
           input.event_value || null,
         ],
       );
+
+      // Audit log
+      await logAudit(user.id, 'update_life_event', {
+        personId: existing[0]?.person_id,
+        eventType: input.event_type,
+        eventId: id,
+      });
+
       return rows[0] || null;
     },
 
@@ -1211,8 +1257,23 @@ export const resolvers = {
       { id }: { id: number },
       context: Context,
     ) => {
-      requireAuth(context, 'editor');
+      const user = requireAuth(context, 'editor');
+
+      // Get person_id for audit log
+      const { rows: existing } = await pool.query(
+        'SELECT person_id, event_type FROM life_events WHERE id = $1',
+        [id],
+      );
+
       await pool.query('DELETE FROM life_events WHERE id = $1', [id]);
+
+      // Audit log
+      await logAudit(user.id, 'delete_life_event', {
+        personId: existing[0]?.person_id,
+        eventType: existing[0]?.event_type,
+        eventId: id,
+      });
+
       return true;
     },
 
@@ -1228,11 +1289,19 @@ export const resolvers = {
       },
       context: Context,
     ) => {
-      requireAuth(context, 'editor');
+      const user = requireAuth(context, 'editor');
       const { rows } = await pool.query(
         `INSERT INTO facts (person_id, fact_type, fact_value) VALUES ($1, $2, $3) RETURNING *`,
         [personId, input.fact_type, input.fact_value || null],
       );
+
+      // Audit log
+      await logAudit(user.id, 'add_fact', {
+        personId,
+        factType: input.fact_type,
+        factId: rows[0].id,
+      });
+
       return rows[0];
     },
 
@@ -1244,11 +1313,26 @@ export const resolvers = {
       }: { id: number; input: { fact_type: string; fact_value?: string } },
       context: Context,
     ) => {
-      requireAuth(context, 'editor');
+      const user = requireAuth(context, 'editor');
+
+      // Get person_id for audit log
+      const { rows: existing } = await pool.query(
+        'SELECT person_id FROM facts WHERE id = $1',
+        [id],
+      );
+
       const { rows } = await pool.query(
         `UPDATE facts SET fact_type = $2, fact_value = $3 WHERE id = $1 RETURNING *`,
         [id, input.fact_type, input.fact_value || null],
       );
+
+      // Audit log
+      await logAudit(user.id, 'update_fact', {
+        personId: existing[0]?.person_id,
+        factType: input.fact_type,
+        factId: id,
+      });
+
       return rows[0] || null;
     },
 
@@ -1257,8 +1341,23 @@ export const resolvers = {
       { id }: { id: number },
       context: Context,
     ) => {
-      requireAuth(context, 'editor');
+      const user = requireAuth(context, 'editor');
+
+      // Get person_id for audit log
+      const { rows: existing } = await pool.query(
+        'SELECT person_id, fact_type FROM facts WHERE id = $1',
+        [id],
+      );
+
       await pool.query('DELETE FROM facts WHERE id = $1', [id]);
+
+      // Audit log
+      await logAudit(user.id, 'delete_fact', {
+        personId: existing[0]?.person_id,
+        factType: existing[0]?.fact_type,
+        factId: id,
+      });
+
       return true;
     },
 
@@ -1278,7 +1377,7 @@ export const resolvers = {
       },
       context: Context,
     ) => {
-      requireAuth(context, 'editor');
+      const user = requireAuth(context, 'editor');
       const id = crypto.randomUUID().replace(/-/g, '').slice(0, 12);
       const { rows } = await pool.query(
         `INSERT INTO families (id, husband_id, wife_id, marriage_date, marriage_year, marriage_place)
@@ -1292,6 +1391,14 @@ export const resolvers = {
           input.marriage_place || null,
         ],
       );
+
+      // Audit log
+      await logAudit(user.id, 'create_family', {
+        familyId: id,
+        husbandId: input.husband_id,
+        wifeId: input.wife_id,
+      });
+
       return rows[0];
     },
 
@@ -1312,7 +1419,7 @@ export const resolvers = {
       },
       context: Context,
     ) => {
-      requireAuth(context, 'editor');
+      const user = requireAuth(context, 'editor');
       const { rows } = await pool.query(
         `UPDATE families SET husband_id = COALESCE($2, husband_id), wife_id = COALESCE($3, wife_id),
          marriage_date = COALESCE($4, marriage_date), marriage_year = COALESCE($5, marriage_year),
@@ -1326,6 +1433,14 @@ export const resolvers = {
           input.marriage_place,
         ],
       );
+
+      // Audit log
+      await logAudit(user.id, 'update_family', {
+        familyId: id,
+        husbandId: input.husband_id,
+        wifeId: input.wife_id,
+      });
+
       return rows[0] || null;
     },
 
@@ -1334,10 +1449,16 @@ export const resolvers = {
       { id }: { id: string },
       context: Context,
     ) => {
-      requireAuth(context, 'admin');
+      const user = requireAuth(context, 'admin');
       // Delete children links first
       await pool.query('DELETE FROM children WHERE family_id = $1', [id]);
       await pool.query('DELETE FROM families WHERE id = $1', [id]);
+
+      // Audit log
+      await logAudit(user.id, 'delete_family', {
+        familyId: id,
+      });
+
       return true;
     },
 
@@ -1346,7 +1467,7 @@ export const resolvers = {
       { familyId, personId }: { familyId: string; personId: string },
       context: Context,
     ) => {
-      requireAuth(context, 'editor');
+      const user = requireAuth(context, 'editor');
       // Check if already exists
       const { rows: existing } = await pool.query(
         'SELECT 1 FROM children WHERE family_id = $1 AND person_id = $2',
@@ -1357,6 +1478,13 @@ export const resolvers = {
         'INSERT INTO children (family_id, person_id) VALUES ($1, $2)',
         [familyId, personId],
       );
+
+      // Audit log
+      await logAudit(user.id, 'add_child_to_family', {
+        familyId,
+        personId,
+      });
+
       return true;
     },
 
@@ -1365,11 +1493,18 @@ export const resolvers = {
       { familyId, personId }: { familyId: string; personId: string },
       context: Context,
     ) => {
-      requireAuth(context, 'editor');
+      const user = requireAuth(context, 'editor');
       await pool.query(
         'DELETE FROM children WHERE family_id = $1 AND person_id = $2',
         [familyId, personId],
       );
+
+      // Audit log
+      await logAudit(user.id, 'remove_child_from_family', {
+        familyId,
+        personId,
+      });
+
       return true;
     },
 
@@ -1391,7 +1526,7 @@ export const resolvers = {
       },
       context: Context,
     ) => {
-      requireAuth(context, 'editor');
+      const user = requireAuth(context, 'editor');
 
       // Generate a nanoid-style ID (12 chars alphanumeric)
       const id = crypto
@@ -1414,6 +1549,15 @@ export const resolvers = {
           input.confidence,
         ],
       );
+
+      // Audit log
+      await logAudit(user.id, 'add_source', {
+        personId,
+        sourceId: id,
+        sourceType: input.source_type,
+        sourceName: input.source_name,
+      });
+
       return rows[0];
     },
 
@@ -1435,7 +1579,14 @@ export const resolvers = {
       },
       context: Context,
     ) => {
-      requireAuth(context, 'editor');
+      const user = requireAuth(context, 'editor');
+
+      // Get person_id for audit log
+      const { rows: existing } = await pool.query(
+        'SELECT person_id FROM sources WHERE id = $1',
+        [id],
+      );
+
       const { rows } = await pool.query(
         `UPDATE sources SET
          source_type = COALESCE($2, source_type),
@@ -1455,6 +1606,15 @@ export const resolvers = {
           input.confidence,
         ],
       );
+
+      // Audit log
+      await logAudit(user.id, 'update_source', {
+        personId: existing[0]?.person_id,
+        sourceId: id,
+        sourceType: input.source_type,
+        sourceName: input.source_name,
+      });
+
       return rows[0] || null;
     },
 
@@ -1463,8 +1623,23 @@ export const resolvers = {
       { id }: { id: string },
       context: Context,
     ) => {
-      requireAuth(context, 'editor');
+      const user = requireAuth(context, 'editor');
+
+      // Get person_id for audit log
+      const { rows: existing } = await pool.query(
+        'SELECT person_id, source_name FROM sources WHERE id = $1',
+        [id],
+      );
+
       await pool.query('DELETE FROM sources WHERE id = $1', [id]);
+
+      // Audit log
+      await logAudit(user.id, 'delete_source', {
+        personId: existing[0]?.person_id,
+        sourceId: id,
+        sourceName: existing[0]?.source_name,
+      });
+
       return true;
     },
 
@@ -1760,7 +1935,7 @@ export const resolvers = {
       { input }: { input: Record<string, string | null> },
       context: Context,
     ) => {
-      requireAuth(context, 'admin');
+      const user = requireAuth(context, 'admin');
       const entries = Object.entries(input).filter(([, v]) => v !== undefined);
       for (const [key, value] of entries) {
         await pool.query(
@@ -1771,6 +1946,13 @@ export const resolvers = {
         );
       }
       clearSettingsCache();
+
+      // Audit log
+      await logAudit(user.id, 'update_settings', {
+        settingsKeys: entries.map(([key]) => key),
+        settingsCount: entries.length,
+      });
+
       return getSettings();
     },
 
@@ -2317,6 +2499,14 @@ export const resolvers = {
         ],
       );
 
+      // Audit log
+      await logAudit(user.id, 'upload_media', {
+        personId,
+        mediaId: id,
+        mediaType: input.media_type,
+        filename: input.original_filename,
+      });
+
       return rows[0];
     },
 
@@ -2336,7 +2526,14 @@ export const resolvers = {
       },
       context: Context,
     ) => {
-      requireAuth(context, 'editor');
+      const user = requireAuth(context, 'editor');
+
+      // Get person_id for audit log
+      const { rows: existing } = await pool.query(
+        'SELECT person_id, filename FROM media WHERE id = $1',
+        [id],
+      );
+
       const updates: string[] = [];
       const values: unknown[] = [];
       let paramIndex = 1;
@@ -2372,6 +2569,14 @@ export const resolvers = {
         `UPDATE media SET ${updates.join(', ')} WHERE id = $${paramIndex} RETURNING *`,
         values,
       );
+
+      // Audit log
+      await logAudit(user.id, 'update_media', {
+        personId: existing[0]?.person_id,
+        mediaId: id,
+        filename: existing[0]?.filename,
+      });
+
       return rows[0] || null;
     },
 
@@ -2380,8 +2585,23 @@ export const resolvers = {
       { id }: { id: string },
       context: Context,
     ) => {
-      requireAuth(context, 'editor');
+      const user = requireAuth(context, 'editor');
+
+      // Get person_id for audit log
+      const { rows: existing } = await pool.query(
+        'SELECT person_id, filename FROM media WHERE id = $1',
+        [id],
+      );
+
       const result = await pool.query('DELETE FROM media WHERE id = $1', [id]);
+
+      // Audit log
+      await logAudit(user.id, 'delete_media', {
+        personId: existing[0]?.person_id,
+        mediaId: id,
+        filename: existing[0]?.filename,
+      });
+
       return (result.rowCount ?? 0) > 0;
     },
 

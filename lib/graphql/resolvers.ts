@@ -1623,6 +1623,70 @@ export const resolvers = {
       return rows[0];
     },
 
+    updateSurnameCrest: async (
+      _: unknown,
+      {
+        id,
+        input,
+      }: {
+        id: string;
+        input: {
+          surname?: string;
+          coat_of_arms?: string;
+          description?: string;
+          origin?: string;
+          motto?: string;
+        };
+      },
+      context: Context,
+    ) => {
+      requireAuth(context, 'editor');
+
+      // Build dynamic UPDATE query based on provided fields
+      const updates: string[] = [];
+      const values: unknown[] = [];
+      let paramIndex = 1;
+
+      if (input.surname !== undefined) {
+        updates.push(`surname = $${paramIndex++}`);
+        values.push(input.surname);
+      }
+      if (input.coat_of_arms !== undefined) {
+        updates.push(`coat_of_arms = $${paramIndex++}`);
+        values.push(input.coat_of_arms);
+      }
+      if (input.description !== undefined) {
+        updates.push(`description = $${paramIndex++}`);
+        values.push(input.description || null);
+      }
+      if (input.origin !== undefined) {
+        updates.push(`origin = $${paramIndex++}`);
+        values.push(input.origin || null);
+      }
+      if (input.motto !== undefined) {
+        updates.push(`motto = $${paramIndex++}`);
+        values.push(input.motto || null);
+      }
+
+      if (updates.length === 0) {
+        throw new Error('No fields to update');
+      }
+
+      updates.push(`updated_at = NOW()`);
+      values.push(id);
+
+      const { rows } = await pool.query(
+        `UPDATE surname_crests SET ${updates.join(', ')} WHERE id = $${paramIndex} RETURNING *`,
+        values,
+      );
+
+      if (rows.length === 0) {
+        throw new Error('Surname crest not found');
+      }
+
+      return rows[0];
+    },
+
     removeSurnameCrest: async (
       _: unknown,
       { surname }: { surname: string },

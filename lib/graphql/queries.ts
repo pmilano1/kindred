@@ -780,6 +780,20 @@ export const SET_SURNAME_CREST = gql`
   }
 `;
 
+export const UPDATE_SURNAME_CREST = gql`
+  mutation UpdateSurnameCrest($id: ID!, $input: SurnameCrestInput!) {
+    updateSurnameCrest(id: $id, input: $input) {
+      id
+      surname
+      coat_of_arms
+      description
+      origin
+      motto
+      peopleCount
+    }
+  }
+`;
+
 export const REMOVE_SURNAME_CREST = gql`
   mutation RemoveSurnameCrest($surname: String!) {
     removeSurnameCrest(surname: $surname)

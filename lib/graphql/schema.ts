@@ -327,6 +327,12 @@ export const typeDefs = `#graphql
     recipient: String
   }
 
+  type StorageTestResult {
+    success: Boolean!
+    message: String!
+    provider: String!
+  }
+
   # Dashboard types
   type ActivityEntry {
     id: ID!
@@ -655,6 +661,7 @@ export const typeDefs = `#graphql
     updateSettings(input: SettingsInput!): SiteSettings!
     runMigrations: MigrationResult!
     testEmail(recipientEmail: String): EmailTestResult!
+    testStorage: StorageTestResult!
 
     # User profile mutations (current user)
     setMyPerson(personId: ID): User

@@ -15,6 +15,7 @@ import {
   getSettings,
   type SiteSettings,
 } from '../../settings';
+import { resetStorageConfig, testStorage } from '../../storage';
 import {
   createInvitation,
   deleteInvitation,
@@ -269,6 +270,12 @@ export const adminResolvers = {
         clearEmailConfigCache();
       }
 
+      // Clear storage config cache if storage settings were updated
+      const storageKeys = entries.filter(([key]) => key.startsWith('storage_'));
+      if (storageKeys.length > 0) {
+        resetStorageConfig();
+      }
+
       // Audit log
       await logAudit(user.id, 'update_settings', {
         settingsKeys: entries.map(([key]) => key),
@@ -326,6 +333,42 @@ export const adminResolvers = {
           success: false,
           message: `Failed to send test email: ${(error as Error).message}`,
           recipient,
+        };
+      }
+    },
+    testStorage: async (_: unknown, __: unknown, context: Context) => {
+      const user = requireAuth(context, 'admin');
+
+      try {
+        // Test storage by uploading and deleting a test file
+        await testStorage();
+
+        await logAudit(user.id, 'test_storage', {});
+
+        // Get current storage config to return provider info
+        const settings = await pool.query(
+          `SELECT key, value FROM settings WHERE key = 'storage_provider'`,
+        );
+        const provider = settings.rows[0]?.value || 'local';
+
+        return {
+          success: true,
+          message: `Storage test successful! ${provider === 's3' ? 'S3 bucket is accessible and writable.' : 'Local storage is working correctly.'}`,
+          provider,
+        };
+      } catch (error) {
+        console.error('[Storage] Test storage failed:', error);
+
+        // Get current storage config to return provider info
+        const settings = await pool.query(
+          `SELECT key, value FROM settings WHERE key = 'storage_provider'`,
+        );
+        const provider = settings.rows[0]?.value || 'local';
+
+        return {
+          success: false,
+          message: `Storage test failed: ${(error as Error).message}`,
+          provider,
         };
       }
     },

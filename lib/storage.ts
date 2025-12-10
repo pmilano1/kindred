@@ -166,3 +166,61 @@ export async function deleteFile(storagePath: string): Promise<void> {
     await unlink(filepath);
   }
 }
+
+// Test storage configuration by uploading and deleting a test file
+export async function testStorage(): Promise<boolean> {
+  const config = await getStorageConfig();
+
+  // Create test file content
+  const testContent = Buffer.from(
+    `Kindred Storage Test - ${new Date().toISOString()}`,
+    'utf-8',
+  );
+  const testPath = `test/storage-test-${Date.now()}.txt`;
+
+  try {
+    if (config.provider === 's3') {
+      if (!config.s3Bucket) {
+        throw new Error('S3 bucket not configured');
+      }
+
+      const s3 = getS3Client(
+        config.s3Region || 'us-east-1',
+        config.s3AccessKey,
+        config.s3SecretKey,
+      );
+
+      // Upload test file
+      await s3.send(
+        new PutObjectCommand({
+          Bucket: config.s3Bucket,
+          Key: testPath,
+          Body: testContent,
+          ContentType: 'text/plain',
+        }),
+      );
+
+      // Delete test file
+      await s3.send(
+        new DeleteObjectCommand({
+          Bucket: config.s3Bucket,
+          Key: testPath,
+        }),
+      );
+
+      return true;
+    } else {
+      // Local storage test
+      const filepath = join(process.cwd(), 'public', testPath);
+      const dir = filepath.substring(0, filepath.lastIndexOf('/'));
+      await mkdir(dir, { recursive: true });
+      await writeFile(filepath, testContent);
+      await unlink(filepath);
+
+      return true;
+    }
+  } catch (error) {
+    console.error('Storage test failed:', error);
+    throw error;
+  }
+}

@@ -39,6 +39,16 @@ const UPDATE_SETTING = gql`
   }
 `;
 
+const TEST_STORAGE = gql`
+  mutation TestStorage {
+    testStorage {
+      success
+      message
+      provider
+    }
+  }
+`;
+
 interface Setting {
   key: string;
   value: string;
@@ -48,10 +58,19 @@ interface StorageSettingsData {
   settings: Setting[];
 }
 
+interface TestStorageResult {
+  testStorage: {
+    success: boolean;
+    message: string;
+    provider: string;
+  };
+}
+
 export function StorageSettings() {
   const { data, loading, refetch } =
     useQuery<StorageSettingsData>(GET_STORAGE_SETTINGS);
   const [updateSetting] = useMutation(UPDATE_SETTING);
+  const [testStorage] = useMutation<TestStorageResult>(TEST_STORAGE);
 
   const [provider, setProvider] = useState('local');
   const [s3Bucket, setS3Bucket] = useState('');
@@ -59,6 +78,11 @@ export function StorageSettings() {
   const [s3AccessKey, setS3AccessKey] = useState('');
   const [s3SecretKey, setS3SecretKey] = useState('');
   const [saving, setSaving] = useState(false);
+  const [testing, setTesting] = useState(false);
+  const [testMessage, setTestMessage] = useState<{
+    type: 'success' | 'error';
+    text: string;
+  } | null>(null);
 
   // Load settings from query
   useEffect(() => {
@@ -81,6 +105,7 @@ export function StorageSettings() {
 
   const handleSave = async () => {
     setSaving(true);
+    setTestMessage(null);
     try {
       await updateSetting({
         variables: { key: 'storage_provider', value: provider },
@@ -108,6 +133,33 @@ export function StorageSettings() {
     }
   };
 
+  const handleTestStorage = async () => {
+    setTesting(true);
+    setTestMessage(null);
+    try {
+      const result = await testStorage();
+      if (result.data?.testStorage.success) {
+        setTestMessage({
+          type: 'success',
+          text: result.data.testStorage.message,
+        });
+      } else {
+        setTestMessage({
+          type: 'error',
+          text: result.data?.testStorage.message || 'Failed to test storage',
+        });
+      }
+    } catch (error) {
+      console.error('Failed to test storage:', error);
+      setTestMessage({
+        type: 'error',
+        text: `Error: ${(error as Error).message}`,
+      });
+    } finally {
+      setTesting(false);
+    }
+  };
+
   if (loading) return <div>Loading...</div>;
 
   return (
@@ -120,6 +172,15 @@ export function StorageSettings() {
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
+        {/* Test Message */}
+        {testMessage && (
+          <div
+            className={`p-4 rounded-lg ${testMessage.type === 'success' ? 'bg-green-50 text-green-800 border border-green-200' : 'bg-red-50 text-red-800 border border-red-200'}`}
+          >
+            {testMessage.text}
+          </div>
+        )}
+
         <div className="space-y-2">
           <Label htmlFor="storage-provider">Storage Provider</Label>
           <Select value={provider} onValueChange={setProvider}>
@@ -190,9 +251,19 @@ export function StorageSettings() {
           </>
         )}
 
-        <Button onClick={handleSave} disabled={saving}>
-          {saving ? 'Saving...' : 'Save Settings'}
-        </Button>
+        {/* Action Buttons */}
+        <div className="flex gap-2">
+          <Button onClick={handleSave} disabled={saving}>
+            {saving ? 'Saving...' : 'Save Settings'}
+          </Button>
+          <Button
+            onClick={handleTestStorage}
+            disabled={testing}
+            variant="outline"
+          >
+            {testing ? 'Testing...' : 'Test Storage'}
+          </Button>
+        </div>
       </CardContent>
     </Card>
   );

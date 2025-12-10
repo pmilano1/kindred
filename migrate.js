@@ -50,6 +50,8 @@ async function getCurrentVersion() {
 async function runMigrations() {
   console.log('[Migrate] Starting migration process...');
 
+  let lockAcquired = false;
+
   try {
     // Test database connection first (for CI/build environments with fake DATABASE_URL)
     try {
@@ -72,6 +74,8 @@ async function runMigrations() {
       console.log('[Migrate] Another migration is in progress, waiting...');
       await pool.query('SELECT pg_advisory_lock($1)', [MIGRATION_LOCK_ID]);
     }
+
+    lockAcquired = true;
     
     const currentVersion = await getCurrentVersion();
     console.log(`[Migrate] Current database version: ${currentVersion}`);
@@ -117,8 +121,14 @@ async function runMigrations() {
     console.error('[Migrate] ✗ Migration failed:', error);
     return false;
   } finally {
-    // Release advisory lock
-    await pool.query('SELECT pg_advisory_unlock($1)', [MIGRATION_LOCK_ID]);
+    // Release advisory lock only if we acquired it
+    if (lockAcquired) {
+      try {
+        await pool.query('SELECT pg_advisory_unlock($1)', [MIGRATION_LOCK_ID]);
+      } catch (error) {
+        // Ignore errors when releasing lock
+      }
+    }
   }
 }
 

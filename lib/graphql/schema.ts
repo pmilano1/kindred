@@ -153,10 +153,12 @@ export const typeDefs = `#graphql
     id: ID!
     surname: String!
     coat_of_arms: String!
-    storage_url: String
+    storage_path: String
     description: String
     origin: String
     motto: String
+    blazon: String
+    source_url: String
     created_at: String
     updated_at: String
     # Count of people with this surname (resolved via field resolver)
@@ -555,10 +557,12 @@ export const typeDefs = `#graphql
   input SurnameCrestInput {
     surname: String
     coat_of_arms: String
-    storage_url: String
+    storage_path: String
     description: String
     origin: String
     motto: String
+    blazon: String
+    source_url: String
   }
 
   type Mutation {
@@ -592,7 +596,7 @@ export const typeDefs = `#graphql
     updateResearchPriority(personId: ID!, priority: Int!): Person
 
     # Surname crest mutations (requires editor role)
-    setSurnameCrest(surname: String!, coatOfArms: String!, description: String, origin: String, motto: String): SurnameCrest
+    setSurnameCrest(surname: String!, coatOfArms: String!, description: String, origin: String, motto: String, blazon: String, sourceUrl: String): SurnameCrest
     updateSurnameCrest(id: ID!, input: SurnameCrestInput!): SurnameCrest
     removeSurnameCrest(surname: String!): Boolean
 

@@ -1596,21 +1596,25 @@ export const resolvers = {
         description,
         origin,
         motto,
+        blazon,
+        sourceUrl,
       }: {
         surname: string;
         coatOfArms: string;
         description?: string;
         origin?: string;
         motto?: string;
+        blazon?: string;
+        sourceUrl?: string;
       },
       context: Context,
     ) => {
       requireAuth(context, 'editor');
       const { rows } = await pool.query(
-        `INSERT INTO surname_crests (surname, coat_of_arms, description, origin, motto)
-         VALUES ($1, $2, $3, $4, $5)
+        `INSERT INTO surname_crests (surname, coat_of_arms, description, origin, motto, blazon, source_url)
+         VALUES ($1, $2, $3, $4, $5, $6, $7)
          ON CONFLICT (surname) DO UPDATE SET
-           coat_of_arms = $2, description = $3, origin = $4, motto = $5, updated_at = NOW()
+           coat_of_arms = $2, description = $3, origin = $4, motto = $5, blazon = $6, source_url = $7, updated_at = NOW()
          RETURNING *`,
         [
           surname,
@@ -1618,6 +1622,8 @@ export const resolvers = {
           description || null,
           origin || null,
           motto || null,
+          blazon || null,
+          sourceUrl || null,
         ],
       );
       return rows[0];
@@ -1636,6 +1642,8 @@ export const resolvers = {
           description?: string;
           origin?: string;
           motto?: string;
+          blazon?: string;
+          source_url?: string;
         };
       },
       context: Context,
@@ -1666,6 +1674,14 @@ export const resolvers = {
       if (input.motto !== undefined) {
         updates.push(`motto = $${paramIndex++}`);
         values.push(input.motto || null);
+      }
+      if (input.blazon !== undefined) {
+        updates.push(`blazon = $${paramIndex++}`);
+        values.push(input.blazon || null);
+      }
+      if (input.source_url !== undefined) {
+        updates.push(`source_url = $${paramIndex++}`);
+        values.push(input.source_url || null);
       }
 
       if (updates.length === 0) {

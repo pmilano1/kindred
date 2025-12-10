@@ -751,6 +751,8 @@ export const GET_SURNAME_CRESTS = gql`
       description
       origin
       motto
+      blazon
+      source_url
       created_at
       peopleCount
     }
@@ -766,13 +768,15 @@ export const GET_SURNAME_CREST = gql`
       description
       origin
       motto
+      blazon
+      source_url
     }
   }
 `;
 
 export const SET_SURNAME_CREST = gql`
-  mutation SetSurnameCrest($surname: String!, $coatOfArms: String!, $description: String, $origin: String, $motto: String) {
-    setSurnameCrest(surname: $surname, coatOfArms: $coatOfArms, description: $description, origin: $origin, motto: $motto) {
+  mutation SetSurnameCrest($surname: String!, $coatOfArms: String!, $description: String, $origin: String, $motto: String, $blazon: String, $sourceUrl: String) {
+    setSurnameCrest(surname: $surname, coatOfArms: $coatOfArms, description: $description, origin: $origin, motto: $motto, blazon: $blazon, sourceUrl: $sourceUrl) {
       id
       surname
       coat_of_arms
@@ -789,6 +793,8 @@ export const UPDATE_SURNAME_CREST = gql`
       description
       origin
       motto
+      blazon
+      source_url
       peopleCount
     }
   }

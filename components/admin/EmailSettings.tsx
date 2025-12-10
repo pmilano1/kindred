@@ -66,7 +66,11 @@ interface TestEmailResult {
   };
 }
 
-export function EmailSettings() {
+interface EmailSettingsProps {
+  refetchTrigger?: number;
+}
+
+export function EmailSettings({ refetchTrigger }: EmailSettingsProps) {
   const { data, loading, refetch } =
     useQuery<EmailSettingsData>(GET_EMAIL_SETTINGS);
   const [updateSetting] = useMutation(UPDATE_SETTING);
@@ -86,6 +90,13 @@ export function EmailSettings() {
     type: 'success' | 'error';
     text: string;
   } | null>(null);
+
+  // Refetch when trigger changes (e.g., after migration)
+  useEffect(() => {
+    if (refetchTrigger !== undefined && refetchTrigger > 0) {
+      refetch();
+    }
+  }, [refetchTrigger, refetch]);
 
   // Load settings from query
   useEffect(() => {

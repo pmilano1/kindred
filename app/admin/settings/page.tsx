@@ -165,6 +165,8 @@ export default function SettingsPage() {
     }
   };
 
+  const [refetchTrigger, setRefetchTrigger] = useState(0);
+
   const handleMigrate = async () => {
     setMigrating(true);
     try {
@@ -175,7 +177,9 @@ export default function SettingsPage() {
         type: 'success',
         text: `Migration completed: ${data.runMigrations.results.join(', ')}`,
       });
-      loadSettings();
+      await loadSettings();
+      // Trigger refetch in child components
+      setRefetchTrigger((prev) => prev + 1);
     } catch (err) {
       setMessage({
         type: 'error',
@@ -514,12 +518,12 @@ export default function SettingsPage() {
 
             {/* Email Configuration */}
             <div className="mt-8">
-              <EmailSettings />
+              <EmailSettings refetchTrigger={refetchTrigger} />
             </div>
 
             {/* Storage Configuration */}
             <div className="mt-8">
-              <StorageSettings />
+              <StorageSettings refetchTrigger={refetchTrigger} />
             </div>
 
             {/* GEDCOM Export Section */}

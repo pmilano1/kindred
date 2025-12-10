@@ -40,7 +40,12 @@ COPY --from=builder /app/public ./public
 COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
 COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
 
-# Copy startup script that runs migrations
+# Copy startup script that explicitly runs migrations before server starts
+#
+# WHY: Next.js instrumentation hooks don't work on AWS App Runner, so we
+# explicitly call instrumentation.ts from start.sh to guarantee migrations run.
+#
+# See: scripts/start.sh and instrumentation.ts for details
 COPY --from=builder --chown=nextjs:nodejs /app/scripts/start.sh ./scripts/
 
 USER nextjs
@@ -50,5 +55,6 @@ EXPOSE 3000
 ENV PORT=3000
 
 # Run startup script (migrations + server)
+# This ensures migrations run before the server starts accepting requests
 CMD ["sh", "./scripts/start.sh"]
 

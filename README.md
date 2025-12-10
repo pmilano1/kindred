@@ -262,6 +262,67 @@ query {
 }
 ```
 
+## Database Migrations
+
+Kindred uses version-controlled database migrations to manage schema changes. Migrations run automatically on every deployment.
+
+### How Migrations Work
+
+1. **Migration files** are defined in `lib/migrations.ts`
+2. **On deployment**, `scripts/start.sh` explicitly calls `instrumentation.ts`
+3. **Migrations run** before the server starts accepting requests
+4. **Server starts** only if migrations succeed
+
+### Why Explicit Execution?
+
+Next.js has an `instrumentation.ts` feature that's supposed to run automatically on server startup, but it doesn't work reliably on all deployment platforms (especially AWS App Runner). To guarantee migrations run, we explicitly call the instrumentation hook from our startup script.
+
+**Deployment Flow:**
+```
+Docker Build → scripts/start.sh → instrumentation.ts → Migrations → Server Start
+```
+
+### Migration Status
+
+Check migration status in the admin dashboard at `/admin` or via GraphQL:
+
+```graphql
+query {
+  migrationStatus {
+    currentVersion
+    latestVersion
+    migrationNeeded
+  }
+}
+```
+
+### Manual Migration (if needed)
+
+If you need to run migrations manually:
+
+```bash
+# Connect to your database
+psql $DATABASE_URL
+
+# Check current version
+SELECT version FROM schema_migrations ORDER BY version DESC LIMIT 1;
+
+# Migrations are defined in lib/migrations.ts
+# They run automatically on deployment, but you can trigger them by restarting the app
+```
+
+### Troubleshooting
+
+**Migrations not running?**
+- Check App Runner logs for `[Instrumentation]` messages
+- Verify `scripts/start.sh` is being executed (look for `[Startup]` logs)
+- Ensure `DATABASE_URL` is set correctly
+
+**Migration failed?**
+- Server won't start if migrations fail (by design)
+- Check logs for error details
+- Fix the issue and redeploy
+
 ## Data Management
 
 > 📝 **Note:** Kindred currently manages genealogy records through the GraphQL API. This is great for bulk imports, scripting, and integration with other tools. A full-featured UI for adding and editing people, families, and events is on the roadmap—stay tuned!

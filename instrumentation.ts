@@ -1,8 +1,20 @@
 /**
  * Next.js Instrumentation Hook
- * Runs once when the server starts (not during build)
  *
- * Used to run database migrations automatically on deployment.
+ * IMPORTANT: This file is NOT called automatically by Next.js on AWS App Runner.
+ * Instead, it is explicitly called by scripts/start.sh before the server starts.
+ *
+ * Why we use explicit execution:
+ * - Next.js instrumentation hooks don't work reliably on all deployment platforms
+ * - AWS App Runner doesn't trigger the instrumentation hook automatically
+ * - Explicit execution guarantees migrations run before server starts
+ *
+ * How it works:
+ * 1. Docker builds the app with Next.js standalone output
+ * 2. scripts/start.sh explicitly calls register() from this file
+ * 3. Migrations run and complete (or fail and prevent server start)
+ * 4. Server starts only after migrations succeed
+ *
  * This ensures the database schema is always up-to-date when a new
  * version is deployed, without manual intervention.
  *

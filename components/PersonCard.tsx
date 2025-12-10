@@ -93,15 +93,17 @@ export default function PersonCard({
             href={`/tree?person=${person.id}&view=ancestors`}
             className="p-1.5 rounded hover:bg-blue-100 text-blue-600 transition-colors"
             title="View ancestor tree"
+            aria-label={`View ancestor tree for ${person.name_full}`}
           >
-            <TreeDeciduous className="w-4 h-4" />
+            <TreeDeciduous className="w-4 h-4" aria-hidden="true" />
           </Link>
           <Link
             href={`/tree?person=${person.id}&view=descendants`}
             className="p-1.5 rounded hover:bg-green-100 text-green-600 transition-colors"
             title="View descendant tree"
+            aria-label={`View descendant tree for ${person.name_full}`}
           >
-            <Users className="w-4 h-4" />
+            <Users className="w-4 h-4" aria-hidden="true" />
           </Link>
         </div>
       </div>

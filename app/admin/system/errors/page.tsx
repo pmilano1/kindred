@@ -1,7 +1,7 @@
 'use client';
 
-import { useMutation, useQuery } from '@apollo/client/react';
 import { gql } from '@apollo/client';
+import { useMutation, useQuery } from '@apollo/client/react';
 import { AlertCircle } from 'lucide-react';
 import LoadingSpinner from '@/components/LoadingSpinner';
 import { Button } from '@/components/ui';

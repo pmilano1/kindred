@@ -9,7 +9,7 @@ import { useState } from 'react';
 import DeletePersonDialog from '@/components/DeletePersonDialog';
 import EditPersonModal from '@/components/EditPersonModal';
 import FactsEditor from '@/components/FactsEditor';
-import FamilyEditor from '@/components/FamilyEditor';
+import FamilyManagementNew from '@/components/FamilyManagementNew';
 import LifeEventsEditor from '@/components/LifeEventsEditor';
 import MediaGallery from '@/components/MediaGallery';
 import ResearchPanel from '@/components/ResearchPanel';
@@ -465,9 +465,8 @@ export default function PersonPageClient({ personId }: Props) {
             </div>
 
             {/* Spouse & Children - Full width */}
-            <FamilyEditor
+            <FamilyManagementNew
               personId={personId}
-              personSex={person.sex || 'M'}
               families={familiesAsSpouse}
               canEdit={canEdit}
             />

@@ -611,6 +611,12 @@ export const typeDefs = `#graphql
     addChildToFamily(familyId: ID!, personId: ID!): Boolean!
     removeChildFromFamily(familyId: ID!, personId: ID!): Boolean!
 
+    # High-level family mutations (Issue #283 - streamlined UI)
+    addSpouse(personId: ID!, spouseId: ID!, marriageDate: String, marriageYear: Int, marriagePlace: String): Family!
+    addChild(personId: ID!, childId: ID!, otherParentId: ID): Family!
+    removeSpouse(personId: ID!, spouseId: ID!): Boolean!
+    removeChild(personId: ID!, childId: ID!): Boolean!
+
     # Source mutations (requires editor role)
     addSource(personId: ID!, input: SourceInput!): Source!
     updateSource(id: ID!, input: SourceInput!): Source

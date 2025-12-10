@@ -408,6 +408,54 @@ export const REMOVE_CHILD_FROM_FAMILY = gql`
   }
 `;
 
+// High-level family mutations (Issue #283)
+export const ADD_SPOUSE = gql`
+  mutation AddSpouse(
+    $personId: ID!
+    $spouseId: ID!
+    $marriageDate: String
+    $marriageYear: Int
+    $marriagePlace: String
+  ) {
+    addSpouse(
+      personId: $personId
+      spouseId: $spouseId
+      marriageDate: $marriageDate
+      marriageYear: $marriageYear
+      marriagePlace: $marriagePlace
+    ) {
+      id
+      husband_id
+      wife_id
+      marriage_date
+      marriage_year
+      marriage_place
+    }
+  }
+`;
+
+export const ADD_CHILD = gql`
+  mutation AddChild($personId: ID!, $childId: ID!, $otherParentId: ID) {
+    addChild(personId: $personId, childId: $childId, otherParentId: $otherParentId) {
+      id
+      husband_id
+      wife_id
+    }
+  }
+`;
+
+export const REMOVE_SPOUSE = gql`
+  mutation RemoveSpouse($personId: ID!, $spouseId: ID!) {
+    removeSpouse(personId: $personId, spouseId: $spouseId)
+  }
+`;
+
+export const REMOVE_CHILD = gql`
+  mutation RemoveChild($personId: ID!, $childId: ID!) {
+    removeChild(personId: $personId, childId: $childId)
+  }
+`;
+
 export const UPDATE_NOTABLE_STATUS = gql`
   mutation UpdateNotableStatus($id: ID!, $isNotable: Boolean!, $notableDescription: String) {
     updatePerson(id: $id, input: { is_notable: $isNotable, notable_description: $notableDescription }) {

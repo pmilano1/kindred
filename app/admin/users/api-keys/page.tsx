@@ -1,0 +1,195 @@
+'use client';
+
+import { useMutation, useQuery } from '@apollo/client/react';
+import { Copy, Eye, EyeOff, RefreshCw, Trash2 } from 'lucide-react';
+import { useState } from 'react';
+import LoadingSpinner from '@/components/LoadingSpinner';
+import { Button } from '@/components/ui';
+import {
+  GENERATE_API_KEY,
+  GET_ME,
+  REVOKE_API_KEY,
+} from '@/lib/graphql/queries';
+
+interface UserData {
+  me: {
+    id: string;
+    email: string;
+    name: string | null;
+    role: string;
+    api_key: string | null;
+  } | null;
+}
+
+export default function ApiKeysPage() {
+  const [showKey, setShowKey] = useState(false);
+  const [newKey, setNewKey] = useState<string | null>(null);
+  const [copied, setCopied] = useState(false);
+
+  const { data, loading, refetch } = useQuery<UserData>(GET_ME);
+  const [generateApiKey, { loading: generating }] =
+    useMutation(GENERATE_API_KEY);
+  const [revokeApiKey, { loading: revoking }] = useMutation(REVOKE_API_KEY);
+
+  const user = data?.me;
+  const hasKey = !!user?.api_key;
+
+  const handleGenerate = async () => {
+    if (
+      hasKey &&
+      !confirm('This will replace your existing API key. Continue?')
+    )
+      return;
+    try {
+      const result = await generateApiKey();
+      const key = (result.data as { generateApiKey?: string })?.generateApiKey;
+      if (key) {
+        setNewKey(key);
+        setShowKey(true);
+        refetch();
+      }
+    } catch (err) {
+      console.error('Failed to generate API key:', err);
+      alert('Failed to generate API key');
+    }
+  };
+
+  const handleRevoke = async () => {
+    if (
+      !confirm('Revoke your API key? Any scripts using it will stop working.')
+    )
+      return;
+    try {
+      await revokeApiKey();
+      setNewKey(null);
+      setShowKey(false);
+      refetch();
+    } catch (err) {
+      console.error('Failed to revoke API key:', err);
+      alert('Failed to revoke API key');
+    }
+  };
+
+  const copyToClipboard = (text: string) => {
+    navigator.clipboard.writeText(text);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
+  const maskKey = (key: string) => {
+    if (key.length <= 8) return '••••••••';
+    return `${key.slice(0, 4)}••••••••••••••••••••••••${key.slice(-4)}`;
+  };
+
+  if (loading) {
+    return (
+      <div className="flex justify-center py-12">
+        <LoadingSpinner size="lg" message="Loading API keys..." />
+      </div>
+    );
+  }
+
+  return (
+    <div>
+      <div className="mb-6">
+        <h1 className="text-2xl font-bold text-gray-900">API Keys</h1>
+        <p className="text-gray-600 mt-1">
+          Manage your API access for programmatic GraphQL queries
+        </p>
+      </div>
+
+      {/* API Key Section */}
+      <div className="bg-white rounded-xl shadow-sm border p-6 mb-8">
+        <h2 className="text-xl font-semibold mb-4">Your API Key</h2>
+        <p className="text-gray-600 mb-6">
+          Use an API key to access the GraphQL API programmatically. Include it
+          in the
+          <code className="mx-1 px-2 py-1 bg-gray-100 rounded text-sm">
+            X-API-Key
+          </code>{' '}
+          header.
+        </p>
+
+        {newKey && (
+          <div className="mb-6 p-4 bg-green-50 border border-green-200 rounded-lg">
+            <p className="text-green-800 font-medium mb-2">
+              🔑 New API Key Generated
+            </p>
+            <p className="text-green-700 text-sm mb-3">
+              Copy this key now—you won&apos;t be able to see it again!
+            </p>
+            <div className="flex items-center gap-2 bg-white border rounded p-2">
+              <code className="flex-1 text-sm font-mono break-all">
+                {newKey}
+              </code>
+              <Button
+                onClick={() => copyToClipboard(newKey)}
+                size="sm"
+                icon={<Copy className="w-3 h-3" />}
+              >
+                {copied ? '✓ Copied!' : 'Copy'}
+              </Button>
+            </div>
+          </div>
+        )}
+
+        {hasKey && !newKey && (
+          <div className="mb-6 p-4 bg-gray-50 border rounded-lg">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="font-medium text-gray-700">Active API Key</p>
+                <code className="text-sm text-gray-500">
+                  {showKey ? user?.api_key : maskKey(user?.api_key || '')}
+                </code>
+              </div>
+              <Button
+                onClick={() => setShowKey(!showKey)}
+                variant="ghost"
+                size="sm"
+                icon={
+                  showKey ? (
+                    <EyeOff className="w-3 h-3" />
+                  ) : (
+                    <Eye className="w-3 h-3" />
+                  )
+                }
+              >
+                {showKey ? 'Hide' : 'Show'}
+              </Button>
+            </div>
+          </div>
+        )}
+
+        {!hasKey && !newKey && (
+          <div className="mb-6 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
+            <p className="text-yellow-800">
+              No API key configured. Generate one to enable API access.
+            </p>
+          </div>
+        )}
+
+        <div className="flex gap-4">
+          <Button
+            onClick={handleGenerate}
+            disabled={generating}
+            loading={generating}
+            icon={<RefreshCw className="w-4 h-4" />}
+          >
+            {hasKey ? 'Regenerate Key' : 'Generate API Key'}
+          </Button>
+          {hasKey && (
+            <Button
+              onClick={handleRevoke}
+              disabled={revoking}
+              loading={revoking}
+              variant="danger"
+              icon={<Trash2 className="w-4 h-4" />}
+            >
+              Revoke Key
+            </Button>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}

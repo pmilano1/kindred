@@ -158,6 +158,8 @@ export const typeDefs = `#graphql
     motto: String
     created_at: String
     updated_at: String
+    # Count of people with this surname (resolved via field resolver)
+    peopleCount: Int!
   }
 
   # ===========================================

@@ -2745,4 +2745,15 @@ export const resolvers = {
     created_at: (activity: { created_at: Date | string | null }) =>
       activity.created_at ? new Date(activity.created_at).toISOString() : null,
   },
+
+  // SurnameCrest type resolver to add peopleCount field
+  SurnameCrest: {
+    peopleCount: async (crest: { surname: string }) => {
+      const { rows } = await pool.query(
+        `SELECT COUNT(*) as count FROM people WHERE LOWER(name_surname) = LOWER($1)`,
+        [crest.surname],
+      );
+      return Number.parseInt(rows[0]?.count || '0', 10);
+    },
+  },
 };

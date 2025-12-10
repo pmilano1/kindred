@@ -2,10 +2,10 @@
 
 import { NetworkStatus } from '@apollo/client';
 import { useQuery } from '@apollo/client/react';
-import { Loader2, UserPlus } from 'lucide-react';
-import { useRouter } from 'next/navigation';
+import { Loader2, UserPlus, X } from 'lucide-react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { useSession } from 'next-auth/react';
-import { useCallback, useMemo, useState } from 'react';
+import { Suspense, useCallback, useEffect, useMemo, useState } from 'react';
 import CreatePersonModal from '@/components/CreatePersonModal';
 import LoadingSpinner from '@/components/LoadingSpinner';
 import PersonCard from '@/components/PersonCard';
@@ -38,16 +38,26 @@ interface PersonConnection {
   };
 }
 
-export default function PeoplePage() {
+function PeoplePageContent() {
   const { data: session } = useSession();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const canEdit =
     session?.user?.role === 'admin' || session?.user?.role === 'editor';
 
   const [filter, setFilter] = useState<'all' | 'living' | 'male' | 'female'>(
     'all',
   );
+  const [surnameFilter, setSurnameFilter] = useState<string>('');
   const [showCreateModal, setShowCreateModal] = useState(false);
+
+  // Read surname from URL query params
+  useEffect(() => {
+    const surname = searchParams.get('surname');
+    if (surname) {
+      setSurnameFilter(surname);
+    }
+  }, [searchParams]);
 
   const { data, loading, fetchMore, networkStatus } = useQuery<{
     people: PersonConnection;
@@ -69,14 +79,19 @@ export default function PeoplePage() {
   const hasNextPage = data?.people.pageInfo.hasNextPage ?? false;
   const endCursor = data?.people.pageInfo.endCursor;
 
-  // Apply client-side filter for sex/living
+  // Apply client-side filter for sex/living/surname
   const filteredPeople = useMemo(() => {
     let result = people;
     if (filter === 'living') result = result.filter((p) => p.living);
     else if (filter === 'male') result = result.filter((p) => p.sex === 'M');
     else if (filter === 'female') result = result.filter((p) => p.sex === 'F');
+    if (surnameFilter) {
+      result = result.filter(
+        (p) => p.name_surname?.toLowerCase() === surnameFilter.toLowerCase(),
+      );
+    }
     return result;
-  }, [filter, people]);
+  }, [filter, people, surnameFilter]);
 
   const loadMore = useCallback(() => {
     if (!hasNextPage || !endCursor || loading) return;
@@ -118,21 +133,41 @@ export default function PeoplePage() {
         }
       />
       <div className="content-wrapper">
-        <div className="flex justify-end mb-6">
-          <Select
-            value={filter}
-            onValueChange={(value) => setFilter(value as typeof filter)}
-          >
-            <SelectTrigger className="w-48">
-              <SelectValue placeholder="Filter" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All People</SelectItem>
-              <SelectItem value="living">Living Only</SelectItem>
-              <SelectItem value="male">Male Only</SelectItem>
-              <SelectItem value="female">Female Only</SelectItem>
-            </SelectContent>
-          </Select>
+        <div className="flex justify-between items-center mb-6">
+          {surnameFilter && (
+            <div className="flex items-center gap-2 px-3 py-2 bg-green-50 border border-green-200 rounded-lg">
+              <span className="text-sm text-gray-700">
+                Surname: <strong>{surnameFilter}</strong>
+              </span>
+              <button
+                type="button"
+                onClick={() => {
+                  setSurnameFilter('');
+                  router.push('/people');
+                }}
+                className="text-gray-500 hover:text-gray-700"
+                aria-label="Clear surname filter"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+          )}
+          <div className={surnameFilter ? 'ml-auto' : ''}>
+            <Select
+              value={filter}
+              onValueChange={(value) => setFilter(value as typeof filter)}
+            >
+              <SelectTrigger className="w-48">
+                <SelectValue placeholder="Filter" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All People</SelectItem>
+                <SelectItem value="living">Living Only</SelectItem>
+                <SelectItem value="male">Male Only</SelectItem>
+                <SelectItem value="female">Female Only</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
         </div>
 
         {isInitialLoading ? (
@@ -169,5 +204,15 @@ export default function PeoplePage() {
         onSuccess={(personId) => router.push(`/person/${personId}`)}
       />
     </>
+  );
+}
+
+export default function PeoplePage() {
+  return (
+    <Suspense
+      fallback={<LoadingSpinner size="lg" message="Loading people..." />}
+    >
+      <PeoplePageContent />
+    </Suspense>
   );
 }

@@ -752,6 +752,7 @@ export const GET_SURNAME_CRESTS = gql`
       origin
       motto
       created_at
+      peopleCount
     }
   }
 `;

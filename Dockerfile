@@ -40,12 +40,15 @@ COPY --from=builder /app/public ./public
 COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
 COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
 
+# Copy startup script that runs migrations
+COPY --from=builder --chown=nextjs:nodejs /app/scripts/start.sh ./scripts/
+
 USER nextjs
 
 EXPOSE 3000
 
 ENV PORT=3000
 
-# Force binding to all interfaces - HOSTNAME env var doesn't work reliably
-CMD ["node", "-e", "process.env.HOSTNAME='0.0.0.0'; require('./server.js')"]
+# Run startup script (migrations + server)
+CMD ["sh", "./scripts/start.sh"]
 

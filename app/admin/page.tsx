@@ -1,6 +1,7 @@
 'use client';
 
-import { gql, useQuery } from '@apollo/client/react';
+import { gql } from '@apollo/client';
+import { useQuery } from '@apollo/client/react';
 import { Database, Mail, Package, Users } from 'lucide-react';
 import Link from 'next/link';
 import { GET_USERS } from '@/lib/graphql/queries';
@@ -39,7 +40,8 @@ export default function AdminDashboard() {
 
   const users = usersData?.users || [];
   const settings = settingsData?.settings || [];
-  const migrationNeeded = settingsData?.migrationStatus?.migrationNeeded ?? false;
+  const migrationNeeded =
+    settingsData?.migrationStatus?.migrationNeeded ?? false;
 
   // Get email provider setting
   const emailProvider =

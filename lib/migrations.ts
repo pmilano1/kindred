@@ -710,7 +710,6 @@ export const migrations: Migration[] = [
       // Users indexes
       await pool.query(`
         CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);
-        CREATE INDEX IF NOT EXISTS idx_users_account_type ON users(account_type);
       `);
       results.push('Created users indexes');
 

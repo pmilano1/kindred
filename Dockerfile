@@ -53,6 +53,8 @@ USER nextjs
 EXPOSE 3000
 
 ENV PORT=3000
+# HOSTNAME must be 0.0.0.0 for App Runner health checks to reach the container
+ENV HOSTNAME=0.0.0.0
 
 # Industry standard deployment pattern:
 # 1. Run migrations (exits with error if migrations fail)

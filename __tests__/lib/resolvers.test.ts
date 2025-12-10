@@ -632,8 +632,10 @@ describe('GraphQL Resolvers', () => {
         name_full: 'Updated Name',
         birth_year: 1960,
       };
-      mockedQuery.mockResolvedValueOnce({ rows: [] }); // UPDATE
-      mockedQuery.mockResolvedValueOnce({ rows: [mockUpdatedPerson] }); // SELECT
+      // updatePerson calls getPerson twice (before and after update) + 1 UPDATE
+      mockedQuery.mockResolvedValueOnce({ rows: [mockUpdatedPerson] }); // SELECT for audit log (getPerson)
+      mockedQuery.mockResolvedValueOnce({ rows: [] }); // UPDATE people
+      mockedQuery.mockResolvedValueOnce({ rows: [mockUpdatedPerson] }); // SELECT for return (getPerson)
 
       const context = {
         user: { id: 'user-1', email: 'test@example.com', role: 'editor' },

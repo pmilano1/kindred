@@ -1,7 +1,7 @@
 'use client';
 
 import { useMutation, useQuery } from '@apollo/client/react';
-import { Plus, Users } from 'lucide-react';
+import { Edit2, Plus, Users } from 'lucide-react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { useSession } from 'next-auth/react';
@@ -12,6 +12,7 @@ import {
   GET_SURNAME_CRESTS,
   REMOVE_SURNAME_CREST,
   SET_SURNAME_CREST,
+  UPDATE_SURNAME_CREST,
 } from '@/lib/graphql/queries';
 
 interface SurnameCrest {
@@ -33,11 +34,13 @@ export default function CoatsOfArmsPage() {
     surnameCrests: SurnameCrest[];
   }>(GET_SURNAME_CRESTS);
   const [setSurnameCrest] = useMutation(SET_SURNAME_CREST);
+  const [updateSurnameCrest] = useMutation(UPDATE_SURNAME_CREST);
   const [removeSurnameCrest] = useMutation(REMOVE_SURNAME_CREST);
 
   const crests = data?.surnameCrests || [];
 
   const [showForm, setShowForm] = useState(false);
+  const [editingCrest, setEditingCrest] = useState<SurnameCrest | null>(null);
   const [surname, setSurname] = useState('');
   const [description, setDescription] = useState('');
   const [origin, setOrigin] = useState('');
@@ -57,16 +60,34 @@ export default function CoatsOfArmsPage() {
     e.preventDefault();
     if (!surname || !imageData) return;
     try {
-      await setSurnameCrest({
-        variables: {
-          surname,
-          coatOfArms: imageData,
-          description: description || null,
-          origin: origin || null,
-          motto: motto || null,
-        },
-      });
+      if (editingCrest) {
+        // Update existing crest
+        await updateSurnameCrest({
+          variables: {
+            id: editingCrest.id,
+            input: {
+              surname,
+              coat_of_arms: imageData,
+              description: description || null,
+              origin: origin || null,
+              motto: motto || null,
+            },
+          },
+        });
+      } else {
+        // Create new crest
+        await setSurnameCrest({
+          variables: {
+            surname,
+            coatOfArms: imageData,
+            description: description || null,
+            origin: origin || null,
+            motto: motto || null,
+          },
+        });
+      }
       setShowForm(false);
+      setEditingCrest(null);
       setSurname('');
       setDescription('');
       setOrigin('');
@@ -74,8 +95,18 @@ export default function CoatsOfArmsPage() {
       setImageData('');
       refetch();
     } catch (err) {
-      console.error('Failed to set surname crest:', err);
+      console.error('Failed to save surname crest:', err);
     }
+  };
+
+  const handleEdit = (crest: SurnameCrest) => {
+    setEditingCrest(crest);
+    setSurname(crest.surname);
+    setDescription(crest.description || '');
+    setOrigin(crest.origin || '');
+    setMotto(crest.motto || '');
+    setImageData(crest.coat_of_arms);
+    setShowForm(true);
   };
 
   const handleRemove = async (surnameToRemove: string) => {
@@ -114,7 +145,7 @@ export default function CoatsOfArmsPage() {
         {showForm && isEditor && (
           <form onSubmit={handleSubmit} className="card p-6 mb-6 space-y-4">
             <h3 className="text-lg font-semibold">
-              Add Coat of Arms for Surname
+              {editingCrest ? 'Edit' : 'Add'} Coat of Arms for Surname
             </h3>
             <p className="text-sm text-gray-600">
               All people with this surname will automatically display this
@@ -179,7 +210,7 @@ export default function CoatsOfArmsPage() {
               </div>
             )}
             <Button type="submit" icon={<Plus className="w-4 h-4" />}>
-              Add Surname Crest
+              {editingCrest ? 'Update' : 'Add'} Surname Crest
             </Button>
           </form>
         )}
@@ -237,14 +268,25 @@ export default function CoatsOfArmsPage() {
                   )}
                 </div>
                 {isEditor && (
-                  <Button
-                    variant="link"
-                    size="sm"
-                    onClick={() => handleRemove(crest.surname)}
-                    className="text-red-600 text-sm hover:underline mt-3 p-0"
-                  >
-                    Remove
-                  </Button>
+                  <div className="flex gap-2 justify-center mt-3">
+                    <Button
+                      variant="link"
+                      size="sm"
+                      onClick={() => handleEdit(crest)}
+                      className="text-green-600 text-sm hover:underline p-0"
+                      icon={<Edit2 className="w-3 h-3" />}
+                    >
+                      Edit
+                    </Button>
+                    <Button
+                      variant="link"
+                      size="sm"
+                      onClick={() => handleRemove(crest.surname)}
+                      className="text-red-600 text-sm hover:underline p-0"
+                    >
+                      Remove
+                    </Button>
+                  </div>
                 )}
               </div>
             ))}

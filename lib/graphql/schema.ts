@@ -551,6 +551,14 @@ export const typeDefs = `#graphql
     marriage_place: String
   }
 
+  input SurnameCrestInput {
+    surname: String
+    coat_of_arms: String
+    description: String
+    origin: String
+    motto: String
+  }
+
   type Mutation {
     # Person mutations
     createPerson(input: PersonInput!): Person!
@@ -583,6 +591,7 @@ export const typeDefs = `#graphql
 
     # Surname crest mutations (requires editor role)
     setSurnameCrest(surname: String!, coatOfArms: String!, description: String, origin: String, motto: String): SurnameCrest
+    updateSurnameCrest(id: ID!, input: SurnameCrestInput!): SurnameCrest
     removeSurnameCrest(surname: String!): Boolean
 
     # Person coat of arms override (requires editor role)

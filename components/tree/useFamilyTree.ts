@@ -325,61 +325,106 @@ export function useFamilyTree({
     rootNode.children = descendantRoot.children.map(convertDescendantToFamily);
     rootNode.hasMoreDescendants = descendantRoot.hasMoreDescendants;
 
+    // Track visited nodes to prevent infinite recursion from circular relationships
+    const visitedAncestors = new Set<string>();
+    const visitedDescendants = new Set<string>();
+
     // Apply expanded ancestor branches
-    const mergeAncestorBranch = (node: FamilyTreeNode): FamilyTreeNode => {
+    const mergeAncestorBranch = (
+      node: FamilyTreeNode,
+    ): FamilyTreeNode | null => {
+      // Cycle detection for ancestors
+      if (visitedAncestors.has(node.id)) {
+        console.warn(
+          `Circular relationship detected for person ${node.id} in ancestor branch`,
+        );
+        return null;
+      }
+
+      visitedAncestors.add(node.id);
+
       const expandedData = mergedAncestorBranches.get(node.id);
 
       // If this node has been expanded, merge the new data
       if (expandedData) {
+        const father = expandedData.father
+          ? mergeAncestorBranch(convertPedigreeToFamily(expandedData.father))
+          : node.father
+            ? mergeAncestorBranch(node.father)
+            : undefined;
+        const mother = expandedData.mother
+          ? mergeAncestorBranch(convertPedigreeToFamily(expandedData.mother))
+          : node.mother
+            ? mergeAncestorBranch(node.mother)
+            : undefined;
+
         const merged = {
           ...node,
-          father: expandedData.father
-            ? mergeAncestorBranch(convertPedigreeToFamily(expandedData.father))
-            : node.father
-              ? mergeAncestorBranch(node.father)
-              : undefined,
-          mother: expandedData.mother
-            ? mergeAncestorBranch(convertPedigreeToFamily(expandedData.mother))
-            : node.mother
-              ? mergeAncestorBranch(node.mother)
-              : undefined,
+          father: father || undefined,
+          mother: mother || undefined,
           hasMoreAncestors: expandedData.hasMoreAncestors,
         };
         return merged;
       }
 
       // Otherwise, recursively merge children
+      const father = node.father ? mergeAncestorBranch(node.father) : undefined;
+      const mother = node.mother ? mergeAncestorBranch(node.mother) : undefined;
+
       return {
         ...node,
-        father: node.father ? mergeAncestorBranch(node.father) : undefined,
-        mother: node.mother ? mergeAncestorBranch(node.mother) : undefined,
+        father: father || undefined,
+        mother: mother || undefined,
       };
     };
 
     // Apply expanded descendant branches
-    const mergeDescendantBranch = (node: FamilyTreeNode): FamilyTreeNode => {
+    const mergeDescendantBranch = (
+      node: FamilyTreeNode,
+    ): FamilyTreeNode | null => {
+      // Cycle detection for descendants
+      if (visitedDescendants.has(node.id)) {
+        console.warn(
+          `Circular relationship detected for person ${node.id} in descendant branch`,
+        );
+        return null;
+      }
+
+      visitedDescendants.add(node.id);
+
       const expandedData = mergedDescendantBranches.get(node.id);
 
       // If this node has been expanded, merge the new data
       if (expandedData) {
+        const children = expandedData.children
+          .map((child) =>
+            mergeDescendantBranch(convertDescendantToFamily(child)),
+          )
+          .filter((child): child is FamilyTreeNode => child !== null);
+
         return {
           ...node,
-          children: expandedData.children.map((child) =>
-            mergeDescendantBranch(convertDescendantToFamily(child)),
-          ),
+          children,
           hasMoreDescendants: expandedData.hasMoreDescendants,
         };
       }
 
       // Otherwise, recursively merge children
+      const children = node.children
+        .map(mergeDescendantBranch)
+        .filter((child): child is FamilyTreeNode => child !== null);
+
       return {
         ...node,
-        children: node.children.map(mergeDescendantBranch),
+        children,
       };
     };
 
     let merged = mergeAncestorBranch(rootNode);
+    if (!merged) return rootNode; // Fallback if cycle detected
+
     merged = mergeDescendantBranch(merged);
+    if (!merged) return rootNode; // Fallback if cycle detected
 
     return merged;
   }, [

@@ -199,24 +199,46 @@ export function useDescendantTree({
   const tree = useMemo(() => {
     if (!data?.descendants) return null;
 
-    const mergeNode = (node: DescendantNode): DescendantNode => {
+    // Track visited nodes to prevent infinite recursion from circular relationships
+    const visited = new Set<string>();
+
+    const mergeNode = (node: DescendantNode): DescendantNode | null => {
+      // Cycle detection: if we've already visited this node, return null to break the cycle
+      if (visited.has(node.id)) {
+        console.warn(
+          `Circular relationship detected for person ${node.id} in descendant tree`,
+        );
+        return null;
+      }
+
+      visited.add(node.id);
+
       const expandedData = mergedBranches.get(node.id);
 
       if (expandedData && node.hasMoreDescendants) {
+        const children = expandedData.children
+          .map(mergeNode)
+          .filter((child): child is DescendantNode => child !== null);
+
         return {
           ...node,
           hasMoreDescendants: expandedData.hasMoreDescendants,
-          children: expandedData.children.map(mergeNode),
+          children,
         };
       }
 
+      const children = node.children
+        .map(mergeNode)
+        .filter((child): child is DescendantNode => child !== null);
+
       return {
         ...node,
-        children: node.children.map(mergeNode),
+        children,
       };
     };
 
-    return mergeNode(data.descendants);
+    const result = mergeNode(data.descendants);
+    return result || data.descendants; // Fallback to original data if cycle detected at root
   }, [data?.descendants, mergedBranches]);
 
   return {

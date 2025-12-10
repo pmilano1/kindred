@@ -208,34 +208,54 @@ export function useAncestorTree({
   const pedigree = useMemo(() => {
     if (!data?.ancestors) return null;
 
+    // Track visited nodes to prevent infinite recursion from circular relationships
+    const visited = new Set<string>();
+
     // Deep clone and merge expanded branches
-    const mergeNode = (node: PedigreeNode): PedigreeNode => {
+    const mergeNode = (node: PedigreeNode): PedigreeNode | null => {
+      // Cycle detection: if we've already visited this node, return null to break the cycle
+      if (visited.has(node.id)) {
+        console.warn(
+          `Circular relationship detected for person ${node.id} in ancestor tree`,
+        );
+        return null;
+      }
+
+      visited.add(node.id);
+
       // Check if this node has been expanded with more data
       const expandedData = mergedBranches.get(node.id);
 
       if (expandedData && node.hasMoreAncestors) {
         // Replace this node's children with the expanded data
+        const father = expandedData.father
+          ? mergeNode(expandedData.father)
+          : undefined;
+        const mother = expandedData.mother
+          ? mergeNode(expandedData.mother)
+          : undefined;
+
         return {
           ...node,
           hasMoreAncestors: expandedData.hasMoreAncestors,
-          father: expandedData.father
-            ? mergeNode(expandedData.father)
-            : undefined,
-          mother: expandedData.mother
-            ? mergeNode(expandedData.mother)
-            : undefined,
+          father: father || undefined,
+          mother: mother || undefined,
         };
       }
 
       // Recursively process children
+      const father = node.father ? mergeNode(node.father) : undefined;
+      const mother = node.mother ? mergeNode(node.mother) : undefined;
+
       return {
         ...node,
-        father: node.father ? mergeNode(node.father) : undefined,
-        mother: node.mother ? mergeNode(node.mother) : undefined,
+        father: father || undefined,
+        mother: mother || undefined,
       };
     };
 
-    return mergeNode(data.ancestors);
+    const result = mergeNode(data.ancestors);
+    return result || data.ancestors; // Fallback to original data if cycle detected at root
   }, [data?.ancestors, mergedBranches]);
 
   return {

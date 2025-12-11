@@ -114,8 +114,8 @@ test.describe('Tree Navigation', () => {
   test('navigating to tree with person ID centers on that person', async ({
     page,
   }) => {
-    // Navigate to tree with a specific person
-    await page.goto('/tree?person=test-person-id');
+    // Navigate to tree with a test person ID from seed data
+    await page.goto('/tree?person=person000001');
     await page.waitForLoadState('networkidle');
 
     // The tree should load and center on the specified person

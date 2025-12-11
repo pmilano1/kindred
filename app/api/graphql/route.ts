@@ -131,9 +131,10 @@ async function validateApiKey(apiKey: string) {
   return result.rows[0] || null;
 }
 
-// Dev-only impersonation when SKIP_AUTH=true
+// Dev/test-only impersonation when SKIP_AUTH=true
+// Allowed in development (local dev) and when not in production (CI tests)
 const SKIP_AUTH =
-  process.env.SKIP_AUTH === 'true' && process.env.NODE_ENV === 'development';
+  process.env.SKIP_AUTH === 'true' && process.env.NODE_ENV !== 'production';
 
 // Create handler with context from NextAuth session or API key
 const handler = startServerAndCreateNextHandler<NextRequest, Context>(server, {

@@ -1,0 +1,125 @@
+{
+  "master": {
+    "tasks": [
+      {
+        "id": "1",
+        "title": "Issue #287: Dual-mode spouse/child addition with duplicate detection",
+        "description": "Enhance spouse and child addition UI to support both selecting existing people and creating new people on-the-fly, with intelligent duplicate detection safeguards.",
+        "details": "",
+        "testStrategy": "",
+        "status": "in-progress",
+        "dependencies": [],
+        "priority": "high",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Add checkDuplicates GraphQL query",
+            "description": "Create query that searches for potential duplicate people by name (exact and Levenshtein similarity), birth year ±2 years, same surname. Returns matches with matchReason field.",
+            "details": "",
+            "status": "done",
+            "dependencies": [],
+            "parentTaskId": 1,
+            "parentId": "undefined",
+            "updatedAt": "2025-12-10T22:43:42.749Z"
+          },
+          {
+            "id": 2,
+            "title": "Add createAndAddSpouse mutation",
+            "description": "Create mutation that creates a new person AND adds them as spouse in one transaction. Checks for duplicates first and returns duplicateWarnings array.",
+            "details": "",
+            "status": "done",
+            "dependencies": [],
+            "parentTaskId": 1,
+            "parentId": "undefined",
+            "updatedAt": "2025-12-10T22:46:23.299Z"
+          },
+          {
+            "id": 3,
+            "title": "Add createAndAddChild mutation",
+            "description": "Create mutation that creates a new person AND adds them as child in one transaction. Checks for duplicates first and returns duplicateWarnings array.",
+            "details": "",
+            "status": "done",
+            "dependencies": [],
+            "parentTaskId": 1,
+            "parentId": "undefined",
+            "updatedAt": "2025-12-10T22:46:24.324Z"
+          },
+          {
+            "id": 4,
+            "title": "Create ModeToggle component",
+            "description": "Reusable toggle component for switching between Search Existing and Create New modes.",
+            "details": "",
+            "status": "done",
+            "dependencies": [],
+            "parentTaskId": 1,
+            "parentId": "undefined",
+            "updatedAt": "2025-12-10T22:46:48.684Z"
+          },
+          {
+            "id": 5,
+            "title": "Create inline PersonForm component",
+            "description": "Compact form for Create New mode with fields: name_full, name_given, name_surname, sex, birth_year, birth_place, living.",
+            "details": "",
+            "status": "done",
+            "dependencies": [],
+            "parentTaskId": 1,
+            "parentId": "undefined",
+            "updatedAt": "2025-12-10T22:47:14.674Z"
+          },
+          {
+            "id": 6,
+            "title": "Create DuplicateWarningModal component",
+            "description": "Modal showing potential duplicate matches. Options: select existing person, create anyway, or cancel. Shows name, birth/death years, living status for each match.",
+            "details": "",
+            "status": "done",
+            "dependencies": [],
+            "parentTaskId": 1,
+            "parentId": "undefined",
+            "updatedAt": "2025-12-10T22:47:50.764Z"
+          },
+          {
+            "id": 7,
+            "title": "Update AddSpouseForm with dual-mode",
+            "description": "Update FamilyManagementNew AddSpouseForm section to use ModeToggle, PersonForm in Create mode, and DuplicateWarningModal before creation.",
+            "details": "",
+            "status": "in-progress",
+            "dependencies": [],
+            "parentTaskId": 1,
+            "parentId": "undefined",
+            "updatedAt": "2025-12-10T22:47:52.194Z"
+          },
+          {
+            "id": 8,
+            "title": "Update AddChildForm with dual-mode",
+            "description": "Update FamilyManagementNew AddChildForm section to use ModeToggle, PersonForm in Create mode, and DuplicateWarningModal before creation.",
+            "details": "",
+            "status": "pending",
+            "dependencies": [],
+            "parentTaskId": 1,
+            "parentId": "undefined"
+          },
+          {
+            "id": 9,
+            "title": "Add tests for duplicate detection",
+            "description": "Add unit tests for checkDuplicates query, createAndAddSpouse, createAndAddChild mutations, and DuplicateWarningModal component.",
+            "details": "",
+            "status": "pending",
+            "dependencies": [],
+            "parentTaskId": 1,
+            "parentId": "undefined"
+          }
+        ],
+        "updatedAt": "2025-12-10T22:47:52.194Z"
+      }
+    ],
+    "metadata": {
+      "version": "1.0.0",
+      "lastModified": "2025-12-10T22:47:52.195Z",
+      "taskCount": 1,
+      "completedCount": 0,
+      "tags": [
+        "master"
+      ]
+    }
+  }
+}

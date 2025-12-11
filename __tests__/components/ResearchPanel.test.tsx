@@ -54,7 +54,15 @@ describe('ResearchPanel Field Mapping (Issue #215)', () => {
 
   describe('GraphQL SourceInput schema alignment', () => {
     // Read the schema to verify field names match
-    const schemaPath = path.join(process.cwd(), 'lib', 'graphql', 'schema.ts');
+    // SourceInput is now in the modular schema/types/source.ts file
+    const schemaPath = path.join(
+      process.cwd(),
+      'lib',
+      'graphql',
+      'schema',
+      'types',
+      'source.ts',
+    );
     const schemaSource = fs.readFileSync(schemaPath, 'utf-8');
 
     it('schema defines action as required field', () => {

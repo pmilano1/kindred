@@ -231,7 +231,7 @@ export const migrations: Migration[] = [
       await pool.query(`
         CREATE TABLE IF NOT EXISTS password_reset_tokens (
           id SERIAL PRIMARY KEY,
-          user_id UUID REFERENCES users(id) ON DELETE CASCADE,
+          user_id VARCHAR(12) REFERENCES users(id) ON DELETE CASCADE,
           token VARCHAR(255) UNIQUE NOT NULL,
           expires_at TIMESTAMP NOT NULL,
           used_at TIMESTAMP,
@@ -461,7 +461,7 @@ export const migrations: Migration[] = [
         CREATE TABLE IF NOT EXISTS person_comments (
           id VARCHAR(12) PRIMARY KEY,
           person_id VARCHAR(12) NOT NULL REFERENCES people(id) ON DELETE CASCADE,
-          user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+          user_id VARCHAR(12) NOT NULL REFERENCES users(id) ON DELETE CASCADE,
           parent_comment_id VARCHAR(12) REFERENCES person_comments(id) ON DELETE CASCADE,
           content TEXT NOT NULL,
           created_at TIMESTAMP DEFAULT NOW(),
@@ -889,7 +889,7 @@ export const migrations: Migration[] = [
       await pool.query(`
         CREATE TABLE IF NOT EXISTS client_errors (
           id VARCHAR(12) PRIMARY KEY,
-          user_id UUID REFERENCES users(id) ON DELETE SET NULL,
+          user_id VARCHAR(12) REFERENCES users(id) ON DELETE SET NULL,
           error_message TEXT NOT NULL,
           stack_trace TEXT,
           url TEXT,

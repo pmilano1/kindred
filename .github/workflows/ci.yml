@@ -237,7 +237,7 @@ jobs:
           SKIP_AUTH: 'true'
           NEXTAUTH_SECRET: 'test-secret-for-playwright'
           NEXTAUTH_URL: 'http://localhost:3000'
-          DATABASE_URL: 'postgresql://test:test@localhost:5432/test'
+          DATABASE_URL: 'postgresql://test:test@localhost:5432/test?sslmode=disable'
 
       - name: Upload Playwright report
         uses: actions/upload-artifact@v4

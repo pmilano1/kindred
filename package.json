@@ -18,7 +18,8 @@
     "test:playwright": "playwright test",
     "test:playwright:ui": "playwright test --ui",
     "test:playwright:headed": "playwright test --headed",
-    "db:migrate": "tsx scripts/run-migrations.ts"
+    "db:migrate": "tsx scripts/run-migrations.ts",
+    "db:seed": "tsx scripts/seed-test-data.ts"
   },
   "dependencies": {
     "@apollo/client": "^4.0.9",

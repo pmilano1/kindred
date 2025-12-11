@@ -192,6 +192,11 @@ jobs:
         env:
           DATABASE_URL: 'postgresql://test:test@localhost:5432/test?sslmode=disable'
 
+      - name: Seed test data
+        run: npm run db:seed
+        env:
+          DATABASE_URL: 'postgresql://test:test@localhost:5432/test?sslmode=disable'
+
       - name: Install Playwright browsers
         run: npx playwright install chromium --with-deps
 

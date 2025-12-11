@@ -15,18 +15,36 @@ export async function generateMetadata(): Promise<Metadata> {
     return {
       title: `${settings.family_name} ${settings.site_name}`,
       description: settings.site_tagline,
+      manifest: '/manifest.json',
       icons: {
         icon: '/favicon.svg',
-        apple: '/kindred-logo.svg',
+        apple: '/icons/apple-touch-icon.png',
+      },
+      appleWebApp: {
+        capable: true,
+        statusBarStyle: 'default',
+        title: settings.site_name,
+      },
+      formatDetection: {
+        telephone: false,
       },
     };
   } catch {
     return {
       title: 'Family Genealogy',
       description: 'Explore the family tree and ancestry',
+      manifest: '/manifest.json',
       icons: {
         icon: '/favicon.svg',
-        apple: '/kindred-logo.svg',
+        apple: '/icons/apple-touch-icon.png',
+      },
+      appleWebApp: {
+        capable: true,
+        statusBarStyle: 'default',
+        title: 'Kindred',
+      },
+      formatDetection: {
+        telephone: false,
       },
     };
   }
@@ -60,6 +78,11 @@ export default async function RootLayout({
   return (
     <html lang="en">
       <head>
+        <meta name="theme-color" content={themeColor} />
+        <meta name="mobile-web-app-capable" content="yes" />
+        <meta name="apple-mobile-web-app-capable" content="yes" />
+        <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+        <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png" />
         <style>{`
           :root {
             --primary-color: ${themeColor};

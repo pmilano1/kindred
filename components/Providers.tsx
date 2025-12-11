@@ -4,6 +4,7 @@ import { ApolloClient, HttpLink, InMemoryCache } from '@apollo/client/core';
 import { ApolloProvider } from '@apollo/client/react';
 import { SessionProvider } from 'next-auth/react';
 import { useMemo } from 'react';
+import { ServiceWorkerRegistration } from './ServiceWorkerRegistration';
 import { SettingsProvider, type SiteSettings } from './SettingsProvider';
 import { SidebarProvider } from './SidebarContext';
 
@@ -69,7 +70,10 @@ export function Providers({ children, settings }: ProvidersProps) {
     >
       <ApolloWrapper>
         <SettingsProvider settings={settings}>
-          <SidebarProvider>{children}</SidebarProvider>
+          <SidebarProvider>
+            {children}
+            <ServiceWorkerRegistration />
+          </SidebarProvider>
         </SettingsProvider>
       </ApolloWrapper>
     </SessionProvider>

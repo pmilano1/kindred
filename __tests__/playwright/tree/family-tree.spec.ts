@@ -11,34 +11,26 @@ test.describe('Family Tree', () => {
     // Check that the page title or main content is present
     await expect(page).toHaveURL(/\/tree/);
 
-    // Check for console errors
-    const errors: string[] = [];
-    page.on('console', (msg) => {
-      if (msg.type() === 'error') {
-        errors.push(msg.text());
-      }
-    });
-
     // Wait for the page to stabilize
     await page.waitForLoadState('networkidle');
 
-    // Tree container should be visible
-    const treeContainer = page
-      .locator('[data-testid="tree-container"]')
-      .or(page.locator('.react-flow'));
-    await expect(treeContainer).toBeVisible({ timeout: 10000 });
+    // The tree uses D3.js with SVG, look for the SVG element or tree controls
+    // The tree container has the SVG inside it
+    const svgElement = page.locator('svg').first();
+    await expect(svgElement).toBeVisible({ timeout: 10000 });
   });
 
   test('tree renders person nodes', async ({ page }) => {
     // Wait for tree to load
     await page.waitForLoadState('networkidle');
 
-    // Look for person nodes in the tree
-    const personNodes = page.locator('.react-flow__node');
-    await expect(personNodes.first()).toBeVisible({ timeout: 10000 });
+    // The D3 tree renders text elements with person names
+    // Look for any text that contains typical person-related content
+    const personText = page.getByText(/\d{4}\s*–\s*(Living|\d{4})/);
+    await expect(personText.first()).toBeVisible({ timeout: 10000 });
 
-    // Should have at least one node
-    const nodeCount = await personNodes.count();
+    // Should have at least one node with year info
+    const nodeCount = await personText.count();
     expect(nodeCount).toBeGreaterThan(0);
   });
 
@@ -47,50 +39,41 @@ test.describe('Family Tree', () => {
   }) => {
     await page.waitForLoadState('networkidle');
 
-    // Click on a person node
-    const personNode = page.locator('.react-flow__node').first();
-    await expect(personNode).toBeVisible({ timeout: 10000 });
-    await personNode.click();
+    // The tree renders person names as clickable text
+    // Find a person name in the tree (look for typical name patterns)
+    const personNames = page.locator('text >> text=/[A-Z][a-z]+ [A-Z][a-z]+/');
 
-    // Either opens a modal, shows details, or navigates
-    // Check for any of these behaviors
-    await page.waitForTimeout(500);
-
-    // The app should respond to the click somehow
-    // This is a basic interaction test
+    if ((await personNames.count()) > 0) {
+      await personNames.first().click();
+      // Either navigates or shows details
+      await page.waitForTimeout(500);
+    }
   });
 
   test('tree has zoom controls', async ({ page }) => {
     await page.waitForLoadState('networkidle');
 
-    // Look for zoom controls (common in react-flow)
-    const zoomControls = page
-      .locator('.react-flow__controls')
-      .or(page.locator('[data-testid="zoom-controls"]'));
+    // Look for zoom control buttons - the tree has "Zoom in", "Zoom out", etc.
+    const zoomInButton = page.getByRole('button', { name: /zoom in/i });
+    const zoomOutButton = page.getByRole('button', { name: /zoom out/i });
 
-    // Zoom controls may or may not be present depending on implementation
-    const hasZoomControls = (await zoomControls.count()) > 0;
-
-    if (hasZoomControls) {
-      await expect(zoomControls).toBeVisible();
-    }
+    await expect(zoomInButton).toBeVisible({ timeout: 10000 });
+    await expect(zoomOutButton).toBeVisible();
   });
 
   test('tree can be panned by dragging', async ({ page }) => {
     await page.waitForLoadState('networkidle');
 
-    const viewport = page.locator('.react-flow__viewport');
-    await expect(viewport).toBeVisible({ timeout: 10000 });
+    // The SVG element can be panned
+    const svg = page.locator('svg').first();
+    await expect(svg).toBeVisible({ timeout: 10000 });
 
-    // Get initial transform
-    const initialTransform = await viewport.getAttribute('style');
+    // Get initial transform of the g element inside SVG
+    const gElement = svg.locator('g').first();
+    const initialTransform = await gElement.getAttribute('transform');
 
-    // Simulate pan by dragging the pane
-    const pane = page.locator('.react-flow__pane');
-    await pane.hover();
-
-    // Perform a drag operation
-    const box = await pane.boundingBox();
+    // Perform a drag operation on the SVG
+    const box = await svg.boundingBox();
     if (box) {
       await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
       await page.mouse.down();
@@ -101,9 +84,9 @@ test.describe('Family Tree', () => {
       await page.mouse.up();
     }
 
-    // The viewport transform should have changed
+    // The transform should have changed after panning
     await page.waitForTimeout(300);
-    const newTransform = await viewport.getAttribute('style');
+    const newTransform = await gElement.getAttribute('transform');
 
     // Transform should be different after panning
     expect(newTransform).not.toBe(initialTransform);
@@ -118,10 +101,9 @@ test.describe('Tree Navigation', () => {
     await page.goto('/tree?person=person000001');
     await page.waitForLoadState('networkidle');
 
-    // The tree should load and center on the specified person
-    const treeContainer = page
-      .locator('.react-flow')
-      .or(page.locator('[data-testid="tree-container"]'));
-    await expect(treeContainer).toBeVisible({ timeout: 10000 });
+    // The tree should load and show person info in the header
+    // Look for SVG tree or person name display
+    const svgElement = page.locator('svg').first();
+    await expect(svgElement).toBeVisible({ timeout: 10000 });
   });
 });

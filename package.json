@@ -17,7 +17,8 @@
     "typecheck": "tsc --noEmit",
     "test:playwright": "playwright test",
     "test:playwright:ui": "playwright test --ui",
-    "test:playwright:headed": "playwright test --headed"
+    "test:playwright:headed": "playwright test --headed",
+    "db:migrate": "node migrate.js"
   },
   "dependencies": {
     "@apollo/client": "^4.0.9",

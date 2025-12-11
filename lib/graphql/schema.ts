@@ -542,6 +542,26 @@ export const typeDefs = `#graphql
 
     # GEDCOM export
     exportGedcom(includeLiving: Boolean, includeSources: Boolean): String!
+
+    # Duplicate detection (Issue #287)
+    checkDuplicates(nameFull: String!, birthYear: Int, surname: String): [DuplicateMatch!]!
+  }
+
+  # Duplicate detection result (Issue #287)
+  type DuplicateMatch {
+    id: ID!
+    name_full: String!
+    birth_year: Int
+    death_year: Int
+    living: Boolean
+    matchReason: String!
+  }
+
+  # Result for createAndAdd mutations (Issue #287)
+  type CreateAndAddResult {
+    person: Person!
+    family: Family!
+    duplicatesSkipped: Boolean!
   }
 
   type EmailStats {
@@ -652,6 +672,10 @@ export const typeDefs = `#graphql
     addChild(personId: ID!, childId: ID!, otherParentId: ID): Family!
     removeSpouse(personId: ID!, spouseId: ID!): Boolean!
     removeChild(personId: ID!, childId: ID!): Boolean!
+
+    # Create and add in one step (Issue #287 - dual-mode)
+    createAndAddSpouse(personId: ID!, newPerson: PersonInput!, marriageDate: String, marriageYear: Int, marriagePlace: String, skipDuplicateCheck: Boolean): CreateAndAddResult!
+    createAndAddChild(personId: ID!, newPerson: PersonInput!, otherParentId: ID, skipDuplicateCheck: Boolean): CreateAndAddResult!
 
     # Source mutations (requires editor role)
     addSource(personId: ID!, input: SourceInput!): Source!

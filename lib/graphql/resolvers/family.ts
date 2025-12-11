@@ -4,10 +4,113 @@ import { logAudit } from '../../users';
 import type { Loaders } from '../dataloaders';
 import { type Context, requireAuth } from './helpers';
 
+// Levenshtein distance for fuzzy name matching
+function levenshtein(a: string, b: string): number {
+  const m = a.length;
+  const n = b.length;
+  const dp: number[][] = Array.from({ length: m + 1 }, () =>
+    Array(n + 1).fill(0),
+  );
+  for (let i = 0; i <= m; i++) dp[i][0] = i;
+  for (let j = 0; j <= n; j++) dp[0][j] = j;
+  for (let i = 1; i <= m; i++) {
+    for (let j = 1; j <= n; j++) {
+      dp[i][j] =
+        a[i - 1] === b[j - 1]
+          ? dp[i - 1][j - 1]
+          : 1 + Math.min(dp[i - 1][j], dp[i][j - 1], dp[i - 1][j - 1]);
+    }
+  }
+  return dp[m][n];
+}
+
+interface DuplicateMatch {
+  id: string;
+  name_full: string;
+  birth_year: number | null;
+  death_year: number | null;
+  living: boolean;
+  matchReason: string;
+}
+
+// Check for potential duplicate people
+async function checkDuplicates(
+  nameFull: string,
+  birthYear?: number | null,
+  surname?: string | null,
+): Promise<DuplicateMatch[]> {
+  const matches: DuplicateMatch[] = [];
+  const seen = new Set<string>();
+  const nameNormalized = nameFull.toLowerCase().trim();
+
+  // 1. Exact name match (case-insensitive)
+  const { rows: exactMatches } = await pool.query(
+    `SELECT id, name_full, birth_year, death_year, living
+     FROM people WHERE LOWER(name_full) = $1 LIMIT 10`,
+    [nameNormalized],
+  );
+  for (const row of exactMatches) {
+    if (!seen.has(row.id)) {
+      seen.add(row.id);
+      matches.push({ ...row, matchReason: 'exact_name' });
+    }
+  }
+
+  // 2. Same surname + birth year (±2 years)
+  if (surname && birthYear) {
+    const { rows: surnameYearMatches } = await pool.query(
+      `SELECT id, name_full, birth_year, death_year, living
+       FROM people WHERE LOWER(name_surname) = $1
+       AND birth_year BETWEEN $2 AND $3 LIMIT 10`,
+      [surname.toLowerCase(), birthYear - 2, birthYear + 2],
+    );
+    for (const row of surnameYearMatches) {
+      if (!seen.has(row.id)) {
+        seen.add(row.id);
+        matches.push({ ...row, matchReason: 'same_surname_birth_year' });
+      }
+    }
+  }
+
+  // 3. Similar name (Levenshtein distance < 3)
+  // Get candidates with similar surname for efficiency
+  const surnameForSearch = surname || nameFull.split(' ').pop() || '';
+  if (surnameForSearch.length >= 2) {
+    const { rows: candidates } = await pool.query(
+      `SELECT id, name_full, birth_year, death_year, living
+       FROM people WHERE LOWER(name_surname) LIKE $1 LIMIT 50`,
+      [`%${surnameForSearch.toLowerCase().slice(0, 3)}%`],
+    );
+    for (const row of candidates) {
+      if (!seen.has(row.id)) {
+        const dist = levenshtein(nameNormalized, row.name_full.toLowerCase());
+        if (dist > 0 && dist < 3) {
+          seen.add(row.id);
+          matches.push({ ...row, matchReason: 'similar_name' });
+        }
+      }
+    }
+  }
+
+  return matches;
+}
+
 export const familyResolvers = {
   Query: {
     family: async (_: unknown, { id }: { id: string }, ctx: Context) =>
       ctx.loaders.familyLoader.load(id),
+
+    // Duplicate detection query (Issue #287)
+    checkDuplicates: async (
+      _: unknown,
+      {
+        nameFull,
+        birthYear,
+        surname,
+      }: { nameFull: string; birthYear?: number; surname?: string },
+    ) => {
+      return checkDuplicates(nameFull, birthYear, surname);
+    },
 
     // Cursor-based pagination for people,
     families: async () => {
@@ -478,6 +581,283 @@ export const familyResolvers = {
       });
 
       return true;
+    },
+
+    // Create person AND add as spouse in one transaction (Issue #287)
+    createAndAddSpouse: async (
+      _: unknown,
+      {
+        personId,
+        newPerson,
+        marriageDate,
+        marriageYear,
+        marriagePlace,
+        skipDuplicateCheck,
+      }: {
+        personId: string;
+        newPerson: {
+          name_full: string;
+          name_given?: string;
+          name_surname?: string;
+          sex?: string;
+          birth_year?: number;
+          birth_place?: string;
+          living?: boolean;
+        };
+        marriageDate?: string;
+        marriageYear?: number;
+        marriagePlace?: string;
+        skipDuplicateCheck?: boolean;
+      },
+      context: Context,
+    ) => {
+      const user = requireAuth(context, 'editor');
+      let duplicatesSkipped = false;
+
+      // Check for duplicates unless skipped
+      if (!skipDuplicateCheck) {
+        const duplicates = await checkDuplicates(
+          newPerson.name_full,
+          newPerson.birth_year,
+          newPerson.name_surname,
+        );
+        if (duplicates.length > 0) {
+          // Return duplicates as error for UI to handle
+          throw new Error(`DUPLICATES_FOUND:${JSON.stringify(duplicates)}`);
+        }
+      } else {
+        duplicatesSkipped = true;
+      }
+
+      // Create the new person
+      const spouseId = crypto.randomUUID().replace(/-/g, '').slice(0, 12);
+      const { rows: personRows } = await pool.query(
+        `INSERT INTO people (id, name_full, name_given, name_surname, sex, birth_year, birth_place, living)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING *`,
+        [
+          spouseId,
+          newPerson.name_full,
+          newPerson.name_given || null,
+          newPerson.name_surname || null,
+          newPerson.sex || null,
+          newPerson.birth_year || null,
+          newPerson.birth_place || null,
+          newPerson.living ?? false,
+        ],
+      );
+
+      // Get original person's sex
+      const { rows: origPerson } = await pool.query(
+        'SELECT sex FROM people WHERE id = $1',
+        [personId],
+      );
+
+      // Determine husband/wife based on sex
+      let husbandId = null;
+      let wifeId = null;
+      const origSex = origPerson[0]?.sex;
+      const spouseSex = newPerson.sex;
+
+      if (origSex === 'M' && spouseSex === 'F') {
+        husbandId = personId;
+        wifeId = spouseId;
+      } else if (origSex === 'F' && spouseSex === 'M') {
+        husbandId = spouseId;
+        wifeId = personId;
+      } else if (origSex === 'M') {
+        husbandId = personId;
+        wifeId = spouseId;
+      } else {
+        husbandId = spouseId;
+        wifeId = personId;
+      }
+
+      // Create family
+      const familyId = crypto.randomUUID().replace(/-/g, '').slice(0, 12);
+      const { rows: familyRows } = await pool.query(
+        `INSERT INTO families (id, husband_id, wife_id, marriage_date, marriage_year, marriage_place)
+         VALUES ($1, $2, $3, $4, $5, $6) RETURNING *`,
+        [
+          familyId,
+          husbandId,
+          wifeId,
+          marriageDate || null,
+          marriageYear || null,
+          marriagePlace || null,
+        ],
+      );
+
+      // Audit log
+      await logAudit(user.id, 'create_and_add_spouse', {
+        personId,
+        spouseId,
+        familyId,
+        duplicatesSkipped,
+      });
+
+      return {
+        person: personRows[0],
+        family: familyRows[0],
+        duplicatesSkipped,
+      };
+    },
+
+    // Create person AND add as child in one transaction (Issue #287)
+    createAndAddChild: async (
+      _: unknown,
+      {
+        personId,
+        newPerson,
+        otherParentId,
+        skipDuplicateCheck,
+      }: {
+        personId: string;
+        newPerson: {
+          name_full: string;
+          name_given?: string;
+          name_surname?: string;
+          sex?: string;
+          birth_year?: number;
+          birth_place?: string;
+          living?: boolean;
+        };
+        otherParentId?: string;
+        skipDuplicateCheck?: boolean;
+      },
+      context: Context,
+    ) => {
+      const user = requireAuth(context, 'editor');
+      let duplicatesSkipped = false;
+
+      // Check for duplicates unless skipped
+      if (!skipDuplicateCheck) {
+        const duplicates = await checkDuplicates(
+          newPerson.name_full,
+          newPerson.birth_year,
+          newPerson.name_surname,
+        );
+        if (duplicates.length > 0) {
+          throw new Error(`DUPLICATES_FOUND:${JSON.stringify(duplicates)}`);
+        }
+      } else {
+        duplicatesSkipped = true;
+      }
+
+      // Create the new child
+      const childId = crypto.randomUUID().replace(/-/g, '').slice(0, 12);
+      const { rows: personRows } = await pool.query(
+        `INSERT INTO people (id, name_full, name_given, name_surname, sex, birth_year, birth_place, living)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING *`,
+        [
+          childId,
+          newPerson.name_full,
+          newPerson.name_given || null,
+          newPerson.name_surname || null,
+          newPerson.sex || null,
+          newPerson.birth_year || null,
+          newPerson.birth_place || null,
+          newPerson.living ?? false,
+        ],
+      );
+
+      // Get parent's sex
+      const { rows: parentRows } = await pool.query(
+        'SELECT sex FROM people WHERE id = $1',
+        [personId],
+      );
+      const parentSex = parentRows[0]?.sex;
+
+      let familyId: string;
+
+      if (otherParentId) {
+        // Check for existing family with both parents
+        const { rows: existingFamilies } = await pool.query(
+          `SELECT * FROM families
+           WHERE (husband_id = $1 AND wife_id = $2)
+              OR (husband_id = $2 AND wife_id = $1)`,
+          [personId, otherParentId],
+        );
+
+        if (existingFamilies.length > 0) {
+          familyId = existingFamilies[0].id;
+        } else {
+          // Create new family with both parents
+          const { rows: otherParentRows } = await pool.query(
+            'SELECT sex FROM people WHERE id = $1',
+            [otherParentId],
+          );
+          const otherSex = otherParentRows[0]?.sex;
+
+          let husbandId = null;
+          let wifeId = null;
+          if (parentSex === 'M' && otherSex === 'F') {
+            husbandId = personId;
+            wifeId = otherParentId;
+          } else if (parentSex === 'F' && otherSex === 'M') {
+            husbandId = otherParentId;
+            wifeId = personId;
+          } else if (parentSex === 'M') {
+            husbandId = personId;
+            wifeId = otherParentId;
+          } else {
+            husbandId = otherParentId;
+            wifeId = personId;
+          }
+
+          familyId = crypto.randomUUID().replace(/-/g, '').slice(0, 12);
+          await pool.query(
+            `INSERT INTO families (id, husband_id, wife_id) VALUES ($1, $2, $3)`,
+            [familyId, husbandId, wifeId],
+          );
+        }
+      } else {
+        // Single parent family
+        const { rows: existingFamilies } = await pool.query(
+          `SELECT * FROM families
+           WHERE (husband_id = $1 AND wife_id IS NULL)
+              OR (wife_id = $1 AND husband_id IS NULL)`,
+          [personId],
+        );
+
+        if (existingFamilies.length > 0) {
+          familyId = existingFamilies[0].id;
+        } else {
+          familyId = crypto.randomUUID().replace(/-/g, '').slice(0, 12);
+          const husbandId = parentSex === 'M' ? personId : null;
+          const wifeId = parentSex === 'F' ? personId : null;
+          await pool.query(
+            `INSERT INTO families (id, husband_id, wife_id) VALUES ($1, $2, $3)`,
+            [familyId, husbandId, wifeId],
+          );
+        }
+      }
+
+      // Add child to family
+      await pool.query(
+        'INSERT INTO children (family_id, person_id) VALUES ($1, $2)',
+        [familyId, childId],
+      );
+
+      // Audit log
+      await logAudit(user.id, 'create_and_add_child', {
+        personId,
+        childId,
+        familyId,
+        otherParentId,
+        duplicatesSkipped,
+      });
+
+      // Get family for return
+      const { rows: familyRows } = await pool.query(
+        'SELECT * FROM families WHERE id = $1',
+        [familyId],
+      );
+
+      return {
+        person: personRows[0],
+        family: familyRows[0],
+        duplicatesSkipped,
+      };
     },
   },
   Family: {

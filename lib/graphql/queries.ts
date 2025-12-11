@@ -456,6 +456,65 @@ export const REMOVE_CHILD = gql`
   }
 `;
 
+// Duplicate detection (Issue #287)
+export const CHECK_DUPLICATES = gql`
+  query CheckDuplicates($nameFull: String!, $birthYear: Int, $surname: String) {
+    checkDuplicates(nameFull: $nameFull, birthYear: $birthYear, surname: $surname) {
+      id
+      name_full
+      birth_year
+      death_year
+      living
+      matchReason
+    }
+  }
+`;
+
+// Create and add in one step (Issue #287)
+export const CREATE_AND_ADD_SPOUSE = gql`
+  mutation CreateAndAddSpouse(
+    $personId: ID!
+    $newPerson: PersonInput!
+    $marriageDate: String
+    $marriageYear: Int
+    $marriagePlace: String
+    $skipDuplicateCheck: Boolean
+  ) {
+    createAndAddSpouse(
+      personId: $personId
+      newPerson: $newPerson
+      marriageDate: $marriageDate
+      marriageYear: $marriageYear
+      marriagePlace: $marriagePlace
+      skipDuplicateCheck: $skipDuplicateCheck
+    ) {
+      person { id name_full }
+      family { id }
+      duplicatesSkipped
+    }
+  }
+`;
+
+export const CREATE_AND_ADD_CHILD = gql`
+  mutation CreateAndAddChild(
+    $personId: ID!
+    $newPerson: PersonInput!
+    $otherParentId: ID
+    $skipDuplicateCheck: Boolean
+  ) {
+    createAndAddChild(
+      personId: $personId
+      newPerson: $newPerson
+      otherParentId: $otherParentId
+      skipDuplicateCheck: $skipDuplicateCheck
+    ) {
+      person { id name_full }
+      family { id }
+      duplicatesSkipped
+    }
+  }
+`;
+
 export const UPDATE_NOTABLE_STATUS = gql`
   mutation UpdateNotableStatus($id: ID!, $isNotable: Boolean!, $notableDescription: String) {
     updatePerson(id: $id, input: { is_notable: $isNotable, notable_description: $notableDescription }) {

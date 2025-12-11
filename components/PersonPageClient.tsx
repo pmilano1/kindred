@@ -9,9 +9,9 @@ import { useState } from 'react';
 import DeletePersonDialog from '@/components/DeletePersonDialog';
 import EditPersonModal from '@/components/EditPersonModal';
 import FactsEditor from '@/components/FactsEditor';
-import FamilyManagementNew from '@/components/FamilyManagementNew';
 import LifeEventsEditor from '@/components/LifeEventsEditor';
 import MediaGallery from '@/components/MediaGallery';
+import RelationshipManager from '@/components/RelationshipManager';
 import ResearchPanel from '@/components/ResearchPanel';
 import SourcesEditor from '@/components/SourcesEditor';
 import TreeLink from '@/components/TreeLink';
@@ -465,7 +465,7 @@ export default function PersonPageClient({ personId }: Props) {
             </div>
 
             {/* Spouse & Children - Full width */}
-            <FamilyManagementNew
+            <RelationshipManager
               personId={personId}
               families={familiesAsSpouse}
               canEdit={canEdit}

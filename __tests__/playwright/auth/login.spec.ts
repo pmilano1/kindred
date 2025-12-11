@@ -1,6 +1,13 @@
 import { expect, test } from '@playwright/test';
 
+// Login form tests require authentication to NOT be bypassed
+// When SKIP_AUTH=true in CI, the login page redirects away
+const skipAuthEnabled = process.env.SKIP_AUTH === 'true';
+
 test.describe('Login Page', () => {
+  // Skip login form tests when auth is bypassed (CI environment)
+  test.skip(skipAuthEnabled, 'Login form tests skipped when SKIP_AUTH=true');
+
   test.beforeEach(async ({ page }) => {
     await page.goto('/login');
   });

@@ -78,42 +78,24 @@ async function batchFamiliesAsChild(
   return personIds.map((id) => map.get(id) || []);
 }
 
-// Batch load unified life events (combines residences, occupations, events tables)
+// Batch load unified life events from life_events table
 async function batchLifeEvents(
   personIds: readonly string[],
 ): Promise<LifeEvent[][]> {
   if (!personIds.length) return [];
 
-  // Query all three tables and unify into LifeEvent format
-  const [residences, occupations, events] = await Promise.all([
-    pool.query(
-      `SELECT id, person_id, 'residence' as event_type, residence_date as event_date,
-              residence_year as event_year, residence_place as event_place, NULL as event_value
-       FROM residences WHERE person_id = ANY($1)`,
-      [personIds as string[]],
-    ),
-    pool.query(
-      `SELECT id, person_id, 'occupation' as event_type, occupation_date as event_date,
-              NULL as event_year, occupation_place as event_place, title as event_value
-       FROM occupations WHERE person_id = ANY($1)`,
-      [personIds as string[]],
-    ),
-    pool.query(
-      `SELECT id, person_id, event_type, event_date, NULL as event_year, event_place, NULL as event_value
-       FROM events WHERE person_id = ANY($1)`,
-      [personIds as string[]],
-    ),
-  ]);
+  // Query the unified life_events table
+  const { rows } = await pool.query(
+    `SELECT id, person_id, event_type, event_date, event_year, event_place, event_value
+     FROM life_events WHERE person_id = ANY($1)
+     ORDER BY event_year NULLS LAST, event_date NULLS LAST`,
+    [personIds as string[]],
+  );
 
   const map = new Map<string, LifeEvent[]>(personIds.map((id) => [id, []]));
 
-  for (const row of [...residences.rows, ...occupations.rows, ...events.rows]) {
+  for (const row of rows) {
     map.get(row.person_id)?.push(row);
-  }
-
-  // Sort by year/date
-  for (const events of map.values()) {
-    events.sort((a, b) => (a.event_year || 9999) - (b.event_year || 9999));
   }
 
   return personIds.map((id) => map.get(id) || []);

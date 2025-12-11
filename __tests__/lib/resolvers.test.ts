@@ -1329,6 +1329,558 @@ describe('GraphQL Resolvers', () => {
   });
 
   // ============================================
+  // PERSON TYPE RESOLVER TESTS
+  // ============================================
+  describe('Person.parents', () => {
+    const mockLoaders = {
+      familiesAsChildLoader: { load: vi.fn() },
+      personLoader: { loadMany: vi.fn() },
+    };
+
+    it('returns parents from families', async () => {
+      mockLoaders.familiesAsChildLoader.load.mockResolvedValueOnce([
+        { id: 'fam-1', husband_id: 'father-1', wife_id: 'mother-1' },
+      ]);
+      mockLoaders.personLoader.loadMany.mockResolvedValueOnce([
+        { id: 'father-1', name_full: 'Father' },
+        { id: 'mother-1', name_full: 'Mother' },
+      ]);
+
+      const result = await resolvers.Person.parents({ id: 'person-1' }, null, {
+        loaders: mockLoaders,
+      } as unknown as Context);
+
+      expect(result).toHaveLength(2);
+      expect(mockLoaders.familiesAsChildLoader.load).toHaveBeenCalledWith(
+        'person-1',
+      );
+    });
+
+    it('returns empty array when no families', async () => {
+      mockLoaders.familiesAsChildLoader.load.mockResolvedValueOnce([]);
+
+      const result = await resolvers.Person.parents({ id: 'person-1' }, null, {
+        loaders: mockLoaders,
+      } as unknown as Context);
+
+      expect(result).toEqual([]);
+    });
+
+    it('filters out null parents', async () => {
+      mockLoaders.familiesAsChildLoader.load.mockResolvedValueOnce([
+        { id: 'fam-1', husband_id: 'father-1', wife_id: null },
+      ]);
+      mockLoaders.personLoader.loadMany.mockResolvedValueOnce([
+        { id: 'father-1', name_full: 'Father' },
+        null,
+      ]);
+
+      const result = await resolvers.Person.parents({ id: 'person-1' }, null, {
+        loaders: mockLoaders,
+      } as unknown as Context);
+
+      expect(result).toHaveLength(1);
+    });
+  });
+
+  describe('Person.siblings', () => {
+    const mockLoaders = {
+      familiesAsChildLoader: { load: vi.fn() },
+      childrenByFamilyLoader: { loadMany: vi.fn() },
+      personLoader: { loadMany: vi.fn() },
+    };
+
+    it('returns siblings from same family', async () => {
+      mockLoaders.familiesAsChildLoader.load.mockResolvedValueOnce([
+        { id: 'fam-1' },
+      ]);
+      mockLoaders.childrenByFamilyLoader.loadMany.mockResolvedValueOnce([
+        ['person-1', 'sibling-1', 'sibling-2'],
+      ]);
+      mockLoaders.personLoader.loadMany.mockResolvedValueOnce([
+        { id: 'sibling-1', name_full: 'Sibling 1' },
+        { id: 'sibling-2', name_full: 'Sibling 2' },
+      ]);
+
+      const result = await resolvers.Person.siblings({ id: 'person-1' }, null, {
+        loaders: mockLoaders,
+      } as unknown as Context);
+
+      expect(result).toHaveLength(2);
+    });
+
+    it('returns empty array when no families', async () => {
+      mockLoaders.familiesAsChildLoader.load.mockResolvedValueOnce([]);
+
+      const result = await resolvers.Person.siblings({ id: 'person-1' }, null, {
+        loaders: mockLoaders,
+      } as unknown as Context);
+
+      expect(result).toEqual([]);
+    });
+  });
+
+  describe('Person.spouses', () => {
+    const mockLoaders = {
+      familiesAsSpouseLoader: { load: vi.fn() },
+      personLoader: { loadMany: vi.fn() },
+    };
+
+    it('returns spouses from families', async () => {
+      mockLoaders.familiesAsSpouseLoader.load.mockResolvedValueOnce([
+        { id: 'fam-1', husband_id: 'person-1', wife_id: 'spouse-1' },
+      ]);
+      mockLoaders.personLoader.loadMany.mockResolvedValueOnce([
+        { id: 'spouse-1', name_full: 'Spouse' },
+      ]);
+
+      const result = await resolvers.Person.spouses({ id: 'person-1' }, null, {
+        loaders: mockLoaders,
+      } as unknown as Context);
+
+      expect(result).toHaveLength(1);
+      expect(result[0].id).toBe('spouse-1');
+    });
+
+    it('returns empty array when no families', async () => {
+      mockLoaders.familiesAsSpouseLoader.load.mockResolvedValueOnce([]);
+
+      const result = await resolvers.Person.spouses({ id: 'person-1' }, null, {
+        loaders: mockLoaders,
+      } as unknown as Context);
+
+      expect(result).toEqual([]);
+    });
+  });
+
+  describe('Person.children', () => {
+    const mockLoaders = {
+      familiesAsSpouseLoader: { load: vi.fn() },
+      childrenByFamilyLoader: { loadMany: vi.fn() },
+      personLoader: { loadMany: vi.fn() },
+    };
+
+    it('returns children from families', async () => {
+      mockLoaders.familiesAsSpouseLoader.load.mockResolvedValueOnce([
+        { id: 'fam-1' },
+      ]);
+      mockLoaders.childrenByFamilyLoader.loadMany.mockResolvedValueOnce([
+        ['child-1', 'child-2'],
+      ]);
+      mockLoaders.personLoader.loadMany.mockResolvedValueOnce([
+        { id: 'child-1', name_full: 'Child 1' },
+        { id: 'child-2', name_full: 'Child 2' },
+      ]);
+
+      const result = await resolvers.Person.children({ id: 'person-1' }, null, {
+        loaders: mockLoaders,
+      } as unknown as Context);
+
+      expect(result).toHaveLength(2);
+    });
+
+    it('returns empty array when no families', async () => {
+      mockLoaders.familiesAsSpouseLoader.load.mockResolvedValueOnce([]);
+
+      const result = await resolvers.Person.children({ id: 'person-1' }, null, {
+        loaders: mockLoaders,
+      } as unknown as Context);
+
+      expect(result).toEqual([]);
+    });
+  });
+
+  describe('Person.families', () => {
+    const mockLoaders = {
+      familiesAsSpouseLoader: { load: vi.fn() },
+    };
+
+    it('returns families via loader', async () => {
+      const mockFamilies = [{ id: 'fam-1' }, { id: 'fam-2' }];
+      mockLoaders.familiesAsSpouseLoader.load.mockResolvedValueOnce(
+        mockFamilies,
+      );
+
+      const result = await resolvers.Person.families({ id: 'person-1' }, null, {
+        loaders: mockLoaders,
+      } as unknown as Context);
+
+      expect(result).toEqual(mockFamilies);
+    });
+  });
+
+  describe('Person.lifeEvents', () => {
+    const mockLoaders = {
+      lifeEventsLoader: { load: vi.fn() },
+    };
+
+    it('returns life events via loader', async () => {
+      const mockEvents = [
+        { id: 'e1', event_type: 'birth' },
+        { id: 'e2', event_type: 'marriage' },
+      ];
+      mockLoaders.lifeEventsLoader.load.mockResolvedValueOnce(mockEvents);
+
+      const result = await resolvers.Person.lifeEvents(
+        { id: 'person-1' },
+        null,
+        { loaders: mockLoaders } as unknown as Context,
+      );
+
+      expect(result).toEqual(mockEvents);
+    });
+  });
+
+  describe('Person.facts', () => {
+    const mockLoaders = {
+      factsLoader: { load: vi.fn() },
+    };
+
+    it('returns facts via loader', async () => {
+      const mockFacts = [{ id: 'f1', fact_type: 'occupation' }];
+      mockLoaders.factsLoader.load.mockResolvedValueOnce(mockFacts);
+
+      const result = await resolvers.Person.facts({ id: 'person-1' }, null, {
+        loaders: mockLoaders,
+      } as unknown as Context);
+
+      expect(result).toEqual(mockFacts);
+    });
+  });
+
+  describe('Person.sources', () => {
+    const mockLoaders = {
+      sourcesLoader: { load: vi.fn() },
+    };
+
+    it('returns sources via loader', async () => {
+      const mockSources = [{ id: 's1', source_type: 'census' }];
+      mockLoaders.sourcesLoader.load.mockResolvedValueOnce(mockSources);
+
+      const result = await resolvers.Person.sources({ id: 'person-1' }, null, {
+        loaders: mockLoaders,
+      } as unknown as Context);
+
+      expect(result).toEqual(mockSources);
+    });
+  });
+
+  describe('Person.media', () => {
+    const mockLoaders = {
+      mediaLoader: { load: vi.fn() },
+    };
+
+    it('returns media via loader', async () => {
+      const mockMedia = [{ id: 'm1', media_type: 'photo' }];
+      mockLoaders.mediaLoader.load.mockResolvedValueOnce(mockMedia);
+
+      const result = await resolvers.Person.media({ id: 'person-1' }, null, {
+        loaders: mockLoaders,
+      } as unknown as Context);
+
+      expect(result).toEqual(mockMedia);
+    });
+  });
+
+  describe('Person.coatOfArms', () => {
+    it('returns coat of arms from person facts', async () => {
+      mockedQuery.mockReset();
+      mockedQuery.mockResolvedValueOnce({
+        rows: [{ fact_value: 'https://example.com/crest.png' }],
+      });
+
+      const result = await resolvers.Person.coatOfArms({
+        id: 'person-1',
+        name_surname: 'Smith',
+      });
+
+      expect(result).toBe('https://example.com/crest.png');
+    });
+
+    it('falls back to surname lookup', async () => {
+      mockedQuery.mockReset();
+      mockedQuery.mockResolvedValueOnce({ rows: [] }); // No person fact
+      mockedQuery.mockResolvedValueOnce({
+        rows: [{ coat_of_arms: 'https://example.com/surname-crest.png' }],
+      });
+
+      const result = await resolvers.Person.coatOfArms({
+        id: 'person-1',
+        name_surname: 'Smith',
+      });
+
+      expect(result).toBe('https://example.com/surname-crest.png');
+    });
+
+    it('returns null when no coat of arms found', async () => {
+      mockedQuery.mockReset();
+      mockedQuery.mockResolvedValueOnce({ rows: [] });
+      mockedQuery.mockResolvedValueOnce({ rows: [] });
+
+      const result = await resolvers.Person.coatOfArms({
+        id: 'person-1',
+        name_surname: 'Smith',
+      });
+
+      expect(result).toBeNull();
+    });
+
+    it('returns null when no surname', async () => {
+      mockedQuery.mockReset();
+      mockedQuery.mockResolvedValueOnce({ rows: [] });
+
+      const result = await resolvers.Person.coatOfArms({
+        id: 'person-1',
+        name_surname: undefined,
+      });
+
+      expect(result).toBeNull();
+    });
+  });
+
+  describe('Person.completeness_score', () => {
+    const mockLoaders = {
+      familiesAsChildLoader: { load: vi.fn() },
+      mediaLoader: { load: vi.fn() },
+    };
+
+    it('calculates full score for complete person', async () => {
+      mockLoaders.familiesAsChildLoader.load.mockResolvedValueOnce([
+        { id: 'fam-1' },
+      ]);
+      mockLoaders.mediaLoader.load.mockResolvedValueOnce([{ id: 'media-1' }]);
+
+      const result = await resolvers.Person.completeness_score(
+        {
+          id: 'person-1',
+          name_full: 'John Doe',
+          birth_date: '1950-01-01',
+          birth_year: 1950,
+          birth_place: 'New York',
+          death_date: '2020-12-31',
+          death_year: 2020,
+          death_place: 'Boston',
+          living: false,
+          source_count: 5,
+        },
+        null,
+        { loaders: mockLoaders } as unknown as Context,
+      );
+
+      expect(result).toBe(100);
+    });
+
+    it('gives living people full death credit', async () => {
+      mockLoaders.familiesAsChildLoader.load.mockResolvedValueOnce([]);
+      mockLoaders.mediaLoader.load.mockResolvedValueOnce([]);
+
+      const result = await resolvers.Person.completeness_score(
+        {
+          id: 'person-1',
+          name_full: 'John Doe',
+          birth_date: null,
+          birth_year: null,
+          birth_place: null,
+          death_date: null,
+          death_year: null,
+          death_place: null,
+          living: true,
+          source_count: 0,
+        },
+        null,
+        { loaders: mockLoaders } as unknown as Context,
+      );
+
+      // Name (10) + living death credit (15+10) = 35
+      expect(result).toBe(35);
+    });
+
+    it('gives partial credit for birth_year without birth_date', async () => {
+      mockLoaders.familiesAsChildLoader.load.mockResolvedValueOnce([]);
+      mockLoaders.mediaLoader.load.mockResolvedValueOnce([]);
+
+      const result = await resolvers.Person.completeness_score(
+        {
+          id: 'person-1',
+          name_full: 'John Doe',
+          birth_date: null,
+          birth_year: 1950,
+          birth_place: null,
+          death_date: null,
+          death_year: 2020,
+          death_place: null,
+          living: false,
+          source_count: 0,
+        },
+        null,
+        { loaders: mockLoaders } as unknown as Context,
+      );
+
+      // Name (10) + birth_year (10) + death_year (10) = 30
+      expect(result).toBe(30);
+    });
+  });
+
+  describe('Person.completeness_details', () => {
+    const mockLoaders = {
+      familiesAsChildLoader: { load: vi.fn() },
+      mediaLoader: { load: vi.fn() },
+    };
+
+    it('returns detailed completeness breakdown', async () => {
+      mockLoaders.familiesAsChildLoader.load.mockResolvedValueOnce([]);
+      mockLoaders.mediaLoader.load.mockResolvedValueOnce([]);
+
+      const result = await resolvers.Person.completeness_details(
+        {
+          id: 'person-1',
+          name_full: 'John Doe',
+          birth_date: '1950-01-01',
+          birth_year: 1950,
+          birth_place: null,
+          death_date: null,
+          death_year: null,
+          death_place: null,
+          living: false,
+          source_count: 0,
+        },
+        null,
+        { loaders: mockLoaders } as unknown as Context,
+      );
+
+      expect(result.has_name).toBe(true);
+      expect(result.has_birth_date).toBe(true);
+      expect(result.has_birth_place).toBe(false);
+      expect(result.has_death_date).toBe(false);
+      expect(result.has_parents).toBe(false);
+      expect(result.missing_fields).toContain('birth_place');
+      expect(result.missing_fields).toContain('death_date');
+    });
+
+    it('marks living person death fields as complete', async () => {
+      mockLoaders.familiesAsChildLoader.load.mockResolvedValueOnce([]);
+      mockLoaders.mediaLoader.load.mockResolvedValueOnce([]);
+
+      const result = await resolvers.Person.completeness_details(
+        {
+          id: 'person-1',
+          name_full: 'John Doe',
+          birth_date: null,
+          birth_year: null,
+          birth_place: null,
+          death_date: null,
+          death_year: null,
+          death_place: null,
+          living: true,
+          source_count: 0,
+        },
+        null,
+        { loaders: mockLoaders } as unknown as Context,
+      );
+
+      expect(result.has_death_date).toBe(true);
+      expect(result.has_death_place).toBe(true);
+      expect(result.missing_fields).not.toContain('death_date');
+      expect(result.missing_fields).not.toContain('death_place');
+    });
+  });
+
+  describe('Person.comments', () => {
+    it('returns comments for person', async () => {
+      mockedQuery.mockReset();
+      const mockComments = [
+        { id: 'c1', person_id: 'person-1', content: 'Comment 1' },
+        { id: 'c2', person_id: 'person-1', content: 'Comment 2' },
+      ];
+      mockedQuery.mockResolvedValueOnce({ rows: mockComments });
+
+      const result = await resolvers.Person.comments({ id: 'person-1' });
+
+      expect(result).toEqual(mockComments);
+      expect(mockedQuery).toHaveBeenCalledWith(
+        expect.stringContaining('person_comments'),
+        ['person-1'],
+      );
+    });
+  });
+
+  describe('Comment type resolvers', () => {
+    describe('Comment.user', () => {
+      it('returns user for comment', async () => {
+        mockedQuery.mockReset();
+        const mockUser = {
+          id: 'u1',
+          email: 'test@test.com',
+          name: 'Test',
+          role: 'editor',
+        };
+        mockedQuery.mockResolvedValueOnce({ rows: [mockUser] });
+
+        const result = await resolvers.Comment.user({ user_id: 'u1' });
+
+        expect(result).toEqual(mockUser);
+      });
+
+      it('returns null for non-existent user', async () => {
+        mockedQuery.mockReset();
+        mockedQuery.mockResolvedValueOnce({ rows: [] });
+
+        const result = await resolvers.Comment.user({ user_id: 'nonexistent' });
+
+        expect(result).toBeNull();
+      });
+    });
+
+    describe('Comment.replies', () => {
+      it('returns replies for comment', async () => {
+        mockedQuery.mockReset();
+        const mockReplies = [
+          { id: 'r1', parent_comment_id: 'c1', content: 'Reply 1' },
+        ];
+        mockedQuery.mockResolvedValueOnce({ rows: mockReplies });
+
+        const result = await resolvers.Comment.replies({ id: 'c1' });
+
+        expect(result).toEqual(mockReplies);
+      });
+    });
+  });
+
+  describe('Person.notableRelatives', () => {
+    it('returns notable relatives with caching', async () => {
+      mockedQuery.mockReset();
+      const mockNotable = [
+        {
+          id: 'notable-1',
+          name_full: 'Famous Ancestor',
+          is_notable: true,
+          generation: 2,
+        },
+      ];
+      mockedQuery.mockResolvedValueOnce({ rows: mockNotable });
+
+      const result = await resolvers.Person.notableRelatives({
+        id: 'person-1',
+      });
+
+      expect(result).toHaveLength(1);
+      expect(result[0].person.id).toBe('notable-1');
+      expect(result[0].generation).toBe(2);
+    });
+
+    it('returns empty array when no notable relatives', async () => {
+      mockedQuery.mockReset();
+      mockedQuery.mockResolvedValueOnce({ rows: [] });
+
+      const result = await resolvers.Person.notableRelatives({
+        id: 'person-2',
+      });
+
+      expect(result).toEqual([]);
+    });
+  });
+
+  // ============================================
   // FAMILY RESOLVER TESTS
   // ============================================
   describe('Query.family', () => {
@@ -3303,6 +3855,687 @@ describe('GraphQL Resolvers', () => {
       await resolvers.Query.recentActivity(null, { limit: 100 });
 
       expect(mockedQuery).toHaveBeenCalledWith(expect.any(String), [50]);
+    });
+  });
+
+  // ============================================
+  // FAMILY TYPE RESOLVERS
+  // ============================================
+  describe('Family type resolvers', () => {
+    const mockLoaders = {
+      personLoader: {
+        load: vi.fn(),
+        loadMany: vi.fn(),
+      },
+      childrenByFamilyLoader: {
+        load: vi.fn(),
+      },
+    };
+
+    describe('Family.husband', () => {
+      it('returns husband via personLoader', async () => {
+        const mockPerson = { id: 'husband-1', name_full: 'John Doe' };
+        mockLoaders.personLoader.load.mockResolvedValueOnce(mockPerson);
+
+        const result = await resolvers.Family.husband(
+          { husband_id: 'husband-1' },
+          null,
+          { loaders: mockLoaders } as unknown as Context,
+        );
+
+        expect(result).toEqual(mockPerson);
+        expect(mockLoaders.personLoader.load).toHaveBeenCalledWith('husband-1');
+      });
+
+      it('returns null when no husband_id', async () => {
+        const result = await resolvers.Family.husband(
+          { husband_id: null },
+          null,
+          { loaders: mockLoaders } as unknown as Context,
+        );
+
+        expect(result).toBeNull();
+      });
+    });
+
+    describe('Family.wife', () => {
+      it('returns wife via personLoader', async () => {
+        const mockPerson = { id: 'wife-1', name_full: 'Jane Doe' };
+        mockLoaders.personLoader.load.mockResolvedValueOnce(mockPerson);
+
+        const result = await resolvers.Family.wife(
+          { wife_id: 'wife-1' },
+          null,
+          { loaders: mockLoaders } as unknown as Context,
+        );
+
+        expect(result).toEqual(mockPerson);
+        expect(mockLoaders.personLoader.load).toHaveBeenCalledWith('wife-1');
+      });
+
+      it('returns null when no wife_id', async () => {
+        const result = await resolvers.Family.wife({ wife_id: null }, null, {
+          loaders: mockLoaders,
+        } as unknown as Context);
+
+        expect(result).toBeNull();
+      });
+    });
+
+    describe('Family.children', () => {
+      it('returns children via loaders', async () => {
+        const mockChildren = [
+          { id: 'child-1', name_full: 'Child One' },
+          { id: 'child-2', name_full: 'Child Two' },
+        ];
+        mockLoaders.childrenByFamilyLoader.load.mockResolvedValueOnce([
+          'child-1',
+          'child-2',
+        ]);
+        mockLoaders.personLoader.loadMany.mockResolvedValueOnce(mockChildren);
+
+        const result = await resolvers.Family.children(
+          { id: 'family-1' },
+          null,
+          { loaders: mockLoaders } as unknown as Context,
+        );
+
+        expect(result).toEqual(mockChildren);
+        expect(mockLoaders.childrenByFamilyLoader.load).toHaveBeenCalledWith(
+          'family-1',
+        );
+      });
+
+      it('returns empty array when no children', async () => {
+        mockLoaders.childrenByFamilyLoader.load.mockResolvedValueOnce([]);
+
+        const result = await resolvers.Family.children(
+          { id: 'family-1' },
+          null,
+          { loaders: mockLoaders } as unknown as Context,
+        );
+
+        expect(result).toEqual([]);
+      });
+
+      it('filters out null values from loadMany', async () => {
+        mockLoaders.childrenByFamilyLoader.load.mockResolvedValueOnce([
+          'child-1',
+          'child-2',
+        ]);
+        mockLoaders.personLoader.loadMany.mockResolvedValueOnce([
+          { id: 'child-1', name_full: 'Child One' },
+          null,
+        ]);
+
+        const result = await resolvers.Family.children(
+          { id: 'family-1' },
+          null,
+          { loaders: mockLoaders } as unknown as Context,
+        );
+
+        expect(result).toHaveLength(1);
+        expect(result[0].id).toBe('child-1');
+      });
+    });
+  });
+
+  // ============================================
+  // MUTATION.ADDCHILD TESTS
+  // ============================================
+  describe('Mutation.addChild', () => {
+    const addChildContext = {
+      user: { id: 'admin-1', email: 'admin@test.com', role: 'admin' },
+    };
+
+    it('adds child to existing family with both parents', async () => {
+      mockedQuery.mockReset();
+      // Get person's sex
+      mockedQuery.mockResolvedValueOnce({ rows: [{ sex: 'M' }] });
+      // Check for existing family with both parents
+      mockedQuery.mockResolvedValueOnce({
+        rows: [{ id: 'family-1', husband_id: 'person-1', wife_id: 'person-2' }],
+      });
+      // Check if child already exists
+      mockedQuery.mockResolvedValueOnce({ rows: [] });
+      // Insert child
+      mockedQuery.mockResolvedValueOnce({ rows: [] });
+      // Get family for return
+      mockedQuery.mockResolvedValueOnce({
+        rows: [{ id: 'family-1', husband_id: 'person-1', wife_id: 'person-2' }],
+      });
+
+      const result = await resolvers.Mutation.addChild(
+        null,
+        { personId: 'person-1', childId: 'child-1', otherParentId: 'person-2' },
+        addChildContext,
+      );
+
+      expect(result.id).toBe('family-1');
+    });
+
+    it('creates new family when no existing family with parents', async () => {
+      mockedQuery.mockReset();
+      // Get person's sex
+      mockedQuery.mockResolvedValueOnce({ rows: [{ sex: 'M' }] });
+      // Check for existing family - none found
+      mockedQuery.mockResolvedValueOnce({ rows: [] });
+      // Get other parent's sex
+      mockedQuery.mockResolvedValueOnce({ rows: [{ sex: 'F' }] });
+      // Create new family
+      mockedQuery.mockResolvedValueOnce({ rows: [] });
+      // Check if child exists
+      mockedQuery.mockResolvedValueOnce({ rows: [] });
+      // Insert child
+      mockedQuery.mockResolvedValueOnce({ rows: [] });
+      // Get family for return
+      mockedQuery.mockResolvedValueOnce({
+        rows: [
+          { id: 'new-family', husband_id: 'person-1', wife_id: 'person-2' },
+        ],
+      });
+
+      const result = await resolvers.Mutation.addChild(
+        null,
+        { personId: 'person-1', childId: 'child-1', otherParentId: 'person-2' },
+        addChildContext,
+      );
+
+      expect(result).toBeDefined();
+    });
+
+    it('handles single parent (no otherParentId)', async () => {
+      mockedQuery.mockReset();
+      // Get person's sex
+      mockedQuery.mockResolvedValueOnce({ rows: [{ sex: 'F' }] });
+      // Check for existing single-parent family - none found
+      mockedQuery.mockResolvedValueOnce({ rows: [] });
+      // Create new single-parent family
+      mockedQuery.mockResolvedValueOnce({ rows: [] });
+      // Check if child exists
+      mockedQuery.mockResolvedValueOnce({ rows: [] });
+      // Insert child
+      mockedQuery.mockResolvedValueOnce({ rows: [] });
+      // Get family for return
+      mockedQuery.mockResolvedValueOnce({
+        rows: [
+          { id: 'single-parent-family', wife_id: 'person-1', husband_id: null },
+        ],
+      });
+
+      const result = await resolvers.Mutation.addChild(
+        null,
+        { personId: 'person-1', childId: 'child-1' },
+        addChildContext,
+      );
+
+      expect(result.wife_id).toBe('person-1');
+      expect(result.husband_id).toBeNull();
+    });
+
+    it('throws when person not found', async () => {
+      mockedQuery.mockReset();
+      mockedQuery.mockResolvedValueOnce({ rows: [] });
+
+      await expect(
+        resolvers.Mutation.addChild(
+          null,
+          { personId: 'nonexistent', childId: 'child-1' },
+          addChildContext,
+        ),
+      ).rejects.toThrow('Person not found');
+    });
+
+    it('skips insert if child already in family', async () => {
+      mockedQuery.mockReset();
+      // Get person's sex
+      mockedQuery.mockResolvedValueOnce({ rows: [{ sex: 'M' }] });
+      // Check for existing family
+      mockedQuery.mockResolvedValueOnce({
+        rows: [{ id: 'family-1' }],
+      });
+      // Child already exists in family
+      mockedQuery.mockResolvedValueOnce({ rows: [{ family_id: 'family-1' }] });
+      // Get family for return
+      mockedQuery.mockResolvedValueOnce({ rows: [{ id: 'family-1' }] });
+
+      const result = await resolvers.Mutation.addChild(
+        null,
+        { personId: 'person-1', childId: 'child-1', otherParentId: 'person-2' },
+        addChildContext,
+      );
+
+      expect(result.id).toBe('family-1');
+    });
+  });
+
+  // ============================================
+  // MUTATION.REMOVECHILD TESTS
+  // ============================================
+  describe('Mutation.removeChild', () => {
+    const removeChildContext = {
+      user: { id: 'admin-1', email: 'admin@test.com', role: 'admin' },
+    };
+
+    it('removes child from family', async () => {
+      mockedQuery.mockReset();
+      // Find families where personId is parent
+      mockedQuery.mockResolvedValueOnce({ rows: [{ id: 'family-1' }] });
+      // Delete child from family
+      mockedQuery.mockResolvedValueOnce({ rows: [], rowCount: 1 });
+
+      const result = await resolvers.Mutation.removeChild(
+        null,
+        { personId: 'person-1', childId: 'child-1' },
+        removeChildContext,
+      );
+
+      expect(result).toBe(true);
+    });
+
+    it('throws when no families found for person', async () => {
+      mockedQuery.mockReset();
+      mockedQuery.mockResolvedValueOnce({ rows: [] });
+
+      await expect(
+        resolvers.Mutation.removeChild(
+          null,
+          { personId: 'person-1', childId: 'child-1' },
+          removeChildContext,
+        ),
+      ).rejects.toThrow('No families found for this person');
+    });
+
+    it('throws when child not found in any family', async () => {
+      mockedQuery.mockReset();
+      // Find families
+      mockedQuery.mockResolvedValueOnce({ rows: [{ id: 'family-1' }] });
+      // Delete returns 0 affected rows
+      mockedQuery.mockResolvedValueOnce({ rows: [], rowCount: 0 });
+
+      await expect(
+        resolvers.Mutation.removeChild(
+          null,
+          { personId: 'person-1', childId: 'nonexistent-child' },
+          removeChildContext,
+        ),
+      ).rejects.toThrow('Child not found in any family');
+    });
+  });
+
+  // ============================================
+  // MUTATION.CREATEANDADDSPOUSE TESTS
+  // ============================================
+  describe('Mutation.createAndAddSpouse', () => {
+    const createSpouseContext = {
+      user: { id: 'admin-1', email: 'admin@test.com', role: 'admin' },
+    };
+
+    it('creates person and family with spouse', async () => {
+      mockedQuery.mockReset();
+      // checkDuplicates - exact match
+      mockedQuery.mockResolvedValueOnce({ rows: [] });
+      // checkDuplicates - surname/year match (no surname provided)
+      // checkDuplicates - similar name
+      mockedQuery.mockResolvedValueOnce({ rows: [] });
+      // Create new person
+      mockedQuery.mockResolvedValueOnce({
+        rows: [{ id: 'new-spouse', name_full: 'Jane Doe', sex: 'F' }],
+      });
+      // Get original person's sex
+      mockedQuery.mockResolvedValueOnce({ rows: [{ sex: 'M' }] });
+      // Create family
+      mockedQuery.mockResolvedValueOnce({
+        rows: [
+          { id: 'new-family', husband_id: 'person-1', wife_id: 'new-spouse' },
+        ],
+      });
+
+      const result = await resolvers.Mutation.createAndAddSpouse(
+        null,
+        {
+          personId: 'person-1',
+          newPerson: { name_full: 'Jane Doe', sex: 'F' },
+          marriageYear: 1990,
+        },
+        createSpouseContext,
+      );
+
+      expect(result.person.name_full).toBe('Jane Doe');
+      expect(result.family.husband_id).toBe('person-1');
+      expect(result.duplicatesSkipped).toBe(false);
+    });
+
+    it('throws when duplicates found', async () => {
+      mockedQuery.mockReset();
+      // checkDuplicates - exact name match returns duplicate
+      mockedQuery.mockResolvedValueOnce({
+        rows: [
+          {
+            id: 'dup-1',
+            name_full: 'Jane Doe',
+            birth_year: 1960,
+            death_year: null,
+            living: false,
+          },
+        ],
+      });
+      // checkDuplicates - similar name query (for surname 'Doe')
+      mockedQuery.mockResolvedValueOnce({ rows: [] });
+
+      await expect(
+        resolvers.Mutation.createAndAddSpouse(
+          null,
+          {
+            personId: 'person-1',
+            newPerson: { name_full: 'Jane Doe' },
+          },
+          createSpouseContext,
+        ),
+      ).rejects.toThrow('DUPLICATES_FOUND');
+    });
+
+    it('skips duplicate check when skipDuplicateCheck is true', async () => {
+      mockedQuery.mockReset();
+      // Create new person (no duplicate check)
+      mockedQuery.mockResolvedValueOnce({
+        rows: [{ id: 'new-spouse', name_full: 'Jane Doe', sex: 'F' }],
+      });
+      // Get original person's sex
+      mockedQuery.mockResolvedValueOnce({ rows: [{ sex: 'M' }] });
+      // Create family
+      mockedQuery.mockResolvedValueOnce({
+        rows: [{ id: 'new-family' }],
+      });
+
+      const result = await resolvers.Mutation.createAndAddSpouse(
+        null,
+        {
+          personId: 'person-1',
+          newPerson: { name_full: 'Jane Doe', sex: 'F' },
+          skipDuplicateCheck: true,
+        },
+        createSpouseContext,
+      );
+
+      expect(result.duplicatesSkipped).toBe(true);
+    });
+  });
+
+  // ============================================
+  // MUTATION.CREATEANDADDCHILD TESTS
+  // ============================================
+  describe('Mutation.createAndAddChild', () => {
+    const createChildContext = {
+      user: { id: 'admin-1', email: 'admin@test.com', role: 'admin' },
+    };
+
+    it('creates child and adds to existing family', async () => {
+      mockedQuery.mockReset();
+      // checkDuplicates - exact match
+      mockedQuery.mockResolvedValueOnce({ rows: [] });
+      // checkDuplicates - similar name
+      mockedQuery.mockResolvedValueOnce({ rows: [] });
+      // Create new child
+      mockedQuery.mockResolvedValueOnce({
+        rows: [{ id: 'new-child', name_full: 'Child Name' }],
+      });
+      // Get parent's sex
+      mockedQuery.mockResolvedValueOnce({ rows: [{ sex: 'M' }] });
+      // Check for existing family with both parents
+      mockedQuery.mockResolvedValueOnce({
+        rows: [{ id: 'existing-family' }],
+      });
+      // Add child to family
+      mockedQuery.mockResolvedValueOnce({ rows: [] });
+      // Get family for return
+      mockedQuery.mockResolvedValueOnce({
+        rows: [{ id: 'existing-family' }],
+      });
+
+      const result = await resolvers.Mutation.createAndAddChild(
+        null,
+        {
+          personId: 'person-1',
+          newPerson: { name_full: 'Child Name' },
+          otherParentId: 'person-2',
+        },
+        createChildContext,
+      );
+
+      expect(result.person.name_full).toBe('Child Name');
+      expect(result.family.id).toBe('existing-family');
+    });
+
+    it('creates single-parent family when no otherParentId', async () => {
+      mockedQuery.mockReset();
+      // checkDuplicates
+      mockedQuery.mockResolvedValueOnce({ rows: [] });
+      mockedQuery.mockResolvedValueOnce({ rows: [] });
+      // Create new child
+      mockedQuery.mockResolvedValueOnce({
+        rows: [{ id: 'new-child', name_full: 'Child Name' }],
+      });
+      // Get parent's sex
+      mockedQuery.mockResolvedValueOnce({ rows: [{ sex: 'F' }] });
+      // Check for existing single-parent family - none
+      mockedQuery.mockResolvedValueOnce({ rows: [] });
+      // Create single-parent family
+      mockedQuery.mockResolvedValueOnce({ rows: [] });
+      // Add child
+      mockedQuery.mockResolvedValueOnce({ rows: [] });
+      // Get family
+      mockedQuery.mockResolvedValueOnce({
+        rows: [{ id: 'single-family', wife_id: 'person-1', husband_id: null }],
+      });
+
+      const result = await resolvers.Mutation.createAndAddChild(
+        null,
+        {
+          personId: 'person-1',
+          newPerson: { name_full: 'Child Name' },
+        },
+        createChildContext,
+      );
+
+      expect(result.family.wife_id).toBe('person-1');
+    });
+
+    it('throws when duplicates found', async () => {
+      mockedQuery.mockReset();
+      // checkDuplicates - exact name match returns duplicate
+      mockedQuery.mockResolvedValueOnce({
+        rows: [
+          {
+            id: 'dup-1',
+            name_full: 'Child Name',
+            birth_year: null,
+            death_year: null,
+            living: false,
+          },
+        ],
+      });
+      // checkDuplicates - similar name query
+      mockedQuery.mockResolvedValueOnce({ rows: [] });
+
+      await expect(
+        resolvers.Mutation.createAndAddChild(
+          null,
+          {
+            personId: 'person-1',
+            newPerson: { name_full: 'Child Name' },
+          },
+          createChildContext,
+        ),
+      ).rejects.toThrow('DUPLICATES_FOUND');
+    });
+  });
+
+  // ============================================
+  // USER TYPE RESOLVER TESTS
+  // ============================================
+  describe('User type resolvers', () => {
+    const mockLoaders = {
+      personLoader: {
+        load: vi.fn(),
+      },
+    };
+
+    it('formats created_at as ISO string', () => {
+      const result = resolvers.User.created_at({
+        created_at: new Date('2024-01-15T10:30:00Z'),
+      });
+      expect(result).toBe('2024-01-15T10:30:00.000Z');
+    });
+
+    it('returns null for null created_at', () => {
+      const result = resolvers.User.created_at({ created_at: null });
+      expect(result).toBeNull();
+    });
+
+    it('formats last_login as ISO string', () => {
+      const result = resolvers.User.last_login({
+        last_login: '2024-01-15T10:30:00Z',
+      });
+      expect(result).toBe('2024-01-15T10:30:00.000Z');
+    });
+
+    it('formats last_accessed as ISO string', () => {
+      const result = resolvers.User.last_accessed({
+        last_accessed: new Date('2024-01-15T10:30:00Z'),
+      });
+      expect(result).toBe('2024-01-15T10:30:00.000Z');
+    });
+
+    it('returns linked_person via loader', async () => {
+      const mockPerson = { id: 'person-1', name_full: 'Test Person' };
+      mockLoaders.personLoader.load.mockResolvedValueOnce(mockPerson);
+
+      const result = await resolvers.User.linked_person(
+        { person_id: 'person-1' },
+        null,
+        { loaders: mockLoaders },
+      );
+
+      expect(result).toEqual(mockPerson);
+    });
+
+    it('returns null for linked_person when no person_id', async () => {
+      const result = await resolvers.User.linked_person(
+        { person_id: null },
+        null,
+        { loaders: mockLoaders },
+      );
+
+      expect(result).toBeNull();
+    });
+  });
+
+  // ============================================
+  // INVITATION TYPE RESOLVER TESTS
+  // ============================================
+  describe('Invitation type resolvers', () => {
+    it('formats created_at as ISO string', () => {
+      const result = resolvers.Invitation.created_at({
+        created_at: new Date('2024-01-15T10:30:00Z'),
+      });
+      expect(result).toBe('2024-01-15T10:30:00.000Z');
+    });
+
+    it('formats expires_at as ISO string', () => {
+      const result = resolvers.Invitation.expires_at({
+        expires_at: '2024-01-20T10:30:00Z',
+      });
+      expect(result).toBe('2024-01-20T10:30:00.000Z');
+    });
+
+    it('formats accepted_at as ISO string', () => {
+      const result = resolvers.Invitation.accepted_at({
+        accepted_at: new Date('2024-01-16T10:30:00Z'),
+      });
+      expect(result).toBe('2024-01-16T10:30:00.000Z');
+    });
+
+    it('returns null for null dates', () => {
+      expect(resolvers.Invitation.created_at({ created_at: null })).toBeNull();
+      expect(resolvers.Invitation.expires_at({ expires_at: null })).toBeNull();
+      expect(
+        resolvers.Invitation.accepted_at({ accepted_at: null }),
+      ).toBeNull();
+    });
+  });
+
+  // ============================================
+  // ADDSPOUSE EDGE CASES
+  // ============================================
+  describe('Mutation.addSpouse edge cases', () => {
+    const addSpouseContext = {
+      user: { id: 'admin-1', email: 'admin@test.com', role: 'admin' },
+    };
+
+    it('handles female person with male spouse', async () => {
+      mockedQuery.mockReset();
+      mockedQuery.mockResolvedValueOnce({
+        rows: [
+          { id: 'person-1', sex: 'F' },
+          { id: 'person-2', sex: 'M' },
+        ],
+      });
+      mockedQuery.mockResolvedValueOnce({
+        rows: [{ id: 'fam-1', husband_id: 'person-2', wife_id: 'person-1' }],
+      });
+
+      const result = await resolvers.Mutation.addSpouse(
+        null,
+        { personId: 'person-1', spouseId: 'person-2' },
+        addSpouseContext,
+      );
+
+      expect(result.husband_id).toBe('person-2');
+      expect(result.wife_id).toBe('person-1');
+    });
+
+    it('handles same-sex couple (both male)', async () => {
+      mockedQuery.mockReset();
+      mockedQuery.mockResolvedValueOnce({
+        rows: [
+          { id: 'person-1', sex: 'M' },
+          { id: 'person-2', sex: 'M' },
+        ],
+      });
+      mockedQuery.mockResolvedValueOnce({
+        rows: [{ id: 'fam-1', husband_id: 'person-1', wife_id: 'person-2' }],
+      });
+
+      const result = await resolvers.Mutation.addSpouse(
+        null,
+        { personId: 'person-1', spouseId: 'person-2' },
+        addSpouseContext,
+      );
+
+      // When both male, first is husband, second is wife
+      expect(result.husband_id).toBe('person-1');
+    });
+
+    it('handles unknown sex', async () => {
+      mockedQuery.mockReset();
+      mockedQuery.mockResolvedValueOnce({
+        rows: [
+          { id: 'person-1', sex: null },
+          { id: 'person-2', sex: 'F' },
+        ],
+      });
+      mockedQuery.mockResolvedValueOnce({
+        rows: [{ id: 'fam-1', husband_id: 'person-2', wife_id: 'person-1' }],
+      });
+
+      const result = await resolvers.Mutation.addSpouse(
+        null,
+        { personId: 'person-1', spouseId: 'person-2' },
+        addSpouseContext,
+      );
+
+      expect(result).toBeDefined();
     });
   });
 });

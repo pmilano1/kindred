@@ -142,4 +142,151 @@ describe('Storage Module', () => {
       expect(mockedQuery).toHaveBeenCalledTimes(2);
     });
   });
+
+  describe('uploadFile', () => {
+    it('uploads to S3 when configured', async () => {
+      mockedQuery.mockResolvedValue({
+        rows: [
+          { key: 'storage_provider', value: 's3' },
+          { key: 'storage_s3_bucket', value: 'test-bucket' },
+          { key: 'storage_s3_region', value: 'us-east-1' },
+        ],
+      });
+      mockS3Send.mockResolvedValueOnce({});
+
+      const { uploadFile } = await import('@/lib/storage');
+      resetStorageConfig();
+
+      await uploadFile(Buffer.from('test'), 'media/test.jpg', 'image/jpeg');
+
+      expect(mockS3Send).toHaveBeenCalled();
+    });
+
+    it('throws when S3 bucket not configured', async () => {
+      mockedQuery.mockResolvedValue({
+        rows: [{ key: 'storage_provider', value: 's3' }],
+      });
+
+      const { uploadFile } = await import('@/lib/storage');
+      resetStorageConfig();
+
+      await expect(
+        uploadFile(Buffer.from('test'), 'media/test.jpg', 'image/jpeg'),
+      ).rejects.toThrow('S3 bucket not configured');
+    });
+  });
+
+  describe('deleteFile', () => {
+    it('deletes from S3 when configured', async () => {
+      mockedQuery.mockResolvedValue({
+        rows: [
+          { key: 'storage_provider', value: 's3' },
+          { key: 'storage_s3_bucket', value: 'test-bucket' },
+          { key: 'storage_s3_region', value: 'us-east-1' },
+        ],
+      });
+      mockS3Send.mockResolvedValueOnce({});
+
+      const { deleteFile } = await import('@/lib/storage');
+      resetStorageConfig();
+
+      await deleteFile('media/test.jpg');
+
+      expect(mockS3Send).toHaveBeenCalled();
+    });
+
+    it('throws when S3 bucket not configured', async () => {
+      mockedQuery.mockResolvedValue({
+        rows: [{ key: 'storage_provider', value: 's3' }],
+      });
+
+      const { deleteFile } = await import('@/lib/storage');
+      resetStorageConfig();
+
+      await expect(deleteFile('media/test.jpg')).rejects.toThrow(
+        'S3 bucket not configured',
+      );
+    });
+  });
+
+  describe('testStorage', () => {
+    it('tests S3 storage by uploading and deleting', async () => {
+      mockedQuery.mockResolvedValue({
+        rows: [
+          { key: 'storage_provider', value: 's3' },
+          { key: 'storage_s3_bucket', value: 'test-bucket' },
+          { key: 'storage_s3_region', value: 'us-east-1' },
+        ],
+      });
+      mockS3Send.mockResolvedValue({});
+
+      const { testStorage } = await import('@/lib/storage');
+      resetStorageConfig();
+
+      const result = await testStorage();
+
+      expect(result).toBe(true);
+      expect(mockS3Send).toHaveBeenCalledTimes(2); // Put + Delete
+    });
+
+    it('throws when S3 bucket not configured', async () => {
+      mockedQuery.mockResolvedValue({
+        rows: [{ key: 'storage_provider', value: 's3' }],
+      });
+
+      const { testStorage } = await import('@/lib/storage');
+      resetStorageConfig();
+
+      await expect(testStorage()).rejects.toThrow('S3 bucket not configured');
+    });
+
+    it('throws when S3 operation fails', async () => {
+      mockedQuery.mockResolvedValue({
+        rows: [
+          { key: 'storage_provider', value: 's3' },
+          { key: 'storage_s3_bucket', value: 'test-bucket' },
+        ],
+      });
+      mockS3Send.mockRejectedValueOnce(new Error('S3 error'));
+
+      const { testStorage } = await import('@/lib/storage');
+      resetStorageConfig();
+
+      await expect(testStorage()).rejects.toThrow('S3 error');
+    });
+  });
+
+  describe('getFileUrl error cases', () => {
+    it('throws when S3 bucket not configured', async () => {
+      mockedQuery.mockResolvedValue({
+        rows: [{ key: 'storage_provider', value: 's3' }],
+      });
+
+      resetStorageConfig();
+
+      await expect(getFileUrl('media/test.jpg')).rejects.toThrow(
+        'S3 bucket not configured',
+      );
+    });
+  });
+
+  describe('S3 with explicit credentials', () => {
+    it('uses provided access key and secret', async () => {
+      mockedQuery.mockResolvedValue({
+        rows: [
+          { key: 'storage_provider', value: 's3' },
+          { key: 'storage_s3_bucket', value: 'test-bucket' },
+          { key: 'storage_s3_region', value: 'us-west-2' },
+          { key: 'storage_s3_access_key', value: 'AKIATEST' },
+          { key: 'storage_s3_secret_key', value: 'secret123' },
+        ],
+      });
+      mockGetSignedUrl.mockResolvedValueOnce('https://signed-url.com');
+
+      resetStorageConfig();
+      await getFileUrl('test.jpg');
+
+      expect(mockGetSignedUrl).toHaveBeenCalled();
+    });
+  });
 });

@@ -58,19 +58,19 @@ test.describe('People List Page', () => {
 
     // Get the href to verify navigation later
     const href = await personLink.getAttribute('href');
+    expect(href).toBeTruthy();
 
-    // Click and wait for navigation using Promise.all pattern
-    await Promise.all([
-      page.waitForURL(/\/person\/[a-zA-Z0-9]+/, { timeout: 15000 }),
-      personLink.click(),
-    ]);
+    // Ensure the link is stable and clickable (wait for any re-renders to complete)
+    await page.waitForTimeout(500);
+
+    // Click the link - use force:true to avoid issues with overlapping elements
+    await personLink.click({ force: true });
+
+    // Wait for the URL to change to a person detail page
+    await page.waitForURL(/\/person\/[a-zA-Z0-9]+/, { timeout: 15000 });
 
     // Verify URL matches the expected pattern
     await expect(page).toHaveURL(/\/person\/[a-zA-Z0-9]+/);
-    // Optionally verify we went to the right person
-    if (href) {
-      expect(page.url()).toContain('/person/');
-    }
   });
 
   test('filter dropdown works', async ({ page }) => {

@@ -939,7 +939,8 @@ async function getCurrentVersion(pool: Pool): Promise<number> {
   const { rows } = await pool.query(
     'SELECT MAX(version) as version FROM schema_migrations',
   );
-  return rows[0]?.version || 0;
+  // Return -1 for fresh database so migration 0 (bootstrap) runs
+  return rows[0]?.version ?? -1;
 }
 
 // Run pending migrations with advisory lock

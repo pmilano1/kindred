@@ -16,6 +16,106 @@ let migrationPromise: Promise<{
 
 // Define all migrations in order
 export const migrations: Migration[] = [
+  // Migration #0: Bootstrap core tables (required for fresh databases)
+  // This ensures users, people, families, children exist before any migration that references them
+  {
+    version: 0,
+    name: 'bootstrap_core_tables',
+    up: async (pool: Pool) => {
+      const results: string[] = [];
+
+      // Create users table first (no foreign keys)
+      await pool.query(`
+        CREATE TABLE IF NOT EXISTS users (
+          id VARCHAR(12) PRIMARY KEY,
+          email VARCHAR(255) UNIQUE NOT NULL,
+          name VARCHAR(255),
+          image VARCHAR(500),
+          role VARCHAR(50) DEFAULT 'viewer' CHECK (role IN ('admin', 'editor', 'viewer')),
+          account_type VARCHAR(20) DEFAULT 'user' CHECK (account_type IN ('user', 'service')),
+          description TEXT,
+          invited_by VARCHAR(12),
+          invited_at TIMESTAMP,
+          created_at TIMESTAMP DEFAULT NOW(),
+          last_login TIMESTAMP
+        )
+      `);
+      results.push('Created users table (bootstrap)');
+
+      // Create people table (no foreign keys)
+      await pool.query(`
+        CREATE TABLE IF NOT EXISTS people (
+          id VARCHAR(12) PRIMARY KEY,
+          xref VARCHAR(20),
+          familysearch_id VARCHAR(50),
+          legacy_id VARCHAR(100),
+          name_given VARCHAR(200),
+          name_surname VARCHAR(100),
+          name_suffix VARCHAR(50),
+          name_full VARCHAR(300),
+          sex CHAR(1) CHECK (sex IN ('M', 'F', 'U')),
+          birth_date VARCHAR(50),
+          birth_year INT,
+          birth_month INT,
+          birth_day INT,
+          birth_place VARCHAR(500),
+          death_date VARCHAR(50),
+          death_year INT,
+          death_month INT,
+          death_day INT,
+          death_place VARCHAR(500),
+          burial_date VARCHAR(50),
+          burial_place VARCHAR(500),
+          christening_date VARCHAR(50),
+          christening_place VARCHAR(500),
+          immigration_date VARCHAR(50),
+          immigration_place VARCHAR(500),
+          naturalization_date VARCHAR(50),
+          naturalization_place VARCHAR(500),
+          religion VARCHAR(100),
+          living BOOLEAN DEFAULT FALSE,
+          description TEXT,
+          notes TEXT,
+          occupation VARCHAR(200),
+          is_notable BOOLEAN DEFAULT FALSE,
+          notable_description TEXT,
+          research_status VARCHAR(20) DEFAULT 'not_started',
+          research_priority INT DEFAULT 0,
+          last_researched TIMESTAMP,
+          source_count INT DEFAULT 0,
+          created_at TIMESTAMP DEFAULT NOW(),
+          updated_at TIMESTAMP DEFAULT NOW()
+        )
+      `);
+      results.push('Created people table (bootstrap)');
+
+      // Create families table (references people)
+      await pool.query(`
+        CREATE TABLE IF NOT EXISTS families (
+          id VARCHAR(12) PRIMARY KEY,
+          husband_id VARCHAR(12) REFERENCES people(id),
+          wife_id VARCHAR(12) REFERENCES people(id),
+          marriage_date VARCHAR(50),
+          marriage_place VARCHAR(500),
+          created_at TIMESTAMP DEFAULT NOW()
+        )
+      `);
+      results.push('Created families table (bootstrap)');
+
+      // Create children junction table (references families and people)
+      await pool.query(`
+        CREATE TABLE IF NOT EXISTS children (
+          family_id VARCHAR(12) REFERENCES families(id) ON DELETE CASCADE,
+          person_id VARCHAR(12) REFERENCES people(id) ON DELETE CASCADE,
+          birth_order INT,
+          PRIMARY KEY (family_id, person_id)
+        )
+      `);
+      results.push('Created children table (bootstrap)');
+
+      return results;
+    },
+  },
   {
     version: 1,
     name: 'settings_table',
@@ -77,7 +177,7 @@ export const migrations: Migration[] = [
 
       await pool.query(`
         CREATE TABLE IF NOT EXISTS email_preferences (
-          user_id UUID PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+          user_id VARCHAR(12) PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
           research_updates BOOLEAN DEFAULT true,
           tree_changes BOOLEAN DEFAULT false,
           weekly_digest BOOLEAN DEFAULT false,

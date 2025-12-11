@@ -21,6 +21,14 @@ export {
   SET_MY_PERSON,
   UPDATE_USER_ROLE,
 } from './admin';
+// Comment queries and mutations (Issue #181)
+export {
+  ADD_COMMENT,
+  COMMENT_FIELDS,
+  DELETE_COMMENT,
+  GET_PERSON_COMMENTS,
+  UPDATE_COMMENT,
+} from './comment';
 // Crest queries and mutations
 export {
   GET_SURNAME_CREST,

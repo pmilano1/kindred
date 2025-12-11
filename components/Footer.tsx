@@ -1,7 +1,6 @@
 'use client';
 
 import Image from 'next/image';
-import packageJson from '../package.json';
 import { useSettings } from './SettingsProvider';
 
 export default function Footer() {
@@ -50,7 +49,7 @@ export default function Footer() {
             <span className="font-medium">Kindred</span>
           </a>
           <span className="text-xs text-[var(--muted-foreground)] opacity-60">
-            v{packageJson.version}
+            v{process.env.APP_VERSION || '0.0.0'}
           </span>
         </div>
       </div>

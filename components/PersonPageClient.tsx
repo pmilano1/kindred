@@ -6,6 +6,7 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { useSession } from 'next-auth/react';
 import { useState } from 'react';
+import CommentsSection from '@/components/CommentsSection';
 import DeletePersonDialog from '@/components/DeletePersonDialog';
 import EditPersonModal from '@/components/EditPersonModal';
 import FactsEditor from '@/components/FactsEditor';
@@ -536,6 +537,9 @@ export default function PersonPageClient({ personId }: Props) {
               sources={person.sources || []}
               canEdit={canEdit}
             />
+
+            {/* Comments Section - Full width */}
+            <CommentsSection personId={personId} />
 
             <ButtonLink href="/people" variant="secondary" icon={ArrowLeft}>
               Back to People

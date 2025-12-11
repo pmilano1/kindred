@@ -206,3 +206,20 @@ export interface Media {
   uploaded_by: string | null;
   created_at: string;
 }
+
+// Comment on a person profile (Issue #181)
+export interface Comment {
+  id: string;
+  person_id: string;
+  user_id: string;
+  parent_comment_id: string | null;
+  content: string;
+  created_at: string;
+  updated_at: string;
+  user?: {
+    id: string;
+    name: string | null;
+    email: string;
+  };
+  replies?: Comment[];
+}

@@ -2557,4 +2557,752 @@ describe('GraphQL Resolvers', () => {
       expect(result).toBe('data:image/png;base64,ABC');
     });
   });
+
+  // ============================================
+  // Person Query resolvers (additional coverage)
+  // ============================================
+  describe('Query.recentPeople', () => {
+    it('returns recent people ordered by birth year', async () => {
+      mockedQuery.mockReset();
+      const mockPeople = [
+        { id: 'p1', name_full: 'Recent Person', birth_year: 2000 },
+        { id: 'p2', name_full: 'Older Person', birth_year: 1990 },
+      ];
+      mockedQuery.mockResolvedValueOnce({ rows: mockPeople });
+
+      const result = await resolvers.Query.recentPeople(null, { limit: 10 });
+
+      expect(result).toEqual(mockPeople);
+      expect(mockedQuery).toHaveBeenCalledWith(
+        expect.stringContaining('ORDER BY birth_year DESC'),
+        [10],
+      );
+    });
+
+    it('enforces maximum limit of 50', async () => {
+      mockedQuery.mockReset();
+      mockedQuery.mockResolvedValueOnce({ rows: [] });
+
+      await resolvers.Query.recentPeople(null, { limit: 100 });
+
+      expect(mockedQuery).toHaveBeenCalledWith(expect.any(String), [50]);
+    });
+  });
+
+  describe('Query.notablePeople', () => {
+    it('returns notable people', async () => {
+      mockedQuery.mockReset();
+      const mockNotable = [
+        { id: 'p1', name_full: 'Notable Person', is_notable: true },
+      ];
+      mockedQuery.mockResolvedValueOnce({ rows: mockNotable });
+
+      const result = await resolvers.Query.notablePeople(null, {});
+
+      expect(result).toEqual(mockNotable);
+      expect(mockedQuery).toHaveBeenCalledWith(
+        expect.stringContaining('is_notable = true'),
+      );
+    });
+  });
+
+  describe('Mutation.deletePerson', () => {
+    const adminContext = {
+      user: { id: 'admin-1', email: 'admin@test.com', role: 'admin' },
+    };
+
+    it('deletes person and related records', async () => {
+      mockedQuery.mockReset();
+      // First query: get person
+      mockedQuery.mockResolvedValueOnce({
+        rows: [{ id: 'p1', name_full: 'Delete Me' }],
+      });
+      // Subsequent queries: delete related records
+      mockedQuery.mockResolvedValue({ rows: [] });
+
+      const result = await resolvers.Mutation.deletePerson(
+        null,
+        { id: 'p1' },
+        adminContext,
+      );
+
+      expect(result).toBe(true);
+      // Should have multiple delete queries
+      expect(mockedQuery).toHaveBeenCalledWith(
+        expect.stringContaining('DELETE FROM sources'),
+        ['p1'],
+      );
+    });
+
+    it('throws error for non-existent person', async () => {
+      mockedQuery.mockReset();
+      mockedQuery.mockResolvedValueOnce({ rows: [] });
+
+      await expect(
+        resolvers.Mutation.deletePerson(
+          null,
+          { id: 'nonexistent' },
+          adminContext,
+        ),
+      ).rejects.toThrow('Person not found');
+    });
+
+    it('requires admin role', async () => {
+      const editorContext = {
+        user: { id: 'editor-1', email: 'editor@test.com', role: 'editor' },
+      };
+
+      await expect(
+        resolvers.Mutation.deletePerson(null, { id: 'p1' }, editorContext),
+      ).rejects.toThrow();
+    });
+  });
+
+  describe('Mutation.updateResearchStatus', () => {
+    const editorContext = {
+      user: { id: 'editor-1', email: 'editor@test.com', role: 'editor' },
+    };
+
+    it('updates research status', async () => {
+      mockedQuery.mockReset();
+      mockedQuery.mockResolvedValueOnce({ rows: [] }); // update
+      mockedQuery.mockResolvedValueOnce({
+        rows: [{ id: 'p1', research_status: 'verified' }],
+      });
+
+      const result = await resolvers.Mutation.updateResearchStatus(
+        null,
+        { personId: 'p1', status: 'verified' },
+        editorContext,
+      );
+
+      expect(result).toEqual({ id: 'p1', research_status: 'verified' });
+      expect(mockedQuery).toHaveBeenCalledWith(
+        expect.stringContaining('research_status'),
+        ['verified', 'p1'],
+      );
+    });
+  });
+
+  describe('Mutation.updateResearchPriority', () => {
+    const editorContext = {
+      user: { id: 'editor-1', email: 'editor@test.com', role: 'editor' },
+    };
+
+    it('updates research priority', async () => {
+      mockedQuery.mockReset();
+      mockedQuery.mockResolvedValueOnce({ rows: [] }); // update
+      mockedQuery.mockResolvedValueOnce({
+        rows: [{ id: 'p1', research_priority: 5 }],
+      });
+
+      const result = await resolvers.Mutation.updateResearchPriority(
+        null,
+        { personId: 'p1', priority: 5 },
+        editorContext,
+      );
+
+      expect(result).toEqual({ id: 'p1', research_priority: 5 });
+      expect(mockedQuery).toHaveBeenCalledWith(
+        expect.stringContaining('research_priority'),
+        [5, 'p1'],
+      );
+    });
+  });
+
+  // ============================================
+  // Admin Query resolvers
+  // ============================================
+  describe('Query.me', () => {
+    it('returns current user info', async () => {
+      mockedQuery.mockReset();
+      const mockUser = {
+        id: 'user-1',
+        email: 'user@test.com',
+        name: 'Test User',
+        role: 'editor',
+      };
+      mockedQuery.mockResolvedValueOnce({ rows: [mockUser] });
+
+      const context = {
+        user: { id: 'user-1', email: 'user@test.com', role: 'editor' },
+      };
+      const result = await resolvers.Query.me(null, {}, context);
+
+      expect(result).toEqual(mockUser);
+    });
+  });
+
+  describe('Query.users', () => {
+    it('returns all users for admin', async () => {
+      mockedQuery.mockReset();
+      const adminContext = {
+        user: { id: 'admin-1', email: 'admin@test.com', role: 'admin' },
+      };
+
+      // getUsers is mocked to return []
+      const result = await resolvers.Query.users(null, {}, adminContext);
+
+      expect(result).toEqual([]);
+    });
+
+    it('throws for non-admin', async () => {
+      const editorContext = {
+        user: { id: 'editor-1', email: 'editor@test.com', role: 'editor' },
+      };
+
+      await expect(
+        resolvers.Query.users(null, {}, editorContext),
+      ).rejects.toThrow();
+    });
+  });
+
+  describe('Query.invitations', () => {
+    it('returns all invitations for admin', async () => {
+      const adminContext = {
+        user: { id: 'admin-1', email: 'admin@test.com', role: 'admin' },
+      };
+
+      const result = await resolvers.Query.invitations(null, {}, adminContext);
+
+      expect(result).toEqual([]);
+    });
+  });
+
+  describe('Query.siteSettings', () => {
+    it('returns site settings', async () => {
+      const result = await resolvers.Query.siteSettings(null, {});
+
+      expect(result).toEqual({
+        site_name: 'Test Family Tree',
+        family_name: 'Test',
+        theme_color: '#2c5530',
+      });
+    });
+  });
+
+  describe('Query.settings', () => {
+    it('returns settings list for admin', async () => {
+      mockedQuery.mockReset();
+      const mockSettings = [
+        { key: 'site_name', value: 'Test', category: 'general' },
+      ];
+      mockedQuery.mockResolvedValueOnce({ rows: mockSettings });
+
+      const adminContext = {
+        user: { id: 'admin-1', email: 'admin@test.com', role: 'admin' },
+      };
+      const result = await resolvers.Query.settings(null, {}, adminContext);
+
+      expect(result).toEqual(mockSettings);
+    });
+
+    it('returns empty array if table does not exist', async () => {
+      mockedQuery.mockReset();
+      const error = new Error('relation does not exist');
+      (error as NodeJS.ErrnoException).code = '42P01';
+      mockedQuery.mockRejectedValueOnce(error);
+
+      const adminContext = {
+        user: { id: 'admin-1', email: 'admin@test.com', role: 'admin' },
+      };
+      const result = await resolvers.Query.settings(null, {}, adminContext);
+
+      expect(result).toEqual([]);
+    });
+  });
+
+  describe('Query.emailLogs', () => {
+    it('returns email logs for admin', async () => {
+      mockedQuery.mockReset();
+      const mockLogs = [
+        { id: '1', email_type: 'invite', recipient: 'user@test.com' },
+      ];
+      mockedQuery.mockResolvedValueOnce({ rows: mockLogs });
+
+      const adminContext = {
+        user: { id: 'admin-1', email: 'admin@test.com', role: 'admin' },
+      };
+      const result = await resolvers.Query.emailLogs(
+        null,
+        { limit: 10, offset: 0 },
+        adminContext,
+      );
+
+      expect(result).toEqual(mockLogs);
+    });
+  });
+
+  describe('Query.emailStats', () => {
+    it('returns email statistics', async () => {
+      mockedQuery.mockReset();
+      mockedQuery.mockResolvedValueOnce({
+        rows: [{ total_sent: '10', successful: '8', failed: '2' }],
+      });
+      mockedQuery.mockResolvedValueOnce({
+        rows: [{ email_type: 'invite', count: '5' }],
+      });
+
+      const adminContext = {
+        user: { id: 'admin-1', email: 'admin@test.com', role: 'admin' },
+      };
+      const result = await resolvers.Query.emailStats(null, {}, adminContext);
+
+      expect(result).toEqual({
+        total_sent: 10,
+        successful: 8,
+        failed: 2,
+        by_type: [{ email_type: 'invite', count: '5' }],
+      });
+    });
+  });
+
+  describe('Query.myEmailPreferences', () => {
+    it('returns email preferences for current user', async () => {
+      mockedQuery.mockReset();
+      const mockPrefs = {
+        user_id: 'user-1',
+        research_updates: true,
+        weekly_digest: false,
+      };
+      mockedQuery.mockResolvedValueOnce({ rows: [mockPrefs] });
+
+      const context = {
+        user: { id: 'user-1', email: 'user@test.com', role: 'viewer' },
+      };
+      const result = await resolvers.Query.myEmailPreferences(
+        null,
+        {},
+        context,
+      );
+
+      expect(result).toEqual(mockPrefs);
+    });
+
+    it('returns null if no preferences exist', async () => {
+      mockedQuery.mockReset();
+      mockedQuery.mockResolvedValueOnce({ rows: [] });
+
+      const context = {
+        user: { id: 'user-1', email: 'user@test.com', role: 'viewer' },
+      };
+      const result = await resolvers.Query.myEmailPreferences(
+        null,
+        {},
+        context,
+      );
+
+      expect(result).toBeNull();
+    });
+  });
+
+  describe('Query.clientErrors', () => {
+    it('returns client errors for admin', async () => {
+      mockedQuery.mockReset();
+      const mockErrors = [
+        { id: '1', error_message: 'Test error', url: '/test' },
+      ];
+      mockedQuery.mockResolvedValueOnce({ rows: mockErrors });
+
+      const adminContext = {
+        user: { id: 'admin-1', email: 'admin@test.com', role: 'admin' },
+      };
+      const result = await resolvers.Query.clientErrors(
+        null,
+        { limit: 10, offset: 0 },
+        adminContext,
+      );
+
+      expect(result).toEqual(mockErrors);
+    });
+  });
+
+  describe('Query.clientErrorStats', () => {
+    it('returns client error statistics', async () => {
+      mockedQuery.mockReset();
+      mockedQuery.mockResolvedValueOnce({
+        rows: [
+          {
+            total: '100',
+            last_24_hours: '10',
+            last_7_days: '50',
+            unique_errors: '5',
+          },
+        ],
+      });
+
+      const adminContext = {
+        user: { id: 'admin-1', email: 'admin@test.com', role: 'admin' },
+      };
+      const result = await resolvers.Query.clientErrorStats(
+        null,
+        {},
+        adminContext,
+      );
+
+      expect(result).toEqual({
+        total: 100,
+        last24Hours: 10,
+        last7Days: 50,
+        uniqueErrors: 5,
+      });
+    });
+  });
+
+  // ============================================
+  // Admin Mutation resolvers
+  // ============================================
+  describe('Mutation.createInvitation', () => {
+    it('creates an invitation', async () => {
+      const adminContext = {
+        user: { id: 'admin-1', email: 'admin@test.com', role: 'admin' },
+      };
+
+      const result = await resolvers.Mutation.createInvitation(
+        null,
+        { email: 'new@test.com', role: 'editor' },
+        adminContext,
+      );
+
+      expect(result).toEqual({ id: 'inv-1', token: 'abc123' });
+    });
+  });
+
+  describe('Mutation.deleteInvitation', () => {
+    it('deletes an invitation', async () => {
+      const adminContext = {
+        user: { id: 'admin-1', email: 'admin@test.com', role: 'admin' },
+      };
+
+      const result = await resolvers.Mutation.deleteInvitation(
+        null,
+        { id: 'inv-1' },
+        adminContext,
+      );
+
+      expect(result).toBe(true);
+    });
+  });
+
+  describe('Mutation.updateUserRole', () => {
+    it('updates user role', async () => {
+      const { getUsers } = await import('@/lib/users');
+      (getUsers as Mock).mockResolvedValueOnce([
+        { id: 'user-1', role: 'editor' },
+      ]);
+
+      const adminContext = {
+        user: { id: 'admin-1', email: 'admin@test.com', role: 'admin' },
+      };
+
+      const result = await resolvers.Mutation.updateUserRole(
+        null,
+        { userId: 'user-1', role: 'editor' },
+        adminContext,
+      );
+
+      expect(result).toEqual({ id: 'user-1', role: 'editor' });
+    });
+
+    it('prevents admin from demoting themselves', async () => {
+      const adminContext = {
+        user: { id: 'admin-1', email: 'admin@test.com', role: 'admin' },
+      };
+
+      await expect(
+        resolvers.Mutation.updateUserRole(
+          null,
+          { userId: 'admin-1', role: 'viewer' },
+          adminContext,
+        ),
+      ).rejects.toThrow('Cannot demote yourself');
+    });
+  });
+
+  describe('Mutation.deleteUser', () => {
+    it('deletes a user', async () => {
+      const adminContext = {
+        user: { id: 'admin-1', email: 'admin@test.com', role: 'admin' },
+      };
+
+      const result = await resolvers.Mutation.deleteUser(
+        null,
+        { userId: 'user-1' },
+        adminContext,
+      );
+
+      expect(result).toBe(true);
+    });
+
+    it('prevents admin from deleting themselves', async () => {
+      const adminContext = {
+        user: { id: 'admin-1', email: 'admin@test.com', role: 'admin' },
+      };
+
+      await expect(
+        resolvers.Mutation.deleteUser(
+          null,
+          { userId: 'admin-1' },
+          adminContext,
+        ),
+      ).rejects.toThrow('Cannot delete yourself');
+    });
+  });
+
+  // ============================================
+  // Crest resolvers
+  // ============================================
+  describe('Query.surnameCrests', () => {
+    it('returns all surname crests', async () => {
+      mockedQuery.mockReset();
+      const mockCrests = [
+        { id: '1', surname: 'Smith', coat_of_arms: 'url' },
+        { id: '2', surname: 'Jones', coat_of_arms: 'url2' },
+      ];
+      mockedQuery.mockResolvedValueOnce({ rows: mockCrests });
+
+      const result = await resolvers.Query.surnameCrests(null, {});
+
+      expect(result).toEqual(mockCrests);
+    });
+  });
+
+  describe('Query.surnameCrest', () => {
+    it('returns crest for surname', async () => {
+      mockedQuery.mockReset();
+      const mockCrest = { id: '1', surname: 'Smith', coat_of_arms: 'url' };
+      mockedQuery.mockResolvedValueOnce({ rows: [mockCrest] });
+
+      const result = await resolvers.Query.surnameCrest(null, {
+        surname: 'Smith',
+      });
+
+      expect(result).toEqual(mockCrest);
+    });
+
+    it('returns null for unknown surname', async () => {
+      mockedQuery.mockReset();
+      mockedQuery.mockResolvedValueOnce({ rows: [] });
+
+      const result = await resolvers.Query.surnameCrest(null, {
+        surname: 'Unknown',
+      });
+
+      expect(result).toBeNull();
+    });
+  });
+
+  describe('Mutation.setSurnameCrest', () => {
+    it('creates or updates surname crest', async () => {
+      mockedQuery.mockReset();
+      const mockCrest = {
+        id: '1',
+        surname: 'Smith',
+        coat_of_arms: 'url',
+        description: 'A crest',
+      };
+      mockedQuery.mockResolvedValueOnce({ rows: [mockCrest] });
+
+      const editorContext = {
+        user: { id: 'editor-1', email: 'editor@test.com', role: 'editor' },
+      };
+
+      const result = await resolvers.Mutation.setSurnameCrest(
+        null,
+        { surname: 'Smith', coatOfArms: 'url', description: 'A crest' },
+        editorContext,
+      );
+
+      expect(result).toEqual(mockCrest);
+      expect(mockedQuery).toHaveBeenCalledWith(
+        expect.stringContaining('ON CONFLICT'),
+        expect.any(Array),
+      );
+    });
+  });
+
+  describe('Mutation.updateSurnameCrest', () => {
+    it('updates surname crest fields', async () => {
+      mockedQuery.mockReset();
+      const mockCrest = {
+        id: '1',
+        surname: 'Smith',
+        description: 'Updated description',
+      };
+      mockedQuery.mockResolvedValueOnce({ rows: [mockCrest] });
+
+      const editorContext = {
+        user: { id: 'editor-1', email: 'editor@test.com', role: 'editor' },
+      };
+
+      const result = await resolvers.Mutation.updateSurnameCrest(
+        null,
+        { id: '1', input: { description: 'Updated description' } },
+        editorContext,
+      );
+
+      expect(result).toEqual(mockCrest);
+    });
+
+    it('throws if no fields to update', async () => {
+      const editorContext = {
+        user: { id: 'editor-1', email: 'editor@test.com', role: 'editor' },
+      };
+
+      await expect(
+        resolvers.Mutation.updateSurnameCrest(
+          null,
+          { id: '1', input: {} },
+          editorContext,
+        ),
+      ).rejects.toThrow('No fields to update');
+    });
+
+    it('throws if crest not found', async () => {
+      mockedQuery.mockReset();
+      mockedQuery.mockResolvedValueOnce({ rows: [] });
+
+      const editorContext = {
+        user: { id: 'editor-1', email: 'editor@test.com', role: 'editor' },
+      };
+
+      await expect(
+        resolvers.Mutation.updateSurnameCrest(
+          null,
+          { id: '1', input: { description: 'test' } },
+          editorContext,
+        ),
+      ).rejects.toThrow('Surname crest not found');
+    });
+  });
+
+  describe('Mutation.removeSurnameCrest', () => {
+    it('removes surname crest', async () => {
+      mockedQuery.mockReset();
+      mockedQuery.mockResolvedValueOnce({ rows: [] });
+
+      const editorContext = {
+        user: { id: 'editor-1', email: 'editor@test.com', role: 'editor' },
+      };
+
+      const result = await resolvers.Mutation.removeSurnameCrest(
+        null,
+        { surname: 'Smith' },
+        editorContext,
+      );
+
+      expect(result).toBe(true);
+    });
+  });
+
+  describe('Mutation.setPersonCoatOfArms', () => {
+    it('sets coat of arms for a person', async () => {
+      mockedQuery.mockReset();
+      mockedQuery.mockResolvedValueOnce({ rows: [] });
+
+      const editorContext = {
+        user: { id: 'editor-1', email: 'editor@test.com', role: 'editor' },
+      };
+
+      const result = await resolvers.Mutation.setPersonCoatOfArms(
+        null,
+        { personId: 'p1', coatOfArms: 'crest-url' },
+        editorContext,
+      );
+
+      expect(result).toBe('crest-url');
+    });
+  });
+
+  describe('Mutation.removePersonCoatOfArms', () => {
+    it('removes coat of arms from a person', async () => {
+      mockedQuery.mockReset();
+      mockedQuery.mockResolvedValueOnce({ rows: [] });
+
+      const editorContext = {
+        user: { id: 'editor-1', email: 'editor@test.com', role: 'editor' },
+      };
+
+      const result = await resolvers.Mutation.removePersonCoatOfArms(
+        null,
+        { personId: 'p1' },
+        editorContext,
+      );
+
+      expect(result).toBe(true);
+    });
+  });
+
+  // ============================================
+  // Dashboard resolvers
+  // ============================================
+  describe('Query.stats', () => {
+    it('returns dashboard statistics', async () => {
+      mockedQuery.mockReset();
+      const mockStats = {
+        total_people: '100',
+        total_families: '40',
+        male_count: '50',
+        female_count: '50',
+        living_count: '30',
+        earliest_birth: 1800,
+        latest_birth: 2020,
+        average_completeness: 65,
+      };
+      mockedQuery.mockResolvedValueOnce({ rows: [mockStats] });
+
+      const result = await resolvers.Query.stats(null, {});
+
+      expect(result).toEqual(mockStats);
+    });
+  });
+
+  describe('Query.dashboardStats', () => {
+    it('returns detailed dashboard statistics', async () => {
+      mockedQuery.mockReset();
+      const mockStats = {
+        total_people: '200',
+        total_families: '80',
+        total_sources: '500',
+        total_media: '150',
+        living_count: '60',
+        incomplete_count: '40',
+        average_completeness: 70,
+      };
+      mockedQuery.mockResolvedValueOnce({ rows: [mockStats] });
+
+      const result = await resolvers.Query.dashboardStats(null, {});
+
+      expect(result).toEqual(mockStats);
+    });
+  });
+
+  describe('Query.recentActivity', () => {
+    it('returns recent audit log activity', async () => {
+      mockedQuery.mockReset();
+      const mockActivity = [
+        {
+          id: '1',
+          action: 'update_person',
+          user_name: 'Test User',
+          created_at: '2024-01-01',
+        },
+      ];
+      mockedQuery.mockResolvedValueOnce({ rows: mockActivity });
+
+      const result = await resolvers.Query.recentActivity(null, { limit: 10 });
+
+      expect(result).toEqual(mockActivity);
+      expect(mockedQuery).toHaveBeenCalledWith(expect.any(String), [10]);
+    });
+
+    it('enforces maximum limit of 50', async () => {
+      mockedQuery.mockReset();
+      mockedQuery.mockResolvedValueOnce({ rows: [] });
+
+      await resolvers.Query.recentActivity(null, { limit: 100 });
+
+      expect(mockedQuery).toHaveBeenCalledWith(expect.any(String), [50]);
+    });
+  });
 });

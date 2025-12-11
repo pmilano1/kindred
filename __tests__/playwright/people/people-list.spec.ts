@@ -50,15 +50,17 @@ test.describe('People List Page', () => {
   test('clicking a person navigates to detail page', async ({ page }) => {
     await page.waitForLoadState('networkidle');
 
-    // Find a person link
+    // Wait for people to load - look for person cards or links
     const personLink = page.locator('a[href*="/person/"]').first();
 
-    if ((await personLink.count()) > 0) {
-      await personLink.click();
+    // Wait for person link to be visible (may take time to load)
+    await expect(personLink).toBeVisible({ timeout: 15000 });
 
-      // Should navigate to person detail page
-      await expect(page).toHaveURL(/\/person\/[a-zA-Z0-9]+/);
-    }
+    // Click the person link
+    await personLink.click();
+
+    // Wait for navigation - allow longer timeout for CI
+    await expect(page).toHaveURL(/\/person\/[a-zA-Z0-9]+/, { timeout: 15000 });
   });
 
   test('filter dropdown works', async ({ page }) => {

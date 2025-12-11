@@ -1327,4 +1327,523 @@ describe('GraphQL Resolvers', () => {
       expect(result).toContain('Review existing sources');
     });
   });
+
+  // ============================================
+  // FAMILY RESOLVER TESTS
+  // ============================================
+  describe('Query.family', () => {
+    it('returns family by id via loaders', async () => {
+      const mockFamily = {
+        id: 'family-1',
+        husband_id: 'person-1',
+        wife_id: 'person-2',
+        marriage_date: '1975-06-15',
+        marriage_year: 1975,
+        marriage_place: 'New York, NY',
+      };
+
+      // Query.family uses ctx.loaders.familyLoader.load(id)
+      const familyMockContext = {
+        loaders: {
+          familyLoader: {
+            load: vi.fn().mockResolvedValue(mockFamily),
+          },
+        },
+      };
+
+      const result = await resolvers.Query.family(
+        null,
+        { id: 'family-1' },
+        familyMockContext,
+      );
+
+      expect(result).toEqual(mockFamily);
+      expect(familyMockContext.loaders.familyLoader.load).toHaveBeenCalledWith(
+        'family-1',
+      );
+    });
+
+    it('returns null for non-existent family', async () => {
+      const familyMockContext = {
+        loaders: {
+          familyLoader: {
+            load: vi.fn().mockResolvedValue(null),
+          },
+        },
+      };
+
+      const result = await resolvers.Query.family(
+        null,
+        { id: 'nonexistent' },
+        familyMockContext,
+      );
+
+      expect(result).toBeNull();
+    });
+  });
+
+  describe('Query.families', () => {
+    it('returns all families', async () => {
+      mockedQuery.mockReset();
+      const mockFamilies = [
+        { id: 'f1', husband_id: 'p1', wife_id: 'p2' },
+        { id: 'f2', husband_id: 'p3', wife_id: 'p4' },
+      ];
+      mockedQuery.mockResolvedValueOnce({ rows: mockFamilies });
+
+      const result = await resolvers.Query.families();
+
+      expect(result).toEqual(mockFamilies);
+      expect(mockedQuery).toHaveBeenCalledWith(
+        expect.stringContaining('SELECT * FROM families'),
+      );
+    });
+  });
+
+  describe('Query.checkDuplicates', () => {
+    it('returns duplicate matches by exact name', async () => {
+      mockedQuery.mockReset();
+      const mockMatches = [
+        {
+          id: 'p1',
+          name_full: 'John Smith',
+          birth_year: 1950,
+          death_year: null,
+          living: true,
+        },
+      ];
+      mockedQuery.mockResolvedValueOnce({ rows: mockMatches });
+      mockedQuery.mockResolvedValueOnce({ rows: [] }); // surname+year query
+      mockedQuery.mockResolvedValueOnce({ rows: [] }); // similar name query
+
+      const result = await resolvers.Query.checkDuplicates(null, {
+        nameFull: 'John Smith',
+      });
+
+      expect(result).toHaveLength(1);
+      expect(result[0].matchReason).toBe('exact_name');
+    });
+
+    it('returns empty array when no duplicates found', async () => {
+      mockedQuery.mockReset();
+      mockedQuery.mockResolvedValueOnce({ rows: [] });
+      mockedQuery.mockResolvedValueOnce({ rows: [] });
+      mockedQuery.mockResolvedValueOnce({ rows: [] });
+
+      const result = await resolvers.Query.checkDuplicates(null, {
+        nameFull: 'Unique Person Name',
+      });
+
+      expect(result).toEqual([]);
+    });
+  });
+
+  describe('Mutation.createFamily', () => {
+    const familyAdminContext = {
+      user: { id: 'admin-1', email: 'admin@test.com', role: 'admin' },
+    };
+
+    it('creates family with all fields', async () => {
+      mockedQuery.mockReset();
+      const mockFamily = {
+        id: expect.any(String),
+        husband_id: 'person-1',
+        wife_id: 'person-2',
+        marriage_date: '1975-06-15',
+        marriage_year: 1975,
+        marriage_place: 'New York',
+      };
+      mockedQuery.mockResolvedValueOnce({ rows: [mockFamily] });
+
+      const result = await resolvers.Mutation.createFamily(
+        null,
+        {
+          input: {
+            husband_id: 'person-1',
+            wife_id: 'person-2',
+            marriage_date: '1975-06-15',
+            marriage_year: 1975,
+            marriage_place: 'New York',
+          },
+        },
+        familyAdminContext,
+      );
+
+      expect(result.husband_id).toBe('person-1');
+      expect(result.wife_id).toBe('person-2');
+    });
+
+    it('creates family with only husband', async () => {
+      mockedQuery.mockReset();
+      const mockFamily = {
+        id: 'fam-1',
+        husband_id: 'person-1',
+        wife_id: null,
+      };
+      mockedQuery.mockResolvedValueOnce({ rows: [mockFamily] });
+
+      const result = await resolvers.Mutation.createFamily(
+        null,
+        { input: { husband_id: 'person-1' } },
+        familyAdminContext,
+      );
+
+      expect(result.husband_id).toBe('person-1');
+      expect(result.wife_id).toBeNull();
+    });
+
+    it('throws for viewer role', async () => {
+      mockedQuery.mockReset();
+      const viewerContext = {
+        user: { id: 'u1', email: 'viewer@test.com', role: 'viewer' },
+      };
+
+      await expect(
+        resolvers.Mutation.createFamily(
+          null,
+          { input: { husband_id: 'p1' } },
+          viewerContext,
+        ),
+      ).rejects.toThrow();
+    });
+  });
+
+  describe('Mutation.updateFamily', () => {
+    const updateFamilyAdminContext = {
+      user: { id: 'admin-1', email: 'admin@test.com', role: 'admin' },
+    };
+
+    it('updates family fields', async () => {
+      mockedQuery.mockReset();
+      const mockFamily = {
+        id: 'family-1',
+        husband_id: 'person-1',
+        wife_id: 'person-2',
+        marriage_place: 'Updated Place',
+      };
+      mockedQuery.mockResolvedValueOnce({ rows: [mockFamily] });
+
+      const result = await resolvers.Mutation.updateFamily(
+        null,
+        { id: 'family-1', input: { marriage_place: 'Updated Place' } },
+        updateFamilyAdminContext,
+      );
+
+      expect(result.marriage_place).toBe('Updated Place');
+    });
+
+    it('returns null for non-existent family', async () => {
+      mockedQuery.mockReset();
+      mockedQuery.mockResolvedValueOnce({ rows: [] });
+
+      const result = await resolvers.Mutation.updateFamily(
+        null,
+        { id: 'nonexistent', input: { marriage_place: 'Place' } },
+        updateFamilyAdminContext,
+      );
+
+      expect(result).toBeNull();
+    });
+  });
+
+  describe('Mutation.deleteFamily', () => {
+    const deleteFamilyAdminContext = {
+      user: { id: 'admin-1', email: 'admin@test.com', role: 'admin' },
+    };
+
+    it('deletes family and children links', async () => {
+      mockedQuery.mockReset();
+      mockedQuery.mockResolvedValueOnce({ rows: [] }); // DELETE children
+      mockedQuery.mockResolvedValueOnce({ rows: [] }); // DELETE family
+
+      const result = await resolvers.Mutation.deleteFamily(
+        null,
+        { id: 'family-1' },
+        deleteFamilyAdminContext,
+      );
+
+      expect(result).toBe(true);
+      expect(mockedQuery).toHaveBeenCalledWith(
+        'DELETE FROM children WHERE family_id = $1',
+        ['family-1'],
+      );
+    });
+
+    it('throws for non-admin role', async () => {
+      mockedQuery.mockReset();
+      const editorContext = {
+        user: { id: 'u1', email: 'editor@test.com', role: 'editor' },
+      };
+
+      await expect(
+        resolvers.Mutation.deleteFamily(
+          null,
+          { id: 'family-1' },
+          editorContext,
+        ),
+      ).rejects.toThrow();
+    });
+  });
+
+  describe('Mutation.addChildToFamily', () => {
+    const childFamilyAdminContext = {
+      user: { id: 'admin-1', email: 'admin@test.com', role: 'admin' },
+    };
+
+    it('adds child to family', async () => {
+      mockedQuery.mockReset();
+      mockedQuery.mockResolvedValueOnce({ rows: [] }); // Check existing
+      mockedQuery.mockResolvedValueOnce({ rows: [] }); // INSERT
+
+      const result = await resolvers.Mutation.addChildToFamily(
+        null,
+        { familyId: 'family-1', personId: 'child-1' },
+        childFamilyAdminContext,
+      );
+
+      expect(result).toBe(true);
+    });
+
+    it('returns true if child already exists', async () => {
+      mockedQuery.mockReset();
+      mockedQuery.mockResolvedValueOnce({ rows: [{ id: 1 }] }); // Already exists
+
+      const result = await resolvers.Mutation.addChildToFamily(
+        null,
+        { familyId: 'family-1', personId: 'child-1' },
+        childFamilyAdminContext,
+      );
+
+      expect(result).toBe(true);
+      expect(mockedQuery).toHaveBeenCalledTimes(1); // Only check, no insert
+    });
+  });
+
+  describe('Mutation.removeChildFromFamily', () => {
+    const removeChildAdminContext = {
+      user: { id: 'admin-1', email: 'admin@test.com', role: 'admin' },
+    };
+
+    it('removes child from family', async () => {
+      mockedQuery.mockReset();
+      mockedQuery.mockResolvedValueOnce({ rows: [] });
+
+      const result = await resolvers.Mutation.removeChildFromFamily(
+        null,
+        { familyId: 'family-1', personId: 'child-1' },
+        removeChildAdminContext,
+      );
+
+      expect(result).toBe(true);
+      expect(mockedQuery).toHaveBeenCalledWith(
+        'DELETE FROM children WHERE family_id = $1 AND person_id = $2',
+        ['family-1', 'child-1'],
+      );
+    });
+  });
+
+  describe('Mutation.addSpouse', () => {
+    const addSpouseAdminContext = {
+      user: { id: 'admin-1', email: 'admin@test.com', role: 'admin' },
+    };
+
+    it('creates family with correct husband/wife based on sex', async () => {
+      mockedQuery.mockReset();
+      // Get both people
+      mockedQuery.mockResolvedValueOnce({
+        rows: [
+          { id: 'person-1', sex: 'M' },
+          { id: 'person-2', sex: 'F' },
+        ],
+      });
+      // Create family
+      mockedQuery.mockResolvedValueOnce({
+        rows: [
+          {
+            id: 'fam-1',
+            husband_id: 'person-1',
+            wife_id: 'person-2',
+          },
+        ],
+      });
+
+      const result = await resolvers.Mutation.addSpouse(
+        null,
+        {
+          personId: 'person-1',
+          spouseId: 'person-2',
+          marriageYear: 1980,
+        },
+        addSpouseAdminContext,
+      );
+
+      expect(result.husband_id).toBe('person-1');
+      expect(result.wife_id).toBe('person-2');
+    });
+
+    it('throws if person not found', async () => {
+      mockedQuery.mockReset();
+      mockedQuery.mockResolvedValueOnce({
+        rows: [{ id: 'person-1', sex: 'M' }],
+      });
+
+      await expect(
+        resolvers.Mutation.addSpouse(
+          null,
+          { personId: 'person-1', spouseId: 'nonexistent' },
+          addSpouseAdminContext,
+        ),
+      ).rejects.toThrow('Person or spouse not found');
+    });
+  });
+
+  describe('Mutation.removeSpouse', () => {
+    const removeSpouseAdminContext = {
+      user: { id: 'admin-1', email: 'admin@test.com', role: 'admin' },
+    };
+
+    it('deletes family between spouses', async () => {
+      mockedQuery.mockReset();
+      mockedQuery.mockResolvedValueOnce({ rows: [{ id: 'family-1' }] }); // Find family
+      mockedQuery.mockResolvedValueOnce({ rows: [{ count: '0' }] }); // Check children
+      mockedQuery.mockResolvedValueOnce({ rows: [] }); // Delete family
+
+      const result = await resolvers.Mutation.removeSpouse(
+        null,
+        { personId: 'person-1', spouseId: 'person-2' },
+        removeSpouseAdminContext,
+      );
+
+      expect(result).toBe(true);
+    });
+
+    it('throws if family has children', async () => {
+      mockedQuery.mockReset();
+      mockedQuery.mockResolvedValueOnce({ rows: [{ id: 'family-1' }] });
+      mockedQuery.mockResolvedValueOnce({ rows: [{ count: '2' }] });
+
+      await expect(
+        resolvers.Mutation.removeSpouse(
+          null,
+          { personId: 'person-1', spouseId: 'person-2' },
+          removeSpouseAdminContext,
+        ),
+      ).rejects.toThrow('Cannot remove spouse from family with children');
+    });
+
+    it('throws if family not found', async () => {
+      mockedQuery.mockReset();
+      mockedQuery.mockResolvedValueOnce({ rows: [] });
+
+      await expect(
+        resolvers.Mutation.removeSpouse(
+          null,
+          { personId: 'person-1', spouseId: 'person-2' },
+          removeSpouseAdminContext,
+        ),
+      ).rejects.toThrow('Family not found');
+    });
+  });
+
+  // ============================================
+  // ADDITIONAL PERSON RESOLVER TESTS
+  // ============================================
+  describe('Mutation.updatePerson extended', () => {
+    const updateAdminContext = {
+      user: { id: 'admin-1', email: 'admin@test.com', role: 'admin' },
+    };
+
+    it('updates multiple fields', async () => {
+      mockedQuery.mockReset();
+      const mockPerson = {
+        id: 'person-1',
+        name_full: 'Updated Name',
+        birth_year: 1950,
+        description: 'New description',
+      };
+      // getPerson call for audit log
+      mockedQuery.mockResolvedValueOnce({ rows: [mockPerson] });
+      // UPDATE query
+      mockedQuery.mockResolvedValueOnce({ rows: [] });
+      // getPerson call at the end to return updated person
+      mockedQuery.mockResolvedValueOnce({ rows: [mockPerson] });
+
+      const result = await resolvers.Mutation.updatePerson(
+        null,
+        {
+          id: 'person-1',
+          input: {
+            name_full: 'Updated Name',
+            birth_year: 1950,
+            description: 'New description',
+          },
+        },
+        updateAdminContext,
+      );
+
+      expect(result.name_full).toBe('Updated Name');
+      expect(result.description).toBe('New description');
+    });
+
+    it('returns null for non-existent person', async () => {
+      mockedQuery.mockReset();
+      // getPerson call for audit log returns null
+      mockedQuery.mockResolvedValueOnce({ rows: [] });
+      // UPDATE query
+      mockedQuery.mockResolvedValueOnce({ rows: [] });
+      // getPerson call at the end returns null
+      mockedQuery.mockResolvedValueOnce({ rows: [] });
+
+      const result = await resolvers.Mutation.updatePerson(
+        null,
+        { id: 'nonexistent', input: { name_full: 'Test' } },
+        updateAdminContext,
+      );
+
+      expect(result).toBeNull();
+    });
+  });
+
+  describe('Query.search', () => {
+    it('searches people by query', async () => {
+      mockedQuery.mockReset();
+      // The search resolver makes a single query and processes results
+      const mockPeople = [
+        {
+          id: 'p1',
+          name_full: 'John Smith',
+          birth_year: 1950,
+          relevance_score: 1,
+        },
+        {
+          id: 'p2',
+          name_full: 'John Johnson',
+          birth_year: 1960,
+          relevance_score: 0.5,
+        },
+      ];
+      mockedQuery.mockResolvedValueOnce({ rows: mockPeople });
+
+      const result = await resolvers.Query.search(null, {
+        query: 'John',
+        first: 10,
+      });
+
+      expect(result.edges).toHaveLength(2);
+      expect(result.pageInfo.totalCount).toBe(2);
+    });
+
+    it('returns empty results for no matches', async () => {
+      mockedQuery.mockReset();
+      mockedQuery.mockResolvedValueOnce({ rows: [] });
+
+      const result = await resolvers.Query.search(null, {
+        query: 'ZZZZZ',
+        first: 10,
+      });
+
+      expect(result.edges).toEqual([]);
+      expect(result.pageInfo.totalCount).toBe(0);
+    });
+  });
 });

@@ -3,8 +3,8 @@ import { expect, test } from '@playwright/test';
 test.describe('Family Tree', () => {
   test.beforeEach(async ({ page }) => {
     // Navigate to a known person's tree page
-    // Using a test person ID - this should exist in the test database
-    await page.goto('/tree');
+    // Using a test person ID from seed data - person000001 is the first seeded person
+    await page.goto('/tree?person=person000001');
   });
 
   test('tree page loads without errors', async ({ page }) => {

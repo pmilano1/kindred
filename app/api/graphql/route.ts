@@ -204,5 +204,29 @@ export async function POST(request: NextRequest) {
   if (USE_PROXY) {
     return proxyToLiveApi(request);
   }
+
+  // Validate that request has a valid JSON body before passing to Apollo
+  // This prevents "Unexpected end of JSON input" errors from empty requests
+  try {
+    const contentType = request.headers.get('content-type') || '';
+    if (contentType.includes('application/json')) {
+      const clonedRequest = request.clone();
+      const body = await clonedRequest.text();
+      if (!body || body.trim() === '') {
+        return NextResponse.json(
+          { errors: [{ message: 'Empty request body' }] },
+          { status: 400 },
+        );
+      }
+      // Try to parse to catch malformed JSON early
+      JSON.parse(body);
+    }
+  } catch {
+    return NextResponse.json(
+      { errors: [{ message: 'Invalid JSON in request body' }] },
+      { status: 400 },
+    );
+  }
+
   return handler(request);
 }

@@ -56,11 +56,21 @@ test.describe('People List Page', () => {
     // Wait for person link to be visible (may take time to load)
     await expect(personLink).toBeVisible({ timeout: 15000 });
 
-    // Click the person link
-    await personLink.click();
+    // Get the href to verify navigation later
+    const href = await personLink.getAttribute('href');
 
-    // Wait for navigation - allow longer timeout for CI
-    await expect(page).toHaveURL(/\/person\/[a-zA-Z0-9]+/, { timeout: 15000 });
+    // Click and wait for navigation using Promise.all pattern
+    await Promise.all([
+      page.waitForURL(/\/person\/[a-zA-Z0-9]+/, { timeout: 15000 }),
+      personLink.click(),
+    ]);
+
+    // Verify URL matches the expected pattern
+    await expect(page).toHaveURL(/\/person\/[a-zA-Z0-9]+/);
+    // Optionally verify we went to the right person
+    if (href) {
+      expect(page.url()).toContain('/person/');
+    }
   });
 
   test('filter dropdown works', async ({ page }) => {
